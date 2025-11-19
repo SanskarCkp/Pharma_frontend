@@ -12,16 +12,19 @@ const CreateOrder = () => {
   const vendor = location.state?.vendor;
 
   const [vendorData, setVendorData] = useState(null);
-  const [orderDate, setOrderDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+
+  const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes] = useState("");
+
   const [items, setItems] = useState([]);
+
+  const [categories, setCategories] = useState([]);
 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [manualProductName, setManualProductName] = useState("");
   const [manualQty, setManualQty] = useState(1);
+  const [manualCategory, setManualCategory] = useState("");
 
   const [totalItems, setTotalItems] = useState(0);
 
@@ -33,118 +36,172 @@ const CreateOrder = () => {
 
     const fetchVendor = async () => {
       try {
-        const res = await authFetch(
-          `${API_BASE}/procurement/vendors/${vendor.id}/`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setVendorData(data);
-        }
+        const res = await authFetch(`${API_BASE}/procurement/vendors/${vendor.id}/`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setVendorData(data);
       } catch (err) {
-        console.error(err);
+        console.error("Vendor fetch error:", err);
       }
     };
 
     fetchVendor();
   }, [vendor, navigate]);
 
-  const fetchItems = async () => {
+  const fetchProductsAndCategories = async () => {
     try {
-      const res = await authFetch(`${API_BASE}/catalog/products/`);
-      const data = await res.json();
+      const pRes = await authFetch(`${API_BASE}/catalog/products/`);
+      const pData = await pRes.json();
+      const productList = Array.isArray(pData.results) ? pData.results : pData;
 
-      setItems(
-        data.results
-          ? data.results.map((p) => ({
-              ...p,
-              quantity: 0,
-              expected_unit_cost: p.purchase_price || 0,
-            }))
-          : []
-      );
+      const cRes = await authFetch(`${API_BASE}/catalog/categories/`);
+      let categoryList = [];
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        categoryList = Array.isArray(cData.results) ? cData.results : cData;
+      }
+
+      setCategories(categoryList);
+
+      const normalized = productList.map((p) => ({
+        uid: `p_${p.id}`,
+        id: p.id,
+        name: p.name,
+        quantity: Number(p.pack_unit) || 0, // <-- use pack_unit from DB
+        expected_unit_cost: p.purchase_price || 0,
+        category: typeof p.category === "object" ? p.category.id : p.category || null,
+        isNew: false,
+      }));
+
+      setItems(normalized);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch error:", err);
     }
   };
 
   useEffect(() => {
-    if (vendorData) fetchItems();
+    if (vendorData) fetchProductsAndCategories();
   }, [vendorData]);
 
   useEffect(() => {
-    if (location.state?.refresh === true) {
-      fetchItems();
-      navigate(location.pathname, { replace: true });
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    const totalQty = items.reduce((acc, item) => acc + (item.quantity || 0), 0);
+    const totalQty = items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
     setTotalItems(totalQty);
   }, [items]);
 
-  const handleAddProduct = () => {
-    setShowAddProduct(true);
+  const generateProductCode = (name) => {
+    const slug = name.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6);
+    const rand = Math.floor(Math.random() * 9000) + 1000;
+    return `${slug || "PRD"}${rand}`;
   };
 
-  const handleAddManualProduct = () => {
-    if (!manualProductName.trim()) {
-      alert("Enter product name");
-      return;
-    }
+  const handleAddProduct = () => setShowAddProduct(true);
 
-    const newProduct = {
-      id: null, // manual products don't exist in DB
+  const handleAddManualProduct = async () => {
+    if (!manualProductName.trim()) return alert("Enter product name");
+    if (!manualQty || Number(manualQty) <= 0) return alert("Enter valid qty");
+    if (!manualCategory) return alert("Select category");
+    if (!vendorData?.id) return alert("Vendor not loaded");
+
+    const productPayload = {
+      code: generateProductCode(manualProductName.trim()),
       name: manualProductName.trim(),
-      quantity: Number(manualQty),
-      expected_unit_cost: 0,
-      isManual: true,
+      generic_name: "",
+      dosage_strength: "",
+      hsn: "",
+      schedule: "OTC",
+      pack_size: "",
+      manufacturer: "",
+      mrp: 0,
+      base_unit: "NOS",
+      pack_unit: String(manualQty),
+      units_per_pack: 1,
+      base_unit_step: 1,
+      gst_percent: 0,
+      reorder_level: 0,
+      description: "",
+      storage_instructions: "",
+      is_sensitive: false,
+      is_active: true,
+      category: Number(manualCategory),
+      preferred_vendor: Number(vendorData.id),
     };
 
-    setItems((prev) => [...prev, newProduct]);
+    try {
+      const productRes = await authFetch(`${API_BASE}/catalog/products/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productPayload),
+      });
 
-    setManualProductName("");
-    setManualQty(1);
-    setShowAddProduct(false);
+      if (!productRes.ok) {
+        const err = await productRes.json();
+        console.log("❌ Product Create Failed:", err);
+        alert("Product save failed");
+        return;
+      }
+
+      const created = await productRes.json();
+
+      const newItem = {
+        uid: `p_${created.id}`,
+        id: created.id,
+        name: created.name,
+        quantity: Number(manualQty),
+        expected_unit_cost: created.mrp || 0,
+        category:
+          typeof created.category === "object"
+            ? created.category.id
+            : created.category || Number(manualCategory),
+        isNew: false,
+      };
+
+      setItems((prev) => [...prev, newItem]);
+
+      setManualProductName("");
+      setManualQty(1);
+      setManualCategory("");
+      setShowAddProduct(false);
+    } catch (err) {
+      console.error("Manual product error:", err);
+      alert("Error creating product");
+    }
   };
 
-  const handleQuantityChange = (id, value) => {
+  const handleQuantityChange = (uid, value) =>
     setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: Number(value) } : item
-      )
+      prev.map((it) => (it.uid === uid ? { ...it, quantity: Number(value) || 0 } : it))
     );
-  };
 
-  const handleDelete = (productId) => {
-    setItems((prev) => prev.filter((item) => item.id !== productId));
-  };
+  const handleDelete = (uid) =>
+    setItems((prev) => prev.filter((it) => it.uid !== uid));
 
   const handleCreateOrder = async () => {
-    if (!vendorData) return;
+    if (!vendorData?.id) return alert("Vendor not loaded");
 
-    const orderItems = items.filter((item) => item.quantity > 0);
+    const orderRows = items.filter((r) => Number(r.quantity) > 0);
+    if (orderRows.length === 0) return alert("Add at least one product");
 
-    if (orderItems.length === 0) {
-      alert("Please add at least one product.");
-      return;
-    }
+    // ⭐ FIXED: backend expects `product` field, not `product_id`
+    const lines = orderRows.map((r) => ({
+      product: Number(r.id),
+      qty_packs_ordered: Number(r.quantity),
+    }));
+
+
+    const netTotal = orderRows.reduce(
+    (acc, it) => acc + (Number(it.quantity) * Number(it.expected_unit_cost) || 0),
+    0
+);
+
 
     const payload = {
       vendor: Number(vendorData.id),
-      location: Number(vendorData.default_location || 1),
+      location: Number(vendorData.default_location || vendorData.location_id || 1),
       order_date: orderDate,
-      expected_date: expectedDate,
-      note: notes,
-
-      lines: orderItems
-        .filter((item) => item.id !== null) // skip manual items
-        .map((item) => ({
-          product: Number(item.id),
-          qty_packs_ordered: Number(item.quantity),
-          expected_unit_cost: Number(item.expected_unit_cost || 0),
-          gst_percent_override: Number(item.gst_percent_override || 12),
-        })),
+      expected_date: expectedDate || null,
+      note: notes || "",
+      lines,
+      net_total: netTotal  // <-- add this
     };
 
     try {
@@ -154,17 +211,18 @@ const CreateOrder = () => {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        alert("Purchase Order Created Successfully!");
-        navigate("/procurement/orders");
-      } else {
-        const err = await res.text();
-        console.error("Backend Error:", err);
-        alert("Failed to create order.");
+      if (!res.ok) {
+        const err = await res.json();
+        console.log("❌ PO Create Failed:", err);
+        alert("Order failed");
+        return;
       }
+
+      alert("Order created successfully!");
+      navigate("/procurement/orders");
     } catch (err) {
-      console.error(err);
-      alert("Something went wrong.");
+      console.error("Order error:", err);
+      alert("Error creating order");
     }
   };
 
@@ -213,6 +271,18 @@ const CreateOrder = () => {
                   onChange={(e) => setManualProductName(e.target.value)}
                 />
 
+                <select
+                  value={manualCategory}
+                  onChange={(e) => setManualCategory(e.target.value)}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
                 <input
                   type="number"
                   min="1"
@@ -221,18 +291,19 @@ const CreateOrder = () => {
                 />
 
                 <button className="submit-btn" onClick={handleAddManualProduct}>
-                  Add
+                  Add & Create Product
                 </button>
               </div>
             )}
 
             {items.length === 0 ? (
-              <div className="no-products">No products added yet.</div>
+              <div className="no-products">No products available.</div>
             ) : (
               <table className="products-table">
                 <thead>
                   <tr>
                     <th>Product</th>
+                    <th>Category</th>
                     <th>Qty</th>
                     <th></th>
                   </tr>
@@ -240,8 +311,15 @@ const CreateOrder = () => {
 
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id ?? Math.random()}>
+                    <tr key={item.uid}>
                       <td>{item.name}</td>
+
+                      <td>
+                        {
+                          (categories.find((c) => String(c.id) === String(item.category)) ||
+                            {}).name || "—"
+                        }
+                      </td>
 
                       <td>
                         <input
@@ -249,7 +327,7 @@ const CreateOrder = () => {
                           min="0"
                           value={item.quantity}
                           onChange={(e) =>
-                            handleQuantityChange(item.id, e.target.value)
+                            handleQuantityChange(item.uid, e.target.value)
                           }
                         />
                       </td>
@@ -257,7 +335,7 @@ const CreateOrder = () => {
                       <td>
                         <button
                           className="delete-btn"
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item.uid)}
                         >
                           <Trash2 size={18} color="red" />
                         </button>

@@ -9,43 +9,49 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const ProductCatalog = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const vendor = location.state?.vendor || { name: "Unknown Vendor" };
+  const vendor = location.state?.vendor;
 
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [categories, setCategories] = useState([]);
 
+  // Redirect if vendor not provided
+  useEffect(() => {
+    if (!vendor?.id) {
+      navigate("/masters/vendors");
+    }
+  }, [vendor, navigate]);
+
+  // Fetch only products belonging to this vendor
   useEffect(() => {
     if (!vendor?.id) return;
 
-    // Fetch vendor-specific products
-    const fetchProducts = async () => {
+    const fetchVendorProducts = async () => {
       try {
+        // Fetch all products with a query param filtering by vendor
         const res = await authFetch(
-          fetch(`${API_BASE}/purchase-orders/?vendor=${vendorId}`)
-
+          `${API_BASE_URL}/catalog/products/?vendor=${vendor.id}`
         );
         const data = await res.json();
-        setProducts(data);
+        const list = data.results || data;
+        setProducts(list);
       } catch (err) {
-        console.error("Failed to fetch products:", err);
+        console.error("Failed to fetch vendor products:", err);
+        setProducts([]);
       }
     };
 
-    fetchProducts();
+    fetchVendorProducts();
   }, [vendor]);
 
-  // ✅ Fetch categories from API
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await authFetch(`${API_BASE_URL}/catalog/categories/`);
         const data = await res.json();
-
-        // API returns results? Use results format (depending on your backend)
-        const list = data.results ? data.results : data;
-
+        const list = data.results || data;
         setCategories(list);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
@@ -55,15 +61,16 @@ const ProductCatalog = () => {
     fetchCategories();
   }, []);
 
+  // Filter products based on search and category
   const filteredProducts = products.filter(
     (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) &&
-      (categoryFilter ? p.category === categoryFilter : true)
+      p.name?.toLowerCase().includes(search.toLowerCase()) &&
+      (categoryFilter ? p.category_name === categoryFilter : true)
   );
 
   return (
     <div className="catalog-container">
-      {/* Header with back button */}
+      {/* Header */}
       <div className="catalog-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
@@ -71,15 +78,14 @@ const ProductCatalog = () => {
         </button>
         <div className="catalog-header-text">
           <h1 className="catalog-title">Product Catalog</h1>
-          <p className="vendor-subtitle">{vendor.name}</p>
+          <p className="vendor-subtitle">{vendor?.name || "Unknown Vendor"}</p>
         </div>
       </div>
 
-      {/* Available Products Card */}
+      {/* Product Card */}
       <div className="catalog-card">
         <div className="catalog-card-header">
           <h2>Available Products</h2>
-
           <div className="catalog-filters">
             <input
               type="text"
@@ -87,25 +93,21 @@ const ProductCatalog = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-
-            {/* ✅ Dropdown now uses API categories */}
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
               <option value="">All Categories</option>
-
-              {categories.length > 0 &&
-                categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* Table Section */}
+        {/* Product Table */}
         <table className="catalog-table">
           <thead>
             <tr>
@@ -114,13 +116,12 @@ const ProductCatalog = () => {
               <th>Last Updated</th>
             </tr>
           </thead>
-
           <tbody>
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((product, index) => (
-                <tr key={index}>
+              filteredProducts.map((product) => (
+                <tr key={product.id}>
                   <td>{product.name}</td>
-                  <td>{product.category || "Uncategorized"}</td>
+                  <td>{product.category_name || "Uncategorized"}</td>
                   <td>
                     {product.updated_at
                       ? new Date(product.updated_at).toLocaleDateString()

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { authFetch } from "../../../api/http"; // make sure authFetch is imported
 import "./addvendors.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -27,13 +28,16 @@ const AddVendor = () => {
     is_active: true,
   });
 
-  // Fetch payment terms
+  // Fetch payment terms from API
   useEffect(() => {
     const loadTerms = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/payment-terms/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/payment-terms/`);
         const data = await res.json();
-        setPaymentTermsList(Array.isArray(data) ? data : []);
+
+        // Handle paginated or plain array response
+        const list = data.results ? data.results : data;
+        setPaymentTermsList(Array.isArray(list) ? list : []);
       } catch (error) {
         console.error("Error loading payment terms", error);
       }
@@ -51,69 +55,66 @@ const AddVendor = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${API_BASE_URL}/procurement/vendors/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/vendors/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    if (res.ok) {
-      alert("Vendor Added Successfully!");
-      navigate("/masters/vendors");
-    } else {
-      alert("Failed to Save Vendor!");
+      if (res.ok) {
+        alert("Vendor Added Successfully!");
+        navigate("/masters/vendors");
+      } else {
+        const errData = await res.json();
+        alert("Failed to Save Vendor! " + JSON.stringify(errData));
+      }
+    } catch (err) {
+      console.error("Error saving vendor", err);
+      alert("Failed to Save Vendor! Check console for details.");
     }
   };
 
   return (
     <div className="vendors-container">
-
-      {/* Page Header: Back + Title */}
+      {/* Page Header */}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate("/masters/vendors")}>
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
-
         <h1 className="vendors-title">Add Supplier</h1>
       </div>
 
       <form className="vendors-form" onSubmit={handleSubmit}>
-
         {/* BASIC INFORMATION */}
         <div className="section-card">
           <h2 className="section-heading">Basic Information</h2>
-
           <div className="row">
             <div className="field">
               <label>Supplier Name *</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange} required />
             </div>
-
             <div className="field">
               <label>Contact Person *</label>
               <input type="text" name="contact_person" value={formData.contact_person} onChange={handleChange} />
             </div>
           </div>
-
           <div className="row">
             <div className="field">
               <label>Phone Number *</label>
               <input type="text" name="contact_phone" value={formData.contact_phone} onChange={handleChange} />
             </div>
-
             <div className="field">
               <label>Email Address *</label>
               <input type="email" name="email" value={formData.email} onChange={handleChange} />
             </div>
           </div>
-
           <div className="row">
             <div className="field">
               <label>GST Number *</label>
               <input type="text" name="gstin" value={formData.gstin} onChange={handleChange} />
             </div>
-
             <div className="field">
               <label>Status</label>
               <select
@@ -126,7 +127,6 @@ const AddVendor = () => {
               </select>
             </div>
           </div>
-
           <div className="field full">
             <label>Address *</label>
             <textarea name="address" value={formData.address} onChange={handleChange}></textarea>
@@ -136,7 +136,6 @@ const AddVendor = () => {
         {/* PRODUCTS */}
         <div className="section-card">
           <h2 className="section-heading">Products & Supply Information</h2>
-
           <div className="field full">
             <label>What Products Can This Supplier Deliver? *</label>
             <textarea
@@ -151,7 +150,6 @@ const AddVendor = () => {
         {/* PAYMENT TERMS */}
         <div className="section-card">
           <h2 className="section-heading">Business Terms</h2>
-
           <div className="row">
             <div className="field">
               <label>Payment Terms *</label>
@@ -164,39 +162,33 @@ const AddVendor = () => {
                 ))}
               </select>
             </div>
-            <div className="field"></div>
           </div>
         </div>
 
         {/* BANK DETAILS */}
         <div className="section-card">
           <h2 className="section-heading">Banking Information (Optional)</h2>
-
           <div className="row">
             <div className="field">
               <label>Bank Name</label>
               <input type="text" name="bank_name" value={formData.bank_name} onChange={handleChange} />
             </div>
-
             <div className="field">
               <label>Account Number</label>
               <input type="text" name="account_no" value={formData.account_no} onChange={handleChange} />
             </div>
           </div>
-
           <div className="row">
             <div className="field">
               <label>IFSC Code</label>
               <input type="text" name="ifsc" value={formData.ifsc} onChange={handleChange} />
             </div>
-            <div className="field"></div>
           </div>
         </div>
 
         {/* NOTES */}
         <div className="section-card">
           <h2 className="section-heading">Additional Notes</h2>
-
           <div className="field full">
             <textarea name="notes" value={formData.notes} onChange={handleChange}></textarea>
           </div>
@@ -209,7 +201,6 @@ const AddVendor = () => {
           </button>
           <button type="submit" className="save-btn">Save</button>
         </div>
-
       </form>
     </div>
   );

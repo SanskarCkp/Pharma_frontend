@@ -23,11 +23,43 @@ const PurchaseOrders = () => {
 
     const fetchOrders = async () => {
       try {
+        // Fetch all purchase orders for the vendor
         const res = await authFetch(
           `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
         );
         const data = await res.json();
-        setOrders(data.results || []);
+        const ordersList = data.results || [];
+
+        // For each order, fetch its lines and calculate total items
+        const ordersWithItems = await Promise.all(
+          ordersList.map(async (order) => {
+            try {
+              const linesRes = await authFetch(
+                `${API_BASE_URL}/procurement/purchase-orders/${order.id}/lines/`
+              );
+              const linesData = await linesRes.json();
+
+              // Handle both cases: nested `lines` or direct array
+              const totalItemsArray = Array.isArray(linesData.lines)
+                ? linesData.lines
+                : Array.isArray(linesData)
+                ? linesData
+                : [];
+
+              const totalItems = totalItemsArray.reduce(
+                (sum, line) => sum + Number(line.qty_packs_ordered || 0),
+                0
+              );
+
+              return { ...order, total_items: totalItems };
+            } catch (err) {
+              console.error(`Error fetching lines for PO ${order.id}:`, err);
+              return { ...order, total_items: 0 };
+            }
+          })
+        );
+
+        setOrders(ordersWithItems);
       } catch (err) {
         console.error("Error fetching purchase orders:", err);
         setOrders([]);
@@ -39,20 +71,38 @@ const PurchaseOrders = () => {
     fetchOrders();
   }, [vendor]);
 
-   const handleView = (id) =>
+  const handleView = (id) =>
     navigate(`/masters/products/receive-items/${id}`, {
       state: { vendor },
     });
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      console.log("Delete order id:", id);
-      // TODO: Call delete API
+
+  const handleDelete = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this order?")) return;
+
+  try {
+    const res = await authFetch(
+      `${API_BASE_URL}/procurement/purchase-orders/${id}/`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      // Remove the deleted order from the state
+      setOrders((prev) => prev.filter((order) => order.id !== id));
+      alert("Purchase order deleted successfully!");
+    } else {
+      const errData = await res.json();
+      console.error("Delete failed:", errData);
+      alert("Failed to delete purchase order.");
     }
-  };
+  } catch (err) {
+    console.error("Delete error:", err);
+    alert("Error deleting purchase order.");
+  }
+};
+
 
   return (
     <div className="purchaseorders-container">
-      {/* ✅ Header with Back Button */}
       <div className="purchaseorders-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
@@ -69,8 +119,6 @@ const PurchaseOrders = () => {
         </p>
       )}
 
-      
-
       <div className="orders-table-card">
         <table className="orders-table">
           <thead>
@@ -78,8 +126,7 @@ const PurchaseOrders = () => {
               <th>PO Number</th>
               <th>Order Date</th>
               <th>Expected Date</th>
-              <th>Items</th>
-              <th>Amount</th>
+              <th>Total Items</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -87,13 +134,13 @@ const PurchaseOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" className="no-orders">
+                <td colSpan="6" className="no-orders">
                   Loading orders...
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan="7" className="no-orders">
+                <td colSpan="6" className="no-orders">
                   No purchase orders found.
                 </td>
               </tr>
@@ -103,8 +150,7 @@ const PurchaseOrders = () => {
                   <td>{order.po_number}</td>
                   <td>{formatDateDDMMYYYY(order.order_date)}</td>
                   <td>{formatDateDDMMYYYY(order.expected_date)}</td>
-                  <td>{order.items_count}</td>
-                  <td>₹ {order.total_amount?.toFixed(2)}</td>
+                  <td>{order.total_items}</td>
                   <td>{order.status}</td>
                   <td className="actions-cell">
                     <Eye
