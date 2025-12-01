@@ -147,3 +147,12 @@
     padding: 4px;
   }
 }
+.items-table-card {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 450px;
+}
+
+.items-received-table {
+  min-width: 1500px;
+}

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./unitofmeasurement.css";
 
-const empty = { id: "", name: "", description: "" };
+const empty = { id: "", name: "", description: "", uom_type: "BASE" };
 
 // Base API setup
 const rawBase = import.meta.env.VITE_API_URL || "";
@@ -57,7 +57,12 @@ export default function UnitOfMeasurement() {
   };
 
   const openEdit = (r) => {
-    setForm({ id: r.id, name: r.name, description: r.description || "" });
+    setForm({
+      id: r.id,
+      name: r.name,
+      description: r.description || "",
+      uom_type: r.uom_type || "BASE",
+    });
     setEditingId(r.id);
     setErrors({});
     setShowForm(true);
@@ -70,6 +75,7 @@ export default function UnitOfMeasurement() {
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = "Name is required";
+    if (!form.uom_type) e.uom_type = "UOM Type is required";
     return e;
   };
 
@@ -87,6 +93,7 @@ export default function UnitOfMeasurement() {
     const payload = {
       name: form.name.trim(),
       description: form.description?.trim() || "",
+      uom_type: form.uom_type,
     };
 
     setSaving(true);
@@ -184,6 +191,10 @@ export default function UnitOfMeasurement() {
                 <th className="slno-col">SL No</th>
                 <th className="name-col">Name</th>
                 <th className="desc-col">Description</th>
+
+                {/* NEW COLUMN */}
+                <th className="type-col">UOM Type</th>
+
                 <th className="actions-col">Actions</th>
               </tr>
             </thead>
@@ -195,6 +206,10 @@ export default function UnitOfMeasurement() {
                     <td className="slno-col">{index + 1}</td>
                     <td>{r.name}</td>
                     <td className="mfMuted">{r.description || "-"}</td>
+
+                    {/* SHOW UOM TYPE */}
+                    <td>{r.uom_type || "-"}</td>
+
                     <td className="mfActions">
                       <button className="mfIcon" onClick={() => openView(r)}>👁️</button>
                       <button className="mfIcon" onClick={() => openEdit(r)}>✎</button>
@@ -204,7 +219,7 @@ export default function UnitOfMeasurement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} style={{ padding: 16, textAlign: "center" }}>
+                  <td colSpan={5} style={{ padding: 16, textAlign: "center" }}>
                     No units yet. Click <strong>Add New</strong>.
                   </td>
                 </tr>
@@ -248,6 +263,22 @@ export default function UnitOfMeasurement() {
                 />
               </label>
 
+              {/* UOM Type Dropdown */}
+              <label className="mfLabel">
+                UOM Type <span className="mfReq">*</span>
+                <select
+                  name="uom_type"
+                  className={`mfInput ${errors.uom_type ? "mfInputError" : ""}`}
+                  value={form.uom_type}
+                  onChange={handleChange}
+                >
+                  <option value="BASE">BASE</option>
+                  <option value="PACK">PACK</option>
+                   <option value="BOTH">BOTH</option>
+                </select>
+                {errors.uom_type && <div className="mfError">{errors.uom_type}</div>}
+              </label>
+
               <div className="mfBtnRow">
                 <button type="button" className="mfBtn" onClick={closeForm}>
                   Cancel
@@ -281,6 +312,12 @@ export default function UnitOfMeasurement() {
                 <span className="mfViewLabel">Description</span>
                 <span className="mfViewColon">:</span>
                 <span className="mfViewValue">{showView.description || "-"}</span>
+              </div>
+
+              <div className="mfViewRow">
+                <span className="mfViewLabel">UOM Type</span>
+                <span className="mfViewColon">:</span>
+                <span className="mfViewValue">{showView.uom_type || "-"}</span>
               </div>
 
               <div className="mfViewRow">
@@ -333,7 +370,6 @@ export default function UnitOfMeasurement() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

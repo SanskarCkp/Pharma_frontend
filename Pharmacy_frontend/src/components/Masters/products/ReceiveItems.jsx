@@ -21,26 +21,37 @@ const ReceiveItems = () => {
     total_received: 0,
     completion: "0%",
   });
+
+  const [category, setCategory] = useState([]);
   const [rackLocations, setRackLocations] = useState([]);
+  const [loggedInUser, setLoggedInUser] = useState(null); // ✅ NEW
   const [loading, setLoading] = useState(true);
 
   // -----------------------------
-  // FETCH PO, LINES, RECEIVING, RACKS
+  // FETCH USER, PO, LINES, RECEIVING, RACKS
   // -----------------------------
   useEffect(() => {
     const fetchDetails = async () => {
       setLoading(true);
       try {
-        // Fetch PO
+        // 1️⃣ Fetch Logged-In User
+        const userRes = await authFetch(`${API_BASE_URL}/accounts/`);
+
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setLoggedInUser(userData);
+        }
+
+        // 2️⃣ Fetch PO
         const poRes = await authFetch(`${API_BASE_URL}/procurement/purchase-orders/${id}/`);
         if (!poRes.ok) throw new Error("PO not found");
         const poData = await poRes.json();
 
-        // Fetch Receiving Details
+        // 3️⃣ Fetch Receiving Details
         const recRes = await authFetch(`${API_BASE_URL}/procurement/purchase-orders/${id}/receiving/`);
         const receivingData = recRes.ok ? await recRes.json() : null;
 
-        // Fetch PO Lines
+        // 4️⃣ Fetch PO Lines
         const linesRes = await authFetch(`${API_BASE_URL}/procurement/purchase-orders/${id}/lines/`);
         let linesData = [];
         if (linesRes.ok) {
@@ -48,12 +59,17 @@ const ReceiveItems = () => {
           linesData = Array.isArray(linesJson) ? linesJson : linesJson?.lines || [];
         }
 
-        // Fetch Rack Locations
+        // 5️⃣ Fetch Categories
+        const categoryRes = await authFetch(`${API_BASE_URL}/catalog/categories/`);
+        const categoryData = categoryRes.ok ? await categoryRes.json() : [];
+        setCategory(Array.isArray(categoryData) ? categoryData : categoryData.results || []);
+
+        // 6️⃣ Fetch Rack Locations
         const rackRes = await authFetch(`${API_BASE_URL}/inventory/rack-locations/`);
         const rackData = rackRes.ok ? await rackRes.json() : [];
         setRackLocations(Array.isArray(rackData) ? rackData : rackData.results || []);
 
-        // Resolve Product Names
+        // 7️⃣ Resolve Product Names
         const productIdSet = new Set();
         linesData.forEach((item) => {
           if (typeof item.product === "number") productIdSet.add(item.product);
@@ -70,7 +86,7 @@ const ReceiveItems = () => {
           })
         );
 
-        // Build itemsReceived table
+        // 8️⃣ Build items table
         setItemsReceived(
           linesData.map((item) => ({
             id: item.id,
@@ -78,11 +94,18 @@ const ReceiveItems = () => {
             product_id:
               item.product?.id || (typeof item.product === "object" ? item.product.id : item.product),
             product_name:
-              item.product?.name || item.product_details?.name || productIdToName[item.product] || "",
+              item.product?.name ||
+              item.product_details?.name ||
+              productIdToName[item.product] ||
+              "",
             ordered: item.qty_packs_ordered || 0,
-            received: "",
-            damaged: "",
+
+            received_packs: "",
+            received_base: "",
+            damaged_base: "",
+
             batch: "",
+            category: "",
             mfg_date: "",
             expiry_date: "",
             unit_cost: item.expected_unit_cost || "",
@@ -91,7 +114,10 @@ const ReceiveItems = () => {
           }))
         );
 
-        const totalOrdered = linesData.reduce((acc, item) => acc + Number(item.qty_packs_ordered || 0), 0);
+        const totalOrdered = linesData.reduce(
+          (acc, item) => acc + Number(item.qty_packs_ordered || 0),
+          0
+        );
         setSummary({ total_ordered: totalOrdered, total_received: 0, completion: "0%" });
 
         setPurchaseOrder({
@@ -120,16 +146,23 @@ const ReceiveItems = () => {
   // HANDLE ITEM EDIT
   // -----------------------------
   const handleItemEdit = (idx, field, value) => {
-    setItemsReceived((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+    setItemsReceived((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
+    );
   };
 
   // -----------------------------
   // SUMMARY UPDATE
   // -----------------------------
   useEffect(() => {
-    const totalReceived = itemsReceived.reduce((acc, item) => acc + Number(item.received || 0), 0);
+    const totalReceived = itemsReceived.reduce(
+      (acc, item) => acc + Number(item.received_packs || 0),
+      0
+    );
     const completion =
-      summary.total_ordered > 0 ? ((totalReceived / summary.total_ordered) * 100).toFixed(1) + "%" : "0%";
+      summary.total_ordered > 0
+        ? ((totalReceived / summary.total_ordered) * 100).toFixed(1) + "%"
+        : "0%";
 
     setSummary((prev) => ({ ...prev, total_received: totalReceived, completion }));
   }, [itemsReceived, summary.total_ordered]);
@@ -139,36 +172,38 @@ const ReceiveItems = () => {
   // -----------------------------
   const handleCompleteReceiving = async () => {
     if (!purchaseOrder) {
-      alert("Purchase Order not loaded!");
+      alert("PO not loaded!");
       return;
     }
 
-    for (let i = 0; i < itemsReceived.length; i++) {
-      const item = itemsReceived[i];
-      if (!item.received || !item.batch || !item.mfg_date) {
-        alert(`Missing required fields in row ${i + 1}`);
-        return;
-      }
+    if (!loggedInUser) {
+      alert("User login not detected!");
+      return;
     }
 
     const grnPayload = {
       po: purchaseOrder.id,
-      location: purchaseOrder.location_id,
-      received_by: 1,
+     location: purchaseOrder.location_id || purchaseOrder.location,
+
+      received_by: loggedInUser.id, // ✅ USER FROM API
       received_at: new Date().toISOString(),
       supplier_invoice_no: "",
       supplier_invoice_date: null,
       note: "",
       status: "DRAFT",
+
       lines: itemsReceived.map((item) => ({
         po_line: item.po_line,
         product: item.product_id,
         batch_no: item.batch,
+        category: item.category || "",
         mfg_date: item.mfg_date || null,
         expiry_date: item.expiry_date || null,
-        qty_packs_received: Number(item.received || 0),
-        qty_base_received: Number(item.received || 0),
-        qty_base_damaged: Number(item.damaged || 0),
+
+        qty_packs_received: Number(item.received_packs || 0),
+        qty_base_received: Number(item.received_base || 0),
+        qty_base_damaged: Number(item.damaged_base || 0),
+
         unit_cost: Number(item.unit_cost || 0),
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
@@ -186,7 +221,11 @@ const ReceiveItems = () => {
       if (!res.ok) return alert("GRN creation failed: " + JSON.stringify(data));
 
       if (data?.id) {
-        const postRes = await authFetch(`${API_BASE_URL}/procurement/grns/${data.id}/post/`, { method: "POST" });
+        const postRes = await authFetch(
+          `${API_BASE_URL}/procurement/grns/${data.id}/post/`,
+          { method: "POST" }
+        );
+
         if (postRes.ok) {
           alert("Goods Receipt created & posted!");
           navigate(-1);
@@ -202,7 +241,7 @@ const ReceiveItems = () => {
   };
 
   // -----------------------------
-  // LOADING / ERROR UI
+  // LOADING UI
   // -----------------------------
   if (loading)
     return (
@@ -229,7 +268,7 @@ const ReceiveItems = () => {
     );
 
   // -----------------------------
-  // RENDER
+  // RENDER UI
   // -----------------------------
   return (
     <div className="receiveitems-container">
@@ -240,7 +279,8 @@ const ReceiveItems = () => {
       <h1 className="page-title">Receive Items</h1>
 
       <div className="kpi-cards-grid">
-        {/* 1. Purchase Order Details */}
+
+        {/* PURCHASE ORDER */}
         <div className="kpi-card">
           <h3>Purchase Order Details</h3>
           <div className="kpi-item"><strong>PO Number:</strong> {purchaseOrder.po_number}</div>
@@ -249,30 +289,42 @@ const ReceiveItems = () => {
           <div className="kpi-item"><strong>Expected Date:</strong> {formatDateDDMMYYYY(purchaseOrder.expected_date)}</div>
         </div>
 
-        {/* 2. Receiving Details */}
+        {/* RECEIVING DETAILS */}
         <div className="kpi-card">
           <h3>Receiving Details</h3>
+          {loggedInUser && (
+            <div className="kpi-item">
+              <strong>Received By:</strong> {loggedInUser.full_name || loggedInUser.username}
+            </div>
+          )}
+
           {receivingDetails ? (
             <>
-              <div className="kpi-item"><strong>Received Date:</strong> {formatDateDDMMYYYY(receivingDetails.received_date)}</div>
-              <div className="kpi-item"><strong>Received By:</strong> {receivingDetails.received_by}</div>
-              <div className="kpi-item"><strong>Invoice Number:</strong> {receivingDetails.invoice_number}</div>
+              <div className="kpi-item">
+                <strong>Received Date:</strong> {formatDateDDMMYYYY(receivingDetails.received_date)}
+              </div>
+              <div className="kpi-item">
+                <strong>Invoice Number:</strong> {receivingDetails.invoice_number}
+              </div>
             </>
           ) : (
             <div className="kpi-item" style={{ color: "#d97706" }}>Not yet received</div>
           )}
         </div>
 
-        {/* 3. Receiving Summary */}
+        {/* SUMMARY */}
         <div className="kpi-card summary-card">
           <h3>Receiving Summary</h3>
           <div className="summary-row"><CheckCircle size={16} /> Total Ordered: {summary.total_ordered}</div>
           <div className="summary-row"><Package size={16} /> Total Received: {summary.total_received}</div>
           <div className="summary-row"><ClipboardList size={16} /> Completion: {summary.completion}</div>
-          <button className="complete-btn" onClick={handleCompleteReceiving}>Complete Receiving</button>
+
+          <button className="complete-btn" onClick={handleCompleteReceiving}>
+            Complete Receiving
+          </button>
         </div>
 
-        {/* 4. Items Received (full width) */}
+        {/* ITEMS TABLE */}
         <div className="kpi-card items-table-card">
           <h3>Items Received</h3>
           <table className="items-received-table">
@@ -280,10 +332,11 @@ const ReceiveItems = () => {
               <tr>
                 <th>Product</th>
                 <th>Ordered</th>
-                <th>Received</th>
-                <th>Damaged</th>
+                <th>Packs Received</th>
+                <th>Base Received</th>
+                <th>Base Damaged</th>
                 <th>Batch</th>
-                
+                <th>Category</th>
                 <th>Rack No</th>
                 <th>Unit Cost</th>
                 <th>MRP</th>
@@ -291,29 +344,110 @@ const ReceiveItems = () => {
                 <th>Expiry Date</th>
               </tr>
             </thead>
+
             <tbody>
               {itemsReceived.map((item, idx) => (
                 <tr key={item.id}>
                   <td>{item.product_name}</td>
                   <td>{item.ordered}</td>
-                  <td><input type="number" min={0} value={item.received} onChange={(e) => handleItemEdit(idx, "received", e.target.value)} /></td>
-                  <td><input type="number" min={0} value={item.damaged} onChange={(e) => handleItemEdit(idx, "damaged", e.target.value)} /></td>
-                  <td><input type="text" value={item.batch} onChange={(e) => handleItemEdit(idx, "batch", e.target.value)} /></td>
-                  
+
                   <td>
-                    <select value={item.rack_no || ""} onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}>
-                      <option value="">Select Rack</option>
-                      {rackLocations.map((rack) => (<option key={rack.id} value={rack.name}>{rack.name}</option>))}
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.received_packs}
+                      onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.received_base}
+                      onChange={(e) => handleItemEdit(idx, "received_base", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.damaged_base}
+                      onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="text"
+                      value={item.batch}
+                      onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <select
+                      value={item.category || ""}
+                      onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
+                    >
+                      <option value="">Select category</option>
+                      {category.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
                     </select>
                   </td>
-                  <td><input type="number" step="0.01" value={item.unit_cost} onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)} /></td>
-                  <td><input type="number" step="0.01" value={item.mrp} onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)} /></td>
-                  <td><input type="date" value={item.mfg_date} onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)} /></td>
-                  <td><input type="date" value={item.expiry_date} onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)} /></td>
+
+                  <td>
+                    <select
+                      value={item.rack_no || ""}
+                      onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
+                    >
+                      <option value="">Select Rack</option>
+                      {rackLocations.map((rack) => (
+                        <option key={rack.id} value={rack.name}>{rack.name}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.unit_cost}
+                      onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.mrp}
+                      onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="date"
+                      value={item.mfg_date}
+                      onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="date"
+                      value={item.expiry_date}
+                      onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
         </div>
       </div>
     </div>

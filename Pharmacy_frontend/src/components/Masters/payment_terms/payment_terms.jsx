@@ -1,16 +1,12 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./payment_terms.css";
-import { Eye, Pencil, Trash2 } from "lucide-react";
 
 const USE_LOCAL_STORAGE = false;
 const LS_KEY = "payment_terms";
 
-const empty = { id: "", name: "", description: "" };
+const empty = { id: "", name: "", days: 0, description: "" };
 
-// Normalize VITE_API_URL so both of these work:
-//  - http://127.0.0.1:8000
-//  - http://127.0.0.1:8000/api/v1
 const rawBase = import.meta.env.VITE_API_URL || "";
 const normalizeBase = (u) =>
   u
@@ -18,7 +14,9 @@ const normalizeBase = (u) =>
     .replace(/\/+$/g, "")
     .replace(/\/api\/v1$/i, "");
 const API_BASE = normalizeBase(rawBase);
-const API = API_BASE ? `${API_BASE}/api/v1/settings/payment-terms/` : "/api/v1/settings/payment-terms/";
+const API = API_BASE
+  ? `${API_BASE}/api/v1/settings/payment-terms/`
+  : "/api/v1/settings/payment-terms/";
 
 export default function PaymentTerms() {
   const nav = useNavigate();
@@ -32,7 +30,6 @@ export default function PaymentTerms() {
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState(null);
 
-  // Load from local storage if enabled (fallback)
   useEffect(() => {
     if (!USE_LOCAL_STORAGE) return;
     try {
@@ -41,7 +38,6 @@ export default function PaymentTerms() {
     } catch {}
   }, []);
 
-  // Persist local storage if enabled
   const saveLocal = (next) => {
     setRows(next);
     if (USE_LOCAL_STORAGE) {
@@ -51,7 +47,6 @@ export default function PaymentTerms() {
     }
   };
 
-  // Fetch from backend
   const fetchList = async () => {
     setLoading(true);
     setServerError(null);
@@ -84,7 +79,7 @@ export default function PaymentTerms() {
     setShowForm(true);
   };
   const openEdit = (r) => {
-    setForm({ id: r.id, name: r.name, description: r.description || "" });
+    setForm({ id: r.id, name: r.name, days: r.days || 0, description: r.description || "" });
     setEditingId(r.id);
     setErrors({});
     setShowForm(true);
@@ -94,16 +89,16 @@ export default function PaymentTerms() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((p) => ({ ...p, [name]: name === "days" ? Number(value) : value }));
   };
 
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = "Name is required";
+    if (form.days < 0) e.days = "Days cannot be negative";
     return e;
   };
 
-  // CREATE or UPDATE to backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     const eObj = validate();
@@ -113,7 +108,11 @@ export default function PaymentTerms() {
     setSaving(true);
     setServerError(null);
 
-    const payload = { name: form.name.trim(), description: form.description?.trim() || "" };
+    const payload = {
+      name: form.name.trim(),
+      days: form.days,
+      description: form.description?.trim() || "",
+    };
 
     try {
       if (editingId) {
@@ -162,7 +161,6 @@ export default function PaymentTerms() {
     }
   };
 
-  // ESC closes modals
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -176,7 +174,6 @@ export default function PaymentTerms() {
 
   return (
     <div className="pm-wrap">
-      {/* Header */}
       <div className="pm-header">
         <button className="pm-back" onClick={() => nav(-1)} disabled={loading}>← Back</button>
         <div className="pm-headings">
@@ -185,7 +182,6 @@ export default function PaymentTerms() {
         <button className="pm-add" onClick={openAdd} disabled={loading || saving}>＋ Add New</button>
       </div>
 
-      {/* Server error / loading */}
       {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
       {loading ? (
         <div style={{ padding: 20 }}>Loading...</div>
@@ -194,91 +190,27 @@ export default function PaymentTerms() {
           <table className="pm-table">
             <thead>
               <tr>
-                <th style={{ width: "35%" }}>Name</th>
+                <th>Name</th>
+                <th>Days</th>
                 <th>Description</th>
-                <th style={{ width: 140, textAlign: "right" }}>Actions</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {rows.length ? (
-                rows.map((r, i) => (
-                  <tr key={r.id || i}>
-                    <td>{r.name}</td>
-                    <td className="pm-muted">{r.description}</td>
-<td className="pm-actions">
-  <button
-    className="pm-icon"
-    title="View"
-    onClick={() => openView(r)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#136FD7"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  </button>
-
-  <button
-    className="pm-icon"
-    title="Edit"
-    onClick={() => openEdit(r)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#000"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-      <path d="M12 17l5-5"></path>
-      <path d="M15 10l2 2"></path>
-    </svg>
-  </button>
-
-  <button
-    className="pm-icon danger"
-    title="Delete"
-    onClick={() => handleDelete(r.id)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#E23636"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-      <path d="M10 11v6"></path>
-      <path d="M14 11v6"></path>
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
-    </svg>
-  </button>
-</td>
-
-                  </tr>
-                ))
-              ) : (
+              {rows.length ? rows.map((r, i) => (
+                <tr key={r.id || i}>
+                  <td>{r.name}</td>
+                  <td>{r.days}</td>
+                  <td className="pm-muted">{r.description}</td>
+                  <td className="pm-actions">
+                    <button className="pm-icon" title="View" onClick={() => openView(r)} disabled={saving}>👁️</button>
+                    <button className="pm-icon" title="Edit" onClick={() => openEdit(r)} disabled={saving}>✏️</button>
+                    <button className="pm-icon danger" title="Delete" onClick={() => handleDelete(r.id)} disabled={saving}>🗑️</button>
+                  </td>
+                </tr>
+              )) : (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: "center", padding: 16 }}>
+                  <td colSpan={4} style={{ textAlign: "center", padding: 16 }}>
                     No payment terms yet. Click <strong>Add New</strong>.
                   </td>
                 </tr>
@@ -288,7 +220,6 @@ export default function PaymentTerms() {
         </div>
       )}
 
-      {/* Add / Edit Modal */}
       {showForm && (
         <div className="pm-modal-backdrop" onMouseDown={closeForm}>
           <div className="pm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -310,6 +241,20 @@ export default function PaymentTerms() {
                   autoFocus
                 />
                 {errors.name && <div className="pm-error">{errors.name}</div>}
+              </label>
+
+              <label className="pm-label">
+                Days
+                <input
+                  className={`pm-input ${errors.days ? "pm-input-error" : ""}`}
+                  type="number"
+                  min="0"
+                  name="days"
+                  placeholder="Enter days"
+                  value={form.days}
+                  onChange={handleChange}
+                />
+                {errors.days && <div className="pm-error">{errors.days}</div>}
               </label>
 
               <label className="pm-label">
@@ -335,7 +280,6 @@ export default function PaymentTerms() {
         </div>
       )}
 
-      {/* View Modal */}
       {showView && (
         <div className="pm-modal-backdrop" onMouseDown={() => setShowView(null)}>
           <div className="pm-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -345,13 +289,12 @@ export default function PaymentTerms() {
             </div>
             <div className="pm-view">
               <div className="pm-view-row"><span className="pm-view-label">Name</span><span className="pm-view-value">{showView.name || "-"}</span></div>
+              <div className="pm-view-row"><span className="pm-view-label">Days</span><span className="pm-view-value">{showView.days}</span></div>
               <div className="pm-view-row"><span className="pm-view-label">Description</span><span className="pm-view-value">{showView.description || "-"}</span></div>
               <div className="pm-view-row"><span className="pm-view-label">Created</span><span className="pm-view-value">{showView.created_at ? new Date(showView.created_at).toLocaleString() : "-"}</span></div>
-              <div className="pm-view-row"><span className="pm-view-label">Updated</span><span className="pm-view-value">{showView.updated_at ? new Date(showView.updated_at).toLocaleString() : "-"}</span></div>
             </div>
             <div className="pm-btn-row">
               <button className="pm-btn ghost" onClick={() => setShowView(null)}>Close</button>
-              {/* <button className="pm-btn" onClick={() => { setShowView(null); openEdit(showView); }}>Edit</button> */}
             </div>
           </div>
         </div>

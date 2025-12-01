@@ -5,19 +5,23 @@ import "./rack_locations.css";
 const USE_LOCAL_STORAGE = false;
 const LS_KEY = "rack_locations";
 
-const empty = { id: "", name: "", description: "" };
+const empty = {
+  id: "",
+  name: "",
+  description: "",
+  max_capacity: "",
+  current_capacity: "",
+  is_active: true,
+};
 
-// Normalize VITE_API_URL so both of these work:
-//  - http://127.0.0.1:8000
-//  - http://127.0.0.1:8000/api/v1
+// Normalize VITE_API_URL
 const rawBase = import.meta.env.VITE_API_URL || "";
 const normalizeBase = (u) =>
-  u
-    .trim()
-    .replace(/\/+$/g, "")
-    .replace(/\/api\/v1$/i, "");
+  u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
 const API_BASE = normalizeBase(rawBase);
-const API = API_BASE ? `${API_BASE}/api/v1/inventory/rack-locations/` : "/api/v1/inventory/rack-locations/";
+const API = API_BASE
+  ? `${API_BASE}/api/v1/inventory/rack-locations/`
+  : "/api/v1/inventory/rack-locations/";
 
 export default function RackLocations() {
   const nav = useNavigate();
@@ -31,7 +35,7 @@ export default function RackLocations() {
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState(null);
 
-  // Load from local storage if enabled (fallback)
+  // Load from local storage
   useEffect(() => {
     if (!USE_LOCAL_STORAGE) return;
     try {
@@ -40,7 +44,6 @@ export default function RackLocations() {
     } catch {}
   }, []);
 
-  // Persist local storage if enabled
   const saveLocal = (next) => {
     setRows(next);
     if (USE_LOCAL_STORAGE) {
@@ -50,7 +53,7 @@ export default function RackLocations() {
     }
   };
 
-  // Fetch from backend
+  // Fetch list
   const fetchList = async () => {
     setLoading(true);
     setServerError(null);
@@ -60,7 +63,10 @@ export default function RackLocations() {
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.results || [];
       setRows(list);
-      if (USE_LOCAL_STORAGE) try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch {}
+      if (USE_LOCAL_STORAGE)
+        try {
+          localStorage.setItem(LS_KEY, JSON.stringify(list));
+        } catch {}
     } catch (err) {
       console.error(err);
       setServerError(err.message || "Error loading rack locations");
@@ -69,12 +75,9 @@ export default function RackLocations() {
     }
   };
 
-  useEffect(() => { fetchList(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-
-  const nextId = useMemo(() => {
-    const nums = rows.map((r) => Number(r.id) || 0);
-    return (Math.max(0, ...nums) + 1).toString();
-  }, [rows]);
+  useEffect(() => {
+    fetchList();
+  }, []);
 
   const openAdd = () => {
     setForm(empty);
@@ -82,18 +85,30 @@ export default function RackLocations() {
     setErrors({});
     setShowForm(true);
   };
+
   const openEdit = (r) => {
-    setForm({ id: r.id, name: r.name, description: r.description || "" });
+    setForm({
+      id: r.id,
+      name: r.name,
+      description: r.description || "",
+      max_capacity: r.max_capacity || "",
+      current_capacity: r.current_capacity || "",
+      is_active: r.is_active ?? true,
+    });
     setEditingId(r.id);
     setErrors({});
     setShowForm(true);
   };
+
   const openView = (r) => setShowView(r);
   const closeForm = () => setShowForm(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm((p) => ({
+      ...p,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const validate = () => {
@@ -102,7 +117,7 @@ export default function RackLocations() {
     return e;
   };
 
-  // CREATE or UPDATE to backend
+  // Create / Update
   const handleSubmit = async (e) => {
     e.preventDefault();
     const eObj = validate();
@@ -112,13 +127,22 @@ export default function RackLocations() {
     setSaving(true);
     setServerError(null);
 
-    const payload = { name: form.name.trim(), description: form.description?.trim() || "" };
+    const payload = {
+      name: form.name.trim(),
+      description: form.description?.trim() || "",
+      max_capacity: Number(form.max_capacity) || 0,
+      current_capacity: Number(form.current_capacity) || 0,
+      is_active: form.is_active,
+    };
 
     try {
       if (editingId) {
         const res = await fetch(`${API}${editingId}/`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(`Update failed (${res.status})`);
@@ -127,7 +151,10 @@ export default function RackLocations() {
       } else {
         const res = await fetch(API, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(`Create failed (${res.status})`);
@@ -149,8 +176,12 @@ export default function RackLocations() {
     setSaving(true);
     setServerError(null);
     try {
-      const res = await fetch(`${API}${id}/`, { method: "DELETE", headers: { Accept: "application/json" } });
-      if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+      const res = await fetch(`${API}${id}/`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok && res.status !== 204)
+        throw new Error(`Delete failed (${res.status})`);
       setRows((r) => r.filter((x) => x.id !== id));
     } catch (err) {
       console.error(err);
@@ -161,31 +192,28 @@ export default function RackLocations() {
     }
   };
 
-  // ESC closes modals
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        if (showForm) closeForm();
-        if (showView) setShowView(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showForm, showView]);
-
   return (
     <div className="pm-wrap">
-      {/* Header */}
       <div className="pm-header">
-        <button className="pm-back" onClick={() => nav(-1)} disabled={loading}>← Back</button>
+        <button className="pm-back" onClick={() => nav(-1)} disabled={loading}>
+          ← Back
+        </button>
         <div className="pm-headings">
           <h2>Rack Locations</h2>
         </div>
-        <button className="pm-add" onClick={openAdd} disabled={loading || saving}>＋ Add New</button>
+        <button
+          className="pm-add"
+          onClick={openAdd}
+          disabled={loading || saving}
+        >
+          ＋ Add New
+        </button>
       </div>
 
-      {/* Server error / loading */}
-      {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
+      {serverError && (
+        <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>
+      )}
+
       {loading ? (
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
@@ -193,92 +221,57 @@ export default function RackLocations() {
           <table className="pm-table">
             <thead>
               <tr>
-                <th style={{ width: "35%" }}>Name</th>
+                <th>Name</th>
                 <th>Description</th>
+                <th>Max Capacity</th>
+                <th>Current</th>
+                <th>Status</th>
                 <th style={{ width: 140, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {rows.length ? (
                 rows.map((r, i) => (
                   <tr key={r.id || i}>
                     <td>{r.name}</td>
                     <td className="pm-muted">{r.description}</td>
-<td className="pm-actions">
-  <button
-    className="pm-icon"
-    title="View"
-    onClick={() => openView(r)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#136FD7"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  </button>
+                    <td>{r.max_capacity ?? "-"}</td>
+                    <td>{r.current_capacity ?? "-"}</td>
+                    <td>{r.is_active ? "Active" : "Inactive"}</td>
 
-  <button
-    className="pm-icon"
-    title="Edit"
-    onClick={() => openEdit(r)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#000"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-      <path d="M12 17l5-5"></path>
-      <path d="M15 10l2 2"></path>
-    </svg>
-  </button>
-
-  <button
-    className="pm-icon danger"
-    title="Delete"
-    onClick={() => handleDelete(r.id)}
-    disabled={saving}
-  >
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#E23636"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-      <path d="M10 11v6"></path>
-      <path d="M14 11v6"></path>
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
-    </svg>
-  </button>
-</td>
-
+                    <td className="pm-actions">
+                      <button
+                        className="pm-icon"
+                        title="View"
+                        onClick={() => openView(r)}
+                        disabled={saving}
+                      >
+                        👁
+                      </button>
+                      <button
+                        className="pm-icon"
+                        title="Edit"
+                        onClick={() => openEdit(r)}
+                        disabled={saving}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="pm-icon danger"
+                        title="Delete"
+                        onClick={() => handleDelete(r.id)}
+                        disabled={saving}
+                      >
+                        🗑
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: "center", padding: 16 }}>
-                    No rack locations yet. Click <strong>Add New</strong>.
+                  <td colSpan={6} style={{ textAlign: "center", padding: 16 }}>
+                    No rack locations yet.
                   </td>
                 </tr>
               )}
@@ -290,17 +283,29 @@ export default function RackLocations() {
       {/* Add / Edit Modal */}
       {showForm && (
         <div className="pm-modal-backdrop" onMouseDown={closeForm}>
-          <div className="pm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div
+            className="pm-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="pm-modal-header">
-              <h3>{editingId ? "Edit Rack Location" : "Add New Rack Location"}</h3>
-              <button className="pm-close" onClick={closeForm}>✕</button>
+              <h3>
+                {editingId ? "Edit Rack Location" : "Add New Rack Location"}
+              </h3>
+              <button className="pm-close" onClick={closeForm}>
+                ✕
+              </button>
             </div>
 
             <form className="pm-form" onSubmit={handleSubmit}>
+              {/* Name */}
               <label className="pm-label">
                 Name <span className="pm-req">*</span>
                 <input
-                  className={`pm-input ${errors.name ? "pm-input-error" : ""}`}
+                  className={`pm-input ${
+                    errors.name ? "pm-input-error" : ""
+                  }`}
                   type="text"
                   name="name"
                   placeholder="Enter name"
@@ -311,22 +316,73 @@ export default function RackLocations() {
                 {errors.name && <div className="pm-error">{errors.name}</div>}
               </label>
 
+              {/* Description */}
               <label className="pm-label">
                 Description
                 <input
                   className="pm-input"
                   type="text"
                   name="description"
-                  placeholder="Enter description (optional)"
+                  placeholder="Enter description"
                   value={form.description}
                   onChange={handleChange}
                 />
               </label>
 
+              {/* Max Capacity */}
+              <label className="pm-label">
+                Max Capacity
+                <input
+                  className="pm-input"
+                  type="number"
+                  name="max_capacity"
+                  value={form.max_capacity}
+                  onChange={handleChange}
+                  placeholder="Enter max capacity"
+                />
+              </label>
+
+              {/* Current Capacity */}
+              <label className="pm-label">
+                Current Capacity
+                <input
+                  className="pm-input"
+                  type="number"
+                  name="current_capacity"
+                  value={form.current_capacity}
+                  onChange={handleChange}
+                  placeholder="Enter current capacity"
+                />
+              </label>
+
+              {/* Is Active */}
+              <label className="pm-label">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={form.is_active}
+                  onChange={handleChange}
+                />{" "}
+                Active
+              </label>
+
               <div className="pm-btn-row">
-                <button type="button" className="pm-btn ghost" onClick={closeForm} disabled={saving}>Cancel</button>
+                <button
+                  type="button"
+                  className="pm-btn ghost"
+                  onClick={closeForm}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
                 <button type="submit" className="pm-btn primary" disabled={saving}>
-                  {saving ? (editingId ? "Saving..." : "Adding...") : editingId ? "Save Changes" : "Add Item"}
+                  {saving
+                    ? editingId
+                      ? "Saving..."
+                      : "Adding..."
+                    : editingId
+                    ? "Save Changes"
+                    : "Add Rack"}
                 </button>
               </div>
             </form>
@@ -336,21 +392,77 @@ export default function RackLocations() {
 
       {/* View Modal */}
       {showView && (
-        <div className="pm-modal-backdrop" onMouseDown={() => setShowView(null)}>
+        <div
+          className="pm-modal-backdrop"
+          onMouseDown={() => setShowView(null)}
+        >
           <div className="pm-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="pm-modal-header">
               <h3>View Rack Location</h3>
-              <button className="pm-close" onClick={() => setShowView(null)}>✕</button>
+              <button className="pm-close" onClick={() => setShowView(null)}>
+                ✕
+              </button>
             </div>
+
             <div className="pm-view">
-              <div className="pm-view-row"><span className="pm-view-label">Name</span><span className="pm-view-value">{showView.name || "-"}</span></div>
-              <div className="pm-view-row"><span className="pm-view-label">Description</span><span className="pm-view-value">{showView.description || "-"}</span></div>
-              <div className="pm-view-row"><span className="pm-view-label">Created</span><span className="pm-view-value">{showView.created_at ? new Date(showView.created_at).toLocaleString() : "-"}</span></div>
-              <div className="pm-view-row"><span className="pm-view-label">Updated</span><span className="pm-view-value">{showView.updated_at ? new Date(showView.updated_at).toLocaleString() : "-"}</span></div>
+              <div className="pm-view-row">
+                <span className="pm-view-label">Name</span>
+                <span className="pm-view-value">
+                  {showView.name || "-"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Description</span>
+                <span className="pm-view-value">
+                  {showView.description || "-"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Max Capacity</span>
+                <span className="pm-view-value">
+                  {showView.max_capacity ?? "-"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Current Capacity</span>
+                <span className="pm-view-value">
+                  {showView.current_capacity ?? "-"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Status</span>
+                <span className="pm-view-value">
+                  {showView.is_active ? "Active" : "Inactive"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Created</span>
+                <span className="pm-view-value">
+                  {showView.created_at
+                    ? new Date(showView.created_at).toLocaleString()
+                    : "-"}
+                </span>
+              </div>
+
+              <div className="pm-view-row">
+                <span className="pm-view-label">Updated</span>
+                <span className="pm-view-value">
+                  {showView.updated_at
+                    ? new Date(showView.updated_at).toLocaleString()
+                    : "-"}
+                </span>
+              </div>
             </div>
+
             <div className="pm-btn-row">
-              <button className="pm-btn ghost" onClick={() => setShowView(null)}>Close</button>
-              {/* <button className="pm-btn" onClick={() => { setShowView(null); openEdit(showView); }}>Edit</button> */}
+              <button className="pm-btn ghost" onClick={() => setShowView(null)}>
+                Close
+              </button>
             </div>
           </div>
         </div>
