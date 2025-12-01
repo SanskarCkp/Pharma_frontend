@@ -120,12 +120,20 @@ const ReceiveItems = () => {
         );
         setSummary({ total_ordered: totalOrdered, total_received: 0, completion: "0%" });
 
+        const resolvedLocationId =
+          poData.location_id ||
+          (typeof poData.location === "number"
+            ? poData.location
+            : poData.location?.id) ||
+          null;
+
         setPurchaseOrder({
           id: poData.id,
           po_number: poData.po_number,
           supplier: vendor ? vendor.name : poData.vendor_name || "",
           vendor_id: vendor?.id || poData.vendor?.id,
-          location_id: poData.location_id,
+          location_id: resolvedLocationId,
+          location: resolvedLocationId,
           order_date: poData.order_date,
           expected_date: poData.expected_date,
         });
@@ -181,9 +189,15 @@ const ReceiveItems = () => {
       return;
     }
 
+    const locationId = purchaseOrder.location_id || purchaseOrder.location;
+    if (!locationId) {
+      alert("Location missing on PO, cannot create GRN.");
+      return;
+    }
+
     const grnPayload = {
       po: purchaseOrder.id,
-     location: purchaseOrder.location_id || purchaseOrder.location,
+      location: locationId,
 
       received_by: loggedInUser.id, // ✅ USER FROM API
       received_at: new Date().toISOString(),
