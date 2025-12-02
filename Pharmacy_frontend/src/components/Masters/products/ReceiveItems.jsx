@@ -198,8 +198,7 @@ const ReceiveItems = () => {
     const grnPayload = {
       po: purchaseOrder.id,
       location: locationId,
-
-      received_by: loggedInUser.id, // ✅ USER FROM API
+      received_by: loggedInUser.id,
       received_at: new Date().toISOString(),
       supplier_invoice_no: "",
       supplier_invoice_date: null,
@@ -213,11 +212,9 @@ const ReceiveItems = () => {
         category: item.category || "",
         mfg_date: item.mfg_date || null,
         expiry_date: item.expiry_date || null,
-
         qty_packs_received: Number(item.received_packs || 0),
         qty_base_received: Number(item.received_base || 0),
         qty_base_damaged: Number(item.damaged_base || 0),
-
         unit_cost: Number(item.unit_cost || 0),
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
@@ -225,6 +222,7 @@ const ReceiveItems = () => {
     };
 
     try {
+      // 1️⃣ Create GRN
       const res = await authFetch(`${API_BASE_URL}/procurement/grns/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,27 +230,47 @@ const ReceiveItems = () => {
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) return alert("GRN creation failed: " + JSON.stringify(data));
-
-      if (data?.id) {
-        const postRes = await authFetch(
-          `${API_BASE_URL}/procurement/grns/${data.id}/post/`,
-          { method: "POST" }
-        );
-
-        if (postRes.ok) {
-          alert("Goods Receipt created & posted!");
-          navigate(-1);
-        } else {
-          const p = await postRes.json().catch(() => null);
-          alert("GRN created but posting failed: " + JSON.stringify(p));
-        }
+      if (!res.ok) {
+        alert("GRN creation failed: " + JSON.stringify(data));
+        return;
       }
+
+      // 2️⃣ Post GRN
+      const postRes = await authFetch(
+        `${API_BASE_URL}/procurement/grns/${data.id}/post/`,
+        { method: "POST" }
+      );
+
+      if (!postRes.ok) {
+        const p = await postRes.json().catch(() => null);
+        alert("GRN created but posting failed: " + JSON.stringify(p));
+        return;
+      }
+
+      // 3️⃣ Fetch GRN details (now contains received_by + received_at)
+      const grnDetailsRes = await authFetch(
+        `${API_BASE_URL}/procurement/grns/${data.id}/`
+      );
+
+      if (grnDetailsRes.ok) {
+        const grn = await grnDetailsRes.json();
+
+        setReceivingDetails({
+          received_date: grn.received_at,
+          received_by_user: grn.received_by_detail || grn.received_by,
+          invoice_number: grn.supplier_invoice_no,
+        });
+      }
+
+      alert("Goods Receipt created & posted!");
+      navigate(-1);
+
     } catch (err) {
       console.error(err);
       alert("Error creating GRN.");
     }
   };
+
 
   // -----------------------------
   // LOADING UI
