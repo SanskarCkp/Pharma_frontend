@@ -59,27 +59,69 @@ const VendorDetails = () => {
     loadPurchaseHistory();
   }, [vendor]);
 
-  // Fetch Supplied Products
-  useEffect(() => {
-    if (!vendor) return;
+ useEffect(() => {
+  if (!vendor) return;
 
-    const loadSuppliedProducts = async () => {
-      try {
-        const res = await authFetch(
-          `${API_BASE_URL}/catalog/products/?vendor=${vendor.id}`
+  const loadSuppliedProducts = async () => {
+    try {
+      // 1. Fetch vendor purchase orders
+      const res = await authFetch(
+        `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+      );
+      const data = await res.json();
+      const orders = data.results || data || [];
+
+      // 2. Filter orders by status
+      const validOrders = orders.filter(
+        (o) =>
+          o.status === "PARTIALLY_RECEIVED" ||
+          o.status === "COMPLETED"
+      );
+
+      let productIds = [];
+
+      // 3. Fetch lines from correct endpoint
+      for (let order of validOrders) {
+        const lineRes = await authFetch(
+          `${API_BASE_URL}/procurement/purchase-orders/${order.id}/lines/`
         );
-        const data = await res.json();
-        const filteredProducts = (data.results || data).filter(
-          (prod) => Number(prod.vendor) === Number(vendor.id)
-        );
-        setSuppliedProducts(filteredProducts);
-      } catch (err) {
-        console.error("Failed to fetch vendor products:", err);
-        setSuppliedProducts([]);
+
+        const lines = await lineRes.json();
+
+        lines.forEach((line) => {
+          if (line.product) {
+            productIds.push(line.product);
+          }
+        });
       }
-    };
-    loadSuppliedProducts();
-  }, [vendor]);
+
+      // 4. Remove duplicates
+      productIds = [...new Set(productIds)];
+
+      const products = [];
+
+      // 5. Fetch each product detail
+      for (let pId of productIds) {
+        const pRes = await authFetch(`${API_BASE_URL}/catalog/products/${pId}/`);
+        const pData = await pRes.json();
+
+        // 6. Only include products whose preferred vendor matches
+        if (pData.preferred_vendor === vendor.id) {
+          products.push(pData);
+        }
+      }
+
+      setSuppliedProducts(products);
+
+    } catch (err) {
+      console.error("Failed to fetch vendor products:", err);
+      setSuppliedProducts([]);
+    }
+  };
+
+  loadSuppliedProducts();
+}, [vendor]);
+
 
   const handleImportClick = () => {
     if (fileInputRef.current) {
