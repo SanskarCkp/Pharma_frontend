@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pill, Ruler, CreditCard, Calendar, Package } from "lucide-react";
+import { Pill, Ruler, CreditCard, Calendar, Package, User } from "lucide-react";
 
 /**
  * MastersDashboard — realtime totals for:
@@ -77,6 +77,15 @@ export default function MastersDashboard() {
   }, []);
 
   const items = [
+    {
+      path: "/masters/users",
+      label: "Users",
+      icon: <User size={28} />,   // larger & clean
+      accent: "blue",
+      noBox: true,               // ⬅ no top-right box
+      noTotal: true,             // ⬅ no "Total Items"
+    },
+
     {
       path: "/medicinecategories",
       label: "Medicine Categories",

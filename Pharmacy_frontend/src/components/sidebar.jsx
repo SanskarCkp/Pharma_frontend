@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+// src/components/sidebar.jsx
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+
 import {
   LayoutDashboard,
   Settings,
@@ -33,26 +35,28 @@ import {
   CreditCard,
   FolderTree,
   Hourglass,
- BarChart2,
+  BarChart2,
+  LogOut,
 } from "lucide-react";
 import "./Sidebar.css";
 
+// ⬅️ use the logout from api/auth instead of ../utils/logout
+import { logout as clearAuthTokens } from "../api/auth";
+
 const Sidebar = () => {
+  const navigate = useNavigate();
 
   const otherMenuItems = [
-    {path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { path: "/inventory/medicines/", label: "Inventory Management", icon: <Boxes size={18} /> },
     { path: "/billgeneration/billlist", label: "Billing", icon: <FileText size={18} /> },
-
     { path: "/reports/sales", label: "Reports", icon: <BarChart2 size={18} /> },
-
     { path: "/masters/vendors", label: "Suppliers", icon: <Store size={18} /> },
     { path: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
     { path: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
     { path: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
-    { path: "/reports/sales", label: "Report", icon: <ShoppingCart size={18} /> },
-    
 
+    
     // { path: "/retention-policies", label: "Retention Policies", icon: <ShoppingCart size={18} /> },
     // { path: "/rackrules", label: "Rack Rules", icon: <Layers size={18} /> },
     // { path: "/batchlots", label: "Batch Lots", icon: <Box size={18} /> },
@@ -77,6 +81,18 @@ const Sidebar = () => {
 
   ];
 
+  // 🔥 real logout handler
+  const handleLogoutClick = () => {
+    try {
+      // remove access + refresh tokens from localStorage
+      clearAuthTokens();
+    } catch (e) {
+      console.warn("Failed to clear tokens on logout:", e);
+    }
+    // send user to login immediately
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="sidebar-container">
       {/* Header */}
@@ -95,29 +111,49 @@ const Sidebar = () => {
       </div>
 
       <nav className="sidebar-menu">
-        {/* Dashboard */}
-        {/* <NavLink to="/" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
-          <span className="sidebar-icon"><LayoutDashboard size={18} /></span>
-          <span className="sidebar-label">Dashboard</span>
-        </NavLink> */}
-
         {/* Masters */}
-       {/* Masters — changed to normal link */}
-      <NavLink to="/masters" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
-        <span className="sidebar-icon"><Layers  size={18} /></span>
-        <div className="masters-title">
+        <NavLink
+          to="/masters"
+          className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+        >
+          <span className="sidebar-icon"><Layers size={18} /></span>
           <span className="sidebar-label">Masters</span>
-        </div>
-      </NavLink>
+        </NavLink>
 
         {/* Other Menu Items */}
         {otherMenuItems.map((item, idx) => (
-          <NavLink key={idx} to={item.path}
-            className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
+          <NavLink
+            key={idx}
+            to={item.path}
+            className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+          >
             <span className="sidebar-icon">{item.icon}</span>
             <span className="sidebar-label">{item.label}</span>
           </NavLink>
         ))}
+
+        {/* 🔥 LOGOUT BUTTON */}
+        <button
+          type="button"
+          onClick={handleLogoutClick}
+          className="sidebar-link logout-btn"
+          style={{
+            marginTop: "20px",
+            color: "#e53935",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontWeight: 600,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        >
+          <span className="sidebar-icon">
+            <LogOut size={18} />
+          </span>
+          <span className="sidebar-label">Logout</span>
+        </button>
       </nav>
     </div>
   );

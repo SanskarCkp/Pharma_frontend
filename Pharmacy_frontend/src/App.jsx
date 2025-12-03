@@ -1,4 +1,5 @@
-import React from "react";
+// src/App.jsx
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Layout
@@ -7,6 +8,10 @@ import Footer from "./components/Footer";
 
 // Public
 import Login from "./components/user/login";
+import ResetPassword from "./components/user/ResetPassword"; // ensure path: src/components/user/ResetPassword.jsx
+
+// Protected (Masters) user management
+import Users from "./components/users/users.jsx"; // <-- single import for Users
 
 // Guard
 import PrivateRoute from "./components/user/privateroute";
@@ -121,7 +126,7 @@ function AppLayout() {
 
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
-
+            <Route path="/masters/users" element={<Users />} />
             <Route path="/masters/vendors" element={<Vendorsdashboard />} />
             <Route path="/masters/vendors/add" element={<AddVendors />} />
             <Route path="/masters/vendors/view/:id" element={<ViewVendor />} />
@@ -218,17 +223,36 @@ function AppLayout() {
 }
 
 export default function App() {
+  // Clear tokens on startup so login page always appears when you launch the app.
+  // This runs once on mount. It's guarded to run only in development by default.
+  useEffect(() => {
+    try {
+      if (process.env.NODE_ENV === "development") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
   return (
     <Routes>
-      {/* Public */}
+      {/* Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Protected */}
-      <Route element={<PrivateRoute />}>
-        <Route path="/*" element={<AppLayout />} />
-      </Route>
+      {/* Protected app shell: everything matched by "/*" will be guarded */}
+      <Route
+        path="/*"
+        element={
+          <PrivateRoute>
+            <AppLayout />
+          </PrivateRoute>
+        }
+      />
 
-      {/* Default */}
+      {/* Unknown paths -> send to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
