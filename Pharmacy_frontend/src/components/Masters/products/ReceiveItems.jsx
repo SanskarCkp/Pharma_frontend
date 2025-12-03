@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { CheckCircle, Package, ClipboardList, ArrowLeft } from "lucide-react";
 import "./receiveitems.css";
@@ -16,37 +16,35 @@ const ReceiveItems = () => {
   const [purchaseOrder, setPurchaseOrder] = useState(null);
   const [receivingDetails, setReceivingDetails] = useState(null);
   const [itemsReceived, setItemsReceived] = useState([]);
-  const [summary, setSummary] = useState({
-    total_ordered: 0,
-    total_received: 0,
-    completion: "0%",
-  });
-
   const [category, setCategory] = useState([]);
   const [rackLocations, setRackLocations] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // -----------------------------
-  // FETCH USER, PO, LINES, RECEIVING, RACKS
-  // -----------------------------
+  // Map for cumulative previous received (for po_line + batch)
+  const [grnReceivedMap, setGrnReceivedMap] = useState({});
+  // Map for autofilling details (category, rack, etc) by product+batch
+  const [lastDetailsMap, setLastDetailsMap] = useState({});
+  const lastDetailsMapRef = useRef({});
+  useEffect(() => { lastDetailsMapRef.current = lastDetailsMap; }, [lastDetailsMap]);
+
+  // For summary display, track which row is selected
+  const [selectedSummaryIdx, setSelectedSummaryIdx] = useState(0);
+
   useEffect(() => {
     const fetchDetails = async () => {
       setLoading(true);
       try {
-        // 1️⃣ Fetch Logged-In User
+        // 1️⃣ User
         const userRes = await authFetch(`${API_BASE_URL}/accounts/`);
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setLoggedInUser(userData);
-        }
+        if (userRes.ok) setLoggedInUser(await userRes.json());
 
-        // 2️⃣ Fetch PO
+        // 2️⃣ PO
         const poRes = await authFetch(`${API_BASE_URL}/procurement/purchase-orders/${id}/`);
         if (!poRes.ok) throw new Error("PO not found");
         const poData = await poRes.json();
 
-        // 3️⃣ Fetch PO Lines
+        // 3️⃣ PO Lines
         const linesRes = await authFetch(`${API_BASE_URL}/procurement/purchase-orders/${id}/lines/`);
         let linesData = [];
         if (linesRes.ok) {
@@ -54,17 +52,17 @@ const ReceiveItems = () => {
           linesData = Array.isArray(linesJson) ? linesJson : linesJson?.lines || [];
         }
 
-        // 4️⃣ Fetch Categories
+        // 4️⃣ Categories
         const categoryRes = await authFetch(`${API_BASE_URL}/catalog/categories/`);
         const categoryData = categoryRes.ok ? await categoryRes.json() : [];
         setCategory(Array.isArray(categoryData) ? categoryData : categoryData.results || []);
 
-        // 5️⃣ Fetch Rack Locations
+        // 5️⃣ Rack Locations
         const rackRes = await authFetch(`${API_BASE_URL}/inventory/rack-locations/`);
         const rackData = rackRes.ok ? await rackRes.json() : [];
         setRackLocations(Array.isArray(rackData) ? rackData : rackData.results || []);
 
-        // 6️⃣ Resolve Product Names
+        // 6️⃣ Product names
         const productIdSet = new Set();
         linesData.forEach((item) => {
           if (typeof item.product === "number") productIdSet.add(item.product);
@@ -80,49 +78,99 @@ const ReceiveItems = () => {
           })
         );
 
-        // 7️⃣ Fetch existing GRNs for this PO
+        // 7️⃣ All previous POSTED/COMPLETED GRNs for this PO
         const grnRes = await authFetch(`${API_BASE_URL}/procurement/grns/?po=${id}`);
         const grnData = grnRes.ok ? await grnRes.json() : [];
-        const allGrnLines = [];
+        const allPrevGrnLines = [];
         if (grnData && grnData.results) {
           for (let grn of grnData.results) {
-            if (grn.lines && grn.lines.length) {
-              allGrnLines.push(...grn.lines);
+            if ((grn.status === "POSTED" || grn.status === "COMPLETED") && grn.lines && grn.lines.length) {
+              for (let line of grn.lines) {
+                // Save received_at for finding most recent!
+                allPrevGrnLines.push({ ...line, grn_received_at: grn.received_at });
+              }
             }
           }
         }
 
-        // 8️⃣ Build itemsReceived merging existing GRN lines
-        const mergedItems = linesData.map((item) => {
-          const existingLine = allGrnLines.find(
-            (line) => line.product === (item.product?.id || item.product)
-          );
+        // 8️⃣ For each po_line+batch, keep cumulative received
+        const grnReceived = {}; // key: po_line_batch
+        for (const line of allPrevGrnLines) {
+          const key = `${line.po_line}_${line.batch_no || ""}`;
+          grnReceived[key] = (grnReceived[key] || 0) + Number(line.qty_packs_received || 0);
+        }
+        setGrnReceivedMap(grnReceived);
+
+        // 9️⃣ For autofill: keep last batch details for product+batch
+        const lastDetails = {};
+        for (const line of allPrevGrnLines) {
+          const key = `${line.product}_${line.batch_no || ""}`;
+          if (
+            !lastDetails[key] ||
+            (line.grn_received_at && lastDetails[key].grn_received_at < line.grn_received_at)
+          ) {
+            lastDetails[key] = {
+              category: line.category || "",
+              rack_no: line.rack_no || "",
+              mfg_date: line.mfg_date || "",
+              expiry_date: line.expiry_date || "",
+              unit_cost: line.unit_cost || "",
+              mrp: line.mrp || "",
+              batch: line.batch_no || "",
+              grn_received_at: line.grn_received_at
+            };
+          }
+        }
+        setLastDetailsMap(lastDetails);
+
+        // 🔟 Initial items received for each PO line, prefill non-quantities from last batch if any
+        const itemsList = linesData.map((item, idx) => {
+          let productId = item.product?.id || (typeof item.product === "number" ? item.product : null);
+          let batch = "";
+          // If previous batch for this product exists, pick most recent batch
+          const foundKeys = Object.keys(lastDetails)
+            .filter(k => k.startsWith(`${productId}_`));
+          let prefillKey = null;
+          if (foundKeys.length > 0) {
+            prefillKey = foundKeys.reduce((latestK, k) => {
+              return (!latestK ||
+                lastDetails[k].grn_received_at > lastDetails[latestK].grn_received_at)
+                ? k : latestK;
+            }, null);
+          }
+          const last = prefillKey ? lastDetails[prefillKey] : {};
+          batch = last?.batch || "";
           return {
-            id: item.id,
+            id: item.id || idx,
             po_line: item.id,
-            product_id: item.product?.id || (typeof item.product === "number" ? item.product : null),
+            product_id: productId,
             product_name: item.product?.name || productIdToName[item.product] || "",
             ordered: item.qty_packs_ordered || 0,
-
-            received_packs: existingLine?.qty_packs_received || "",
-            received_base: existingLine?.qty_base_received || "",
-            damaged_base: existingLine?.qty_base_damaged || "",
-
-            batch: existingLine?.batch_no || "",
-            category: existingLine?.category || "",
-            mfg_date: existingLine?.mfg_date || "",
-            expiry_date: existingLine?.expiry_date || "",
-            unit_cost: existingLine?.unit_cost || item.expected_unit_cost || "",
-            mrp: existingLine?.mrp || item.mrp || "",
-            rack_no: existingLine?.rack_no || "",
+            received_packs: "",
+            received_base: "",
+            damaged_base: "",
+            batch: batch,
+            category: last?.category || "",
+            mfg_date: last?.mfg_date || "",
+            expiry_date: last?.expiry_date || "",
+            unit_cost: last?.unit_cost || item.expected_unit_cost || "",
+            mrp: last?.mrp || item.mrp || "",
+            rack_no: last?.rack_no || "",
           };
         });
-        setItemsReceived(mergedItems);
+        setItemsReceived(itemsList);
 
-        const totalOrdered = linesData.reduce((acc, item) => acc + Number(item.qty_packs_ordered || 0), 0);
-        const totalReceived = mergedItems.reduce((acc, item) => acc + Number(item.received_packs || 0), 0);
-        setSummary({ total_ordered: totalOrdered, total_received: totalReceived, completion: totalOrdered > 0 ? ((totalReceived/totalOrdered)*100).toFixed(1) + "%" : "0%" });
+        // Receiving details for display (from last GRN)
+        if (grnData.results && grnData.results[0]) {
+          const lastGrn = grnData.results[0];
+          setReceivingDetails({
+            received_date: lastGrn.received_at,
+            received_by_user: lastGrn.received_by_detail || lastGrn.received_by,
+            invoice_number: lastGrn.supplier_invoice_no,
+          });
+        }
 
+        // PO meta for display
         const resolvedLocationId = poData.location_id || (typeof poData.location === "number" ? poData.location : poData.location?.id) || null;
         setPurchaseOrder({
           id: poData.id,
@@ -134,17 +182,6 @@ const ReceiveItems = () => {
           order_date: poData.order_date,
           expected_date: poData.expected_date,
         });
-
-        // Receiving summary (latest GRN)
-        if (grnData.results && grnData.results.length) {
-          const latestGrn = grnData.results[0];
-          setReceivingDetails({
-            received_date: latestGrn.received_at,
-            received_by_user: latestGrn.received_by_detail || latestGrn.received_by,
-            invoice_number: latestGrn.supplier_invoice_no,
-          });
-        }
-
       } catch (err) {
         console.error(err);
         setPurchaseOrder(null);
@@ -154,94 +191,90 @@ const ReceiveItems = () => {
     };
 
     fetchDetails();
-  }, [id]);
+  }, [id, vendor]);
 
-  // -----------------------------
-  // HANDLE ITEM EDIT
-  // -----------------------------
+  // Handler with batch autofill
   const handleItemEdit = (idx, field, value) => {
     setItemsReceived((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
+      prev.map((row, i) => {
+        if (i !== idx) return row;
+        let updated = { ...row, [field]: value };
+        if (field === "batch") {
+          const batchKey = `${row.product_id}_${value || ""}`;
+          const last = lastDetailsMapRef.current[batchKey];
+          if (last) {
+            updated = {
+              ...updated,
+              ...last,
+              batch: value
+            };
+          }
+        }
+        return updated;
+      })
     );
+    setSelectedSummaryIdx(idx); // update summary to active/focused row
   };
 
-  // -----------------------------
-  // SUMMARY UPDATE
-  // -----------------------------
-  useEffect(() => {
-    const totalReceived = itemsReceived.reduce(
-      (acc, item) => acc + Number(item.received_packs || 0),
-      0
-    );
-    const completion =
-      summary.total_ordered > 0
-        ? ((totalReceived / summary.total_ordered) * 100).toFixed(1) + "%"
-        : "0%";
-    setSummary((prev) => ({ ...prev, total_received: totalReceived, completion }));
-  }, [itemsReceived, summary.total_ordered]);
-
-  // -----------------------------
-  // CREATE GRN (POST)
-  // -----------------------------
-const handleCompleteReceiving = async () => {
-  if (!purchaseOrder || !loggedInUser) {
-    alert("Missing user or PO!");
-    return;
+  // Get summary for selected row
+  function getLineSummary(poLine, batch) {
+    const key = `${poLine}_${batch || ""}`;
+    const item = itemsReceived.find(item => item.po_line === poLine && item.batch === batch);
+    const totalOrdered = item?.ordered || 0;
+    const totalReceivedPrev = grnReceivedMap[key] || 0;
+    const sessionReceived = item?.received_packs || 0;
+    const totalReceived = Number(totalReceivedPrev) + Number(sessionReceived);
+    return {
+      total_ordered: totalOrdered,
+      total_received: totalReceived,
+      completion: totalOrdered > 0 ? ((totalReceived / totalOrdered) * 100).toFixed(1) + "%" : "0%",
+    };
   }
 
-  const locationId = purchaseOrder.location_id || purchaseOrder.location;
+  // Only submit nonzero pack lines
+  const handleCompleteReceiving = async () => {
+    if (!purchaseOrder || !loggedInUser) {
+      alert("Missing user or PO!");
+      return;
+    }
+    const locationId = purchaseOrder.location_id || purchaseOrder.location;
 
-  // Check whether this PO already has a GRN
-  const existingGrnRes = await authFetch(`${API_BASE_URL}/procurement/grns/?po=${purchaseOrder.id}`);
-  const existingGrnData = existingGrnRes.ok ? await existingGrnRes.json() : null;
+    const grnLines = itemsReceived
+      .filter(item => Number(item.received_packs) > 0)
+      .map(item => ({
+        po_line: item.po_line,
+        product: item.product_id,
+        batch_no: item.batch,
+        category: item.category || "",
+        mfg_date: item.mfg_date || null,
+        expiry_date: item.expiry_date || null,
+        qty_packs_received: Number(item.received_packs || 0),
+        qty_base_received: Number(item.received_base || 0),
+        qty_base_damaged: Number(item.damaged_base || 0),
+        unit_cost: Number(item.unit_cost || 0),
+        mrp: Number(item.mrp || 0),
+        rack_no: item.rack_no || "",
+      }));
 
-  const existingGrn = existingGrnData?.results?.[0] || null;
+    if (grnLines.length === 0) {
+      alert("No items entered!");
+      return;
+    }
 
-  // Build GRN lines
-  const grnLines = itemsReceived.map((item) => ({
-    id: item.grn_line_id || undefined,   // 🔥 PUT needs ID
-    po_line: item.po_line,
-    product: item.product_id,
-    batch_no: item.batch,
-    category: item.category || "",
-    mfg_date: item.mfg_date || null,
-    expiry_date: item.expiry_date || null,
-    qty_packs_received: Number(item.received_packs || 0),
-    qty_base_received: Number(item.received_base || 0),
-    qty_base_damaged: Number(item.damaged_base || 0),
-    unit_cost: Number(item.unit_cost || 0),
-    mrp: Number(item.mrp || 0),
-    rack_no: item.rack_no || "",
-  }));
+    let grnPayload = {
+      po: purchaseOrder.id,
+      location: locationId,
+      received_by: loggedInUser.id,
+      received_at: new Date().toISOString(),
+      supplier_invoice_no: "",
+      supplier_invoice_date: null,
+      note: "",
+      status: "DRAFT",
+      lines: grnLines
+    };
 
-  let grnPayload = {
-    po: purchaseOrder.id,
-    location: locationId,
-    received_by: loggedInUser.id,
-    received_at: new Date().toISOString(),
-    supplier_invoice_no: "",
-    supplier_invoice_date: null,
-    note: "",
-    status: "DRAFT",
-    lines: grnLines
-  };
-
-  try {
-    let grnResponse;
-
-    if (existingGrn) {
-      // 🔥🔥🔥 UPDATE EXISTING GRN
-      grnResponse = await authFetch(
-        `${API_BASE_URL}/procurement/grns/${existingGrn.id}/`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(grnPayload),
-        }
-      );
-    } else {
-      // 🔥 CREATE NEW GRN
-      grnResponse = await authFetch(
+    try {
+      const grnResponse = await authFetch(
         `${API_BASE_URL}/procurement/grns/`,
         {
           method: "POST",
@@ -249,40 +282,28 @@ const handleCompleteReceiving = async () => {
           body: JSON.stringify(grnPayload),
         }
       );
+      const data = await grnResponse.json().catch(() => null);
+
+      if (!grnResponse.ok) {
+        alert("GRN error: " + JSON.stringify(data));
+        return;
+      }
+      const postRes = await authFetch(
+        `${API_BASE_URL}/procurement/grns/${data.id}/post/`,
+        { method: "POST" }
+      );
+      if (!postRes.ok) {
+        alert("Posting failed");
+        return;
+      }
+      alert("GRN saved successfully!");
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred.");
     }
+  };
 
-    const data = await grnResponse.json().catch(() => null);
-
-    if (!grnResponse.ok) {
-      alert("GRN error: " + JSON.stringify(data));
-      return;
-    }
-
-    // POST the GRN
-    const postRes = await authFetch(
-      `${API_BASE_URL}/procurement/grns/${data.id}/post/`,
-      { method: "POST" }
-    );
-
-    if (!postRes.ok) {
-      alert("Posting failed");
-      return;
-    }
-
-    alert("GRN updated successfully!");
-    navigate(-1);
-
-  } catch (e) {
-    console.error(e);
-    alert("An error occurred.");
-  }
-};
-
-
-
-  // -----------------------------
-  // LOADING UI
-  // -----------------------------
   if (loading)
     return (
       <div className="receiveitems-container">
@@ -307,9 +328,10 @@ const handleCompleteReceiving = async () => {
       </div>
     );
 
-  // -----------------------------
-  // RENDER UI
-  // -----------------------------
+  // Get summary for currently selected row
+  const selectedItem = itemsReceived[selectedSummaryIdx];
+  const selSummary = getLineSummary(selectedItem.po_line, selectedItem.batch);
+
   return (
     <div className="receiveitems-container">
       <button className="back-btn" onClick={() => navigate(-1)}>
@@ -317,7 +339,6 @@ const handleCompleteReceiving = async () => {
         <span>Back</span>
       </button>
       <h1 className="page-title">Receive Items</h1>
-
       <div className="kpi-cards-grid">
         {/* PURCHASE ORDER */}
         <div className="kpi-card">
@@ -350,13 +371,12 @@ const handleCompleteReceiving = async () => {
           )}
         </div>
 
-        {/* SUMMARY */}
+        {/* SUMMARY FOR SELECTED ROW */}
         <div className="kpi-card summary-card">
-          <h3>Receiving Summary</h3>
-          <div className="summary-row"><CheckCircle size={16} /> Total Ordered: {summary.total_ordered}</div>
-          <div className="summary-row"><Package size={16} /> Total Received: {summary.total_received}</div>
-          <div className="summary-row"><ClipboardList size={16} /> Completion: {summary.completion}</div>
-
+          <h3>Receiving Summary (for selected item)</h3>
+          <div className="summary-row"><CheckCircle size={16} /> Total Ordered: {selSummary.total_ordered}</div>
+          <div className="summary-row"><Package size={16} /> Total Received: {selSummary.total_received}</div>
+          <div className="summary-row"><ClipboardList size={16} /> Completion: {selSummary.completion}</div>
           <button className="complete-btn" onClick={handleCompleteReceiving}>
             Complete Receiving
           </button>
@@ -370,7 +390,7 @@ const handleCompleteReceiving = async () => {
               <tr>
                 <th>Product</th>
                 <th>Ordered</th>
-                <th>Packs Received</th>
+                <th>Packs Received (this session)</th>
                 <th>Base Received</th>
                 <th>Base Damaged</th>
                 <th>Batch</th>
@@ -380,35 +400,109 @@ const handleCompleteReceiving = async () => {
                 <th>MRP</th>
                 <th>MFG Date</th>
                 <th>Expiry Date</th>
+                <th>Cumulative Received</th>
               </tr>
             </thead>
             <tbody>
-              {itemsReceived.map((item, idx) => (
-                <tr key={item.id}>
-                  <td>{item.product_name}</td>
-                  <td>{item.ordered}</td>
-                  <td><input type="number" min={0} value={item.received_packs} onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)} /></td>
-                  <td><input type="number" min={0} value={item.received_base} onChange={(e) => handleItemEdit(idx, "received_base", e.target.value)} /></td>
-                  <td><input type="number" min={0} value={item.damaged_base} onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)} /></td>
-                  <td><input type="text" value={item.batch} onChange={(e) => handleItemEdit(idx, "batch", e.target.value)} /></td>
-                  <td>
-                    <select value={item.category || ""} onChange={(e) => handleItemEdit(idx, "category", e.target.value)}>
-                      <option value="">Select category</option>
-                      {category.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <select value={item.rack_no || ""} onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}>
-                      <option value="">Select Rack</option>
-                      {rackLocations.map((rack) => <option key={rack.id} value={rack.name}>{rack.name}</option>)}
-                    </select>
-                  </td>
-                  <td><input type="number" step="0.01" value={item.unit_cost} onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)} /></td>
-                  <td><input type="number" step="0.01" value={item.mrp} onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)} /></td>
-                  <td><input type="date" value={item.mfg_date} onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)} /></td>
-                  <td><input type="date" value={item.expiry_date} onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)} /></td>
-                </tr>
-              ))}
+              {itemsReceived.map((item, idx) => {
+                const rowKey = `${item.po_line}_${item.batch || ""}`;
+                const prevReceived = grnReceivedMap[rowKey] || 0;
+                return (
+                  <tr key={item.id}
+                      onClick={() => setSelectedSummaryIdx(idx)}
+                      style={{ cursor: "pointer", background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit" }}
+                  >
+                    <td>{item.product_name}</td>
+                    <td>{item.ordered}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.received_packs}
+                        onChange={e => handleItemEdit(idx, "received_packs", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.received_base}
+                        onChange={e => handleItemEdit(idx, "received_base", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.damaged_base}
+                        onChange={e => handleItemEdit(idx, "damaged_base", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={item.batch}
+                        onChange={e => handleItemEdit(idx, "batch", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={item.category || ""}
+                        onChange={e => handleItemEdit(idx, "category", e.target.value)}
+                      >
+                        <option value="">Select category</option>
+                        {category.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={item.rack_no || ""}
+                        onChange={e => handleItemEdit(idx, "rack_no", e.target.value)}
+                      >
+                        <option value="">Select Rack</option>
+                        {rackLocations.map(rack => (
+                          <option key={rack.id} value={rack.name}>{rack.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unit_cost}
+                        onChange={e => handleItemEdit(idx, "unit_cost", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.mrp}
+                        onChange={e => handleItemEdit(idx, "mrp", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="date"
+                        value={item.mfg_date}
+                        onChange={e => handleItemEdit(idx, "mfg_date", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="date"
+                        value={item.expiry_date}
+                        onChange={e => handleItemEdit(idx, "expiry_date", e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      {prevReceived}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
