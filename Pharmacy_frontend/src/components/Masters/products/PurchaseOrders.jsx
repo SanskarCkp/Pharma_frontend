@@ -25,7 +25,7 @@ const PurchaseOrders = () => {
       try {
         // Fetch orders filtered by vendor from backend
         const res = await authFetch(
-          `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
         );
 
         const data = await res.json();
@@ -41,7 +41,7 @@ const PurchaseOrders = () => {
           filteredOrders.map(async (order) => {
             try {
               const linesRes = await authFetch(
-                `${API_BASE_URL}/procurement/purchase-orders/${order.id}/lines/`
+                `${API_BASE_URL}/api/v1/procurement/purchase-orders/${order.id}/lines/`
               );
               const linesData = await linesRes.json();
 
@@ -86,7 +86,7 @@ const PurchaseOrders = () => {
 
     try {
       const res = await authFetch(
-        `${API_BASE_URL}/procurement/purchase-orders/${id}/`,
+        `${API_BASE_URL}/api/v1/procurement/purchase-orders/${id}/`,
         { method: "DELETE" }
       );
 

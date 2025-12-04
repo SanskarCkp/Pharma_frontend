@@ -23,7 +23,7 @@ const VendorDetails = () => {
   useEffect(() => {
     const fetchVendor = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/procurement/vendors/${id}/`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`);
         if (!res.ok) throw new Error("Vendor not found");
         const data = await res.json();
         setVendor(data);
@@ -44,7 +44,7 @@ const VendorDetails = () => {
     const loadPurchaseHistory = async () => {
       try {
         const res = await authFetch(
-          `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
         );
         const data = await res.json();
         const orders = data.results || data || [];
@@ -66,7 +66,7 @@ const VendorDetails = () => {
     try {
       // 1. Fetch vendor purchase orders
       const res = await authFetch(
-        `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+        `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
       );
       const data = await res.json();
       const orders = data.results || data || [];
@@ -83,7 +83,7 @@ const VendorDetails = () => {
       // 3. Fetch lines from correct endpoint
       for (let order of validOrders) {
         const lineRes = await authFetch(
-          `${API_BASE_URL}/procurement/purchase-orders/${order.id}/lines/`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/${order.id}/lines/`
         );
 
         const lines = await lineRes.json();
@@ -102,7 +102,7 @@ const VendorDetails = () => {
 
       // 5. Fetch each product detail
       for (let pId of productIds) {
-        const pRes = await authFetch(`${API_BASE_URL}/catalog/products/${pId}/`);
+        const pRes = await authFetch(`${API_BASE_URL}/api/v1/catalog/products/${pId}/`);
         const pData = await pRes.json();
 
         // 6. Only include products whose preferred vendor matches
@@ -141,7 +141,7 @@ const VendorDetails = () => {
     formData.append("location_id", vendor.default_location || 1); // adjust as needed
 
     try {
-      const res = await authFetch(`${API_BASE_URL}/procurement/import-purchase-pdf/`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/import-purchase-pdf/`, {
         method: "POST",
         body: formData,
       });
@@ -152,7 +152,7 @@ const VendorDetails = () => {
 
       // refresh purchase history
       const ordersRes = await authFetch(
-        `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+        `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
       );
       const ordersData = await ordersRes.json();
       const filteredOrders = (ordersData.results || ordersData).filter(

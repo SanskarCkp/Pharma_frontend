@@ -31,7 +31,7 @@ const ProductCatalog = () => {
       try {
         // Use preferred_vendor filter (your DB field)
         const res = await authFetch(
-          `${API_BASE_URL}/catalog/products/?preferred_vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/catalog/products/?preferred_vendor=${vendor.id}`
         );
 
         const data = await res.json();
@@ -56,7 +56,7 @@ const ProductCatalog = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await authFetch(`${API_BASE_URL}/catalog/categories/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/catalog/categories/`);
         const data = await res.json();
         const list = data.results || data;
         setCategories(list);

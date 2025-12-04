@@ -34,7 +34,7 @@ const EditVendor = () => {
     const loadTerms = async () => {
       try {
         // Endpoint is BASE_URL/settings/payment-terms/ (no extra /api/v1!)
-        const res = await authFetch(`${API_BASE_URL}/settings/payment-terms/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/payment-terms/`);
         const data = await res.json();
         // Handle paginated and plain array
         const list = data.results ? data.results : data;
@@ -52,7 +52,7 @@ const EditVendor = () => {
     const loadVendor = async () => {
       setLoading(true);
       try {
-        const res = await authFetch(`${API_BASE_URL}/procurement/vendors/${id}/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`);
         if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
         const data = await res.json();
         setFormData({
@@ -94,7 +94,7 @@ const EditVendor = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await authFetch(`${API_BASE_URL}/procurement/vendors/${id}/`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

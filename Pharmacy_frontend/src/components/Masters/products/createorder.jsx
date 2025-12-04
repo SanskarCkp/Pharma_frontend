@@ -40,7 +40,7 @@ const CreateOrder = () => {
 
     const fetchVendor = async () => {
       try {
-        const res = await authFetch(`${API_BASE}/procurement/vendors/${vendor.id}/`);
+        const res = await authFetch(`${API_BASE}/api/v1/procurement/vendors/${vendor.id}/`);
         if (!res.ok) return;
         const data = await res.json();
         setVendorData(data);
@@ -54,7 +54,7 @@ const CreateOrder = () => {
 
   const fetchUOMs = async () => {
     try {
-      const res = await authFetch(`${API_BASE}/catalog/uoms/`);
+      const res = await authFetch(`${API_BASE}/api/v1/catalog/uoms/`);
       const data = await res.json();
       setUoms(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
@@ -64,11 +64,11 @@ const CreateOrder = () => {
 
   const fetchProductsAndCategories = async () => {
     try {
-      const pRes = await authFetch(`${API_BASE}/catalog/products/`);
+      const pRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`);
       const pData = await pRes.json();
       const productList = Array.isArray(pData) ? pData : pData.results || [];
 
-      const cRes = await authFetch(`${API_BASE}/catalog/categories/`);
+      const cRes = await authFetch(`${API_BASE}/api/v1/catalog/categories/`);
       let categoryList = [];
       if (cRes.ok) {
         const cData = await cRes.json();
@@ -146,7 +146,7 @@ const CreateOrder = () => {
     };
 
     try {
-      const productRes = await authFetch(`${API_BASE}/catalog/products/`, {
+      const productRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productPayload),
@@ -225,7 +225,7 @@ const CreateOrder = () => {
     };
 
     try {
-      const res = await authFetch(`${API_BASE}/procurement/purchase-orders/`, {
+      const res = await authFetch(`${API_BASE}api/v1/procurement/purchase-orders/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

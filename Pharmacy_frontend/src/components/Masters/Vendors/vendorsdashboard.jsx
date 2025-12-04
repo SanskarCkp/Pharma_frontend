@@ -10,7 +10,7 @@ const VendorsDashboard = () => {
   const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-  const VENDORS_API = `${API_BASE_URL}/procurement/vendors/`;
+  const VENDORS_API = `${API_BASE_URL}/api/v1/procurement/vendors/`;
 
   // Fetch vendor list + summary
   useEffect(() => {
