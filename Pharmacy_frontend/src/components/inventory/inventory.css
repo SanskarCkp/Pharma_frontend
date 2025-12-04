@@ -155,3 +155,18 @@ button.btn.primary {
 .btn-secondary:hover {
   background: #d1d5db;
 }
+
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.section-line {
+  width: 100%;
+  height: 2px;
+  background: #e0e0e0;
+  margin-bottom: 10px;
+}

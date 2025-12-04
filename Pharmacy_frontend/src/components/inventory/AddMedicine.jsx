@@ -202,13 +202,23 @@ export default function AddMedicine() {
     setSubmitting(true);
 
     // Add all hardcoded dynamic field values
-    const dynamicPayload = {};
-    Object.values(uomFieldMap).flat().forEach((field) => {
-      if (form[field.field] !== undefined) {
-        dynamicPayload[field.field] = form[field.field];
-      }
-    });
+    // Only include fields relevant to selected base UOM
+const dynamicPayload = {};
+const selectedUOM = getBaseUOM();
+const uomName = selectedUOM?.name?.trim()?.toLowerCase() || "";
 
+for (const key in uomFieldMap) {
+  if (uomName === key || uomName.includes(key)) {
+    uomFieldMap[key].forEach(({ field }) => {
+      // Convert empty strings to null
+      dynamicPayload[field] = form[field] ? Number(form[field]) : null;
+    });
+  }
+}
+
+
+
+    
     const payload = {
       name: form.medicine_name,
       generic_name: form.generic_name || "",
@@ -316,6 +326,12 @@ export default function AddMedicine() {
           </div>
         )}
 
+        <div style={{ gridColumn: "1/3", marginBottom: "10px" }}>
+  <h3 className="section-title">Medicine Information</h3>
+  <div className="section-line"></div>
+</div>
+
+
         <form className="grid2" onSubmit={handleSubmit}>
           <div className="field">
             <label>Medicine Name *</label>
@@ -348,11 +364,31 @@ export default function AddMedicine() {
             {errors.medicine_form && <div className="err">{errors.medicine_form}</div>}
             {renderFieldError("medicine_form")}
           </div>
+          
           <div className="field">
             <label>Strength</label>
             <input name="strength" value={form.strength} onChange={change} />
             {renderFieldError("dosage_strength")}
           </div>
+           <div className="field">
+            <label>Rack Location *</label>
+            <select name="rack_location" value={form.rack_location} onChange={change}>
+              <option value="">Select Rack</option>
+              {rackLocations.map((rack) => (
+                <option key={rack.id} value={rack.id}>
+                  {rack.name} ({rack.description})
+                </option>
+              ))}
+            </select>
+            {renderFieldError("rack_location")}
+          </div>
+          <div className="field">
+            <label>Description</label>
+            <textarea name="description" value={form.description} onChange={change} />
+            {renderFieldError("description")}
+          </div>
+          
+          
           <div className="field">
             <label>Base UOM *</label>
             <select name="base_uom" value={form.base_uom} onChange={change} className={errors.base_uom ? "error" : ""}>
@@ -366,12 +402,21 @@ export default function AddMedicine() {
           {/* UOM-dependent packaging fields */}
           {renderUOMSpecificFields()}
 
+          
+         
+
+          <div style={{ gridColumn: "1/3", marginTop: "20px", marginBottom: "10px" }}>
+  <h3 className="section-title">Batch & Pricing</h3>
+  <div className="section-line"></div>
+</div>
+
           <div className="field">
-            <label>Units per Pack *</label>
-            <input type="number" name="units_per_pack" value={form.units_per_pack} onChange={change} className={errors.units_per_pack ? "error" : ""} />
-            {errors.units_per_pack && <div className="err">{errors.units_per_pack}</div>}
+            <label>Batch Number *</label>
+            <input name="batch_number" value={form.batch_number} onChange={change} className={errors.batch_number ? "error" : ""} />
+            {errors.batch_number && <div className="err">{errors.batch_number}</div>}
+            {renderFieldError("batch_number")}
           </div>
-          <div className="field">
+           <div className="field">
             <label>Quantity *</label>
             <input type="number" name="quantity" value={form.quantity} onChange={change} className={errors.quantity ? "error" : ""} />
             {errors.quantity && <div className="err">{errors.quantity}</div>}
@@ -394,30 +439,26 @@ export default function AddMedicine() {
             </select>
             {renderFieldError("selling_uom")}
           </div>
+          
+
           <div className="field">
             <label>Purchase Price *</label>
             <input type="number" name="purchase_price" value={form.purchase_price} onChange={change} className={errors.purchase_price ? "error" : ""} />
             {errors.purchase_price && <div className="err">{errors.purchase_price}</div>}
             {renderFieldError("purchase_price")}
           </div>
-          <div className="field">
+           <div className="field">
             <label>MRP *</label>
             <input type="number" name="mrp" value={form.mrp} onChange={change} className={errors.mrp ? "error" : ""} />
             {errors.mrp && <div className="err">{errors.mrp}</div>}
             {renderFieldError("mrp")}
           </div>
-          <div className="field">
-            <label>Batch Number *</label>
-            <input name="batch_number" value={form.batch_number} onChange={change} className={errors.batch_number ? "error" : ""} />
-            {errors.batch_number && <div className="err">{errors.batch_number}</div>}
-            {renderFieldError("batch_number")}
-          </div>
-          <div className="field">
+          {/* <div className="field">
             <label>Reorder Level *</label>
             <input type="number" name="reorder_level" value={form.reorder_level} onChange={change} className={errors.reorder_level ? "error" : ""} />
             {errors.reorder_level && <div className="err">{errors.reorder_level}</div>}
             {renderFieldError("reorder_level")}
-          </div>
+          </div> */}
           <div className="field">
             <label>MFG Date</label>
             <input type="date" name="mfg_date" value={form.mfg_date} onChange={change} />
@@ -439,23 +480,7 @@ export default function AddMedicine() {
             <input name="hsn" value={form.hsn} onChange={change} />
             {renderFieldError("hsn")}
           </div>
-          <div className="field">
-            <label>Rack Location *</label>
-            <select name="rack_location" value={form.rack_location} onChange={change}>
-              <option value="">Select Rack</option>
-              {rackLocations.map((rack) => (
-                <option key={rack.id} value={rack.id}>
-                  {rack.name} ({rack.description})
-                </option>
-              ))}
-            </select>
-            {renderFieldError("rack_location")}
-          </div>
-          <div className="field">
-            <label>Description</label>
-            <textarea name="description" value={form.description} onChange={change} />
-            {renderFieldError("description")}
-          </div>
+         
           <div style={{ gridColumn: "1/3" }}>
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
               <button type="button" className="btn-secondary" onClick={() => nav("/inventory/medicines")}>Cancel</button>
