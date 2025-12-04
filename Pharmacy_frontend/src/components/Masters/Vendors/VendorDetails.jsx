@@ -23,7 +23,7 @@ const VendorDetails = () => {
   useEffect(() => {
     const fetchVendor = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`);
         if (!res.ok) throw new Error("Vendor not found");
         const data = await res.json();
         setVendor(data);

@@ -187,7 +187,7 @@ export default function AddMedicine() {
     if (!form.batch_number) e.batch_number = "Required";
     if (!form.expiry_date) e.expiry_date = "Required";
     if (!form.reorder_level && form.reorder_level !== 0) e.reorder_level = "Required";
-  
+    if (!form.units_per_pack) e.units_per_pack = "Required";
     // Add required checks for dynamic fields if needed
     return e;
   };
@@ -230,8 +230,7 @@ export default function AddMedicine() {
       mfg_date: form.mfg_date || null,
       expiry_date: form.expiry_date,
       quantity: Number(form.quantity),
-     units_per_pack: form.units_per_pack ? Number(form.units_per_pack) : null,
-
+      units_per_pack: Number(form.units_per_pack),
       purchase_price: String(form.purchase_price),
       ...dynamicPayload,
     };
@@ -367,11 +366,11 @@ export default function AddMedicine() {
           {/* UOM-dependent packaging fields */}
           {renderUOMSpecificFields()}
 
-          {/* <div className="field">
+          <div className="field">
             <label>Units per Pack *</label>
             <input type="number" name="units_per_pack" value={form.units_per_pack} onChange={change} className={errors.units_per_pack ? "error" : ""} />
             {errors.units_per_pack && <div className="err">{errors.units_per_pack}</div>}
-          </div> */}
+          </div>
           <div className="field">
             <label>Quantity *</label>
             <input type="number" name="quantity" value={form.quantity} onChange={change} className={errors.quantity ? "error" : ""} />

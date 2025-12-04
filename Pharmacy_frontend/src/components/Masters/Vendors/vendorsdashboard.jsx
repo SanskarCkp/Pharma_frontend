@@ -12,13 +12,30 @@ const VendorsDashboard = () => {
 
   const VENDORS_API = `${API_BASE_URL}/api/v1/procurement/vendors/`;
 
-  // Fetch vendor list + summary
+  // Helper to include JWT token
+  const authFetch = async (url, options = {}) => {
+    const token = localStorage.getItem("access_token");
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+        ...(options.headers || {}),
+      },
+    });
+  };
+
+  // Fetch Vendors
   useEffect(() => {
     const fetchVendors = async () => {
       try {
         setLoading(true);
-        const res = await fetch(VENDORS_API);
+
+        const res = await authFetch(VENDORS_API);
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const list = await res.json();
 
         let vendorsList = [];
@@ -26,27 +43,23 @@ const VendorsDashboard = () => {
         if (Array.isArray(list)) vendorsList = list;
         else if (list?.results) vendorsList = list.results;
         else if (list?.data) vendorsList = list.data;
-        else vendorsList = [];
 
         // Fetch summary for each vendor
         const vendorsWithSummary = await Promise.all(
-          vendorsList.map(async (v) => {
+          vendorsList.map(async (vendor) => {
             try {
-              const summaryRes = await fetch(`${VENDORS_API}${v.id}/summary/`);
-              const summary = await summaryRes.json();
+              const sumRes = await authFetch(
+                `${VENDORS_API}${vendor.id}/summary/`
+              );
+              const summary = await sumRes.json();
+
               return {
-                ...v,
+                ...vendor,
                 products_count: summary.products,
                 orders_count: summary.total_orders,
-                
               };
             } catch (err) {
-              return {
-                ...v,
-                products_count: 0,
-                orders_count: 0,
-                
-              };
+              return { ...vendor, products_count: 0, orders_count: 0 };
             }
           })
         );
@@ -54,7 +67,6 @@ const VendorsDashboard = () => {
         setVendors(vendorsWithSummary);
       } catch (err) {
         console.error("Error fetching vendors:", err);
-        setVendors([]);
       } finally {
         setLoading(false);
       }
@@ -67,10 +79,7 @@ const VendorsDashboard = () => {
   const filtered = vendors.filter((v) => {
     const name = v.vendor_name ?? v.name ?? v.company_name ?? "";
     const contactPerson =
-      v.vendor_contact_person ??
-      v.contact_person ??
-      v.person_name ??
-      "";
+      v.vendor_contact_person ?? v.contact_person ?? v.person_name ?? "";
     const phone = v.vendor_contact ?? v.contact_phone ?? v.phone ?? "";
 
     return (
@@ -81,20 +90,24 @@ const VendorsDashboard = () => {
   });
 
   // Navigation
-  const openVendor = (id) =>
-    navigate(`/masters/vendors/viewdetails/${id}`);
+  const openVendor = (id) => navigate(`/masters/vendors/viewdetails/${id}`);
 
   const goEdit = (e, id) => {
     e.stopPropagation();
     navigate(`/masters/vendors/edit/${id}`);
   };
 
+  // DELETE vendor
   const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this vendor?"))
       return;
+
     try {
-      const res = await fetch(`${VENDORS_API}${id}/`, { method: "DELETE" });
+      const res = await authFetch(`${VENDORS_API}${id}/`, {
+        method: "DELETE",
+      });
+
       if (res.ok) {
         setVendors((prev) => prev.filter((v) => v.id !== id));
       } else {
@@ -106,20 +119,16 @@ const VendorsDashboard = () => {
     }
   };
 
-  const handleAddSupplier = () => navigate("/masters/vendors/add");
-
   return (
     <div className="customers-container vendors-page">
       <div className="header-row">
         <h1 className="customers-title">Supplier Management</h1>
-        <button className="add-supplier-btn" onClick={handleAddSupplier}>
+        <button className="add-supplier-btn" onClick={() => navigate("/masters/vendors/add")}>
           <Plus size={16} /> Add Supplier
         </button>
       </div>
 
-      <p className="customers-heading">
-        Manage Suppliers and Purchase Orders
-      </p>
+      <p className="customers-heading">Manage Suppliers and Purchase Orders</p>
 
       <div className="search-row">
         <input
@@ -142,27 +151,13 @@ const VendorsDashboard = () => {
           {filtered.map((vendor) => {
             const id = vendor.id;
             const name =
-              vendor.vendor_name ??
-              vendor.name ??
-              vendor.company_name ??
-              "Untitled Vendor";
+              vendor.vendor_name ?? vendor.name ?? vendor.company_name ?? "Untitled Vendor";
             const phone =
-              vendor.vendor_contact ??
-              vendor.contact_phone ??
-              vendor.phone ??
-              "-";
+              vendor.vendor_contact ?? vendor.contact_phone ?? vendor.phone ?? "-";
             const contactPerson =
-              vendor.vendor_contact_person ??
-              vendor.contact_person ??
-              vendor.person_name ??
-              "-";
+              vendor.vendor_contact_person ?? vendor.contact_person ?? vendor.person_name ?? "-";
             const email = vendor.vendor_email ?? vendor.email ?? "-";
 
-            const productsCount =
-              vendor.products_count ?? vendor.product_count ?? 0;
-            const ordersCount =
-              vendor.orders_count ?? vendor.order_count ?? 0;
-           
             return (
               <div key={id} className="vendor-card">
                 <div className="card-top" onClick={() => openVendor(id)}>
@@ -187,14 +182,17 @@ const VendorsDashboard = () => {
 
                   <div className="metrics-row">
                     <div className="metric">
-                      <div className="metric-value">{productsCount}</div>
+                      <div className="metric-value">
+                        {vendor.products_count}
+                      </div>
                       <div className="metric-label">Products</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-value">{ordersCount}</div>
+                      <div className="metric-value">
+                        {vendor.orders_count}
+                      </div>
                       <div className="metric-label">Orders</div>
                     </div>
-                    
                   </div>
                 </div>
 
@@ -206,6 +204,7 @@ const VendorsDashboard = () => {
                   >
                     {vendor.is_active ? "Active" : "Inactive"}
                   </div>
+
                   <div className="action-icons">
                     <Eye
                       className="icon"
