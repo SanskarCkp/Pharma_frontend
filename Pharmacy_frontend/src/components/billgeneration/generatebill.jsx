@@ -7,6 +7,7 @@ import { apiUrl } from "../../api/base";
 const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
 const BILLING_MEDICINES_URL = apiUrl("sales/billing/medicines/");
 const BATCHES_URL = apiUrl("catalog/batches/");
+const PRODUCTS_URL = apiUrl("catalog/products/");
 const INVOICES_URL = apiUrl("sales/invoices/");
 
 export default function GenerateBill() {
@@ -20,15 +21,15 @@ export default function GenerateBill() {
   });
 
   const [products, setProducts] = useState([]);
+  const [fullProductsMap, setFullProductsMap] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState([]);
   const [gst, setGst] = useState(12);
 
   // NEW STATES 🔥
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [uomType, setUomType] = useState("LOOSE");
+  const [uomType, setUomType] = useState("");
   const [qtyInput, setQtyInput] = useState(1);
-  const [unitsPerStrip, setUnitsPerStrip] = useState(10);
 
   // Payment
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -52,7 +53,42 @@ export default function GenerateBill() {
     loadPM();
   }, []);
 
-  // ------------------ FETCH PRODUCTS ------------------
+  // ------------------ FETCH SELLING UOM FROM PRODUCTS API ------------------
+  useEffect(() => {
+    async function loadProductsAndUOMs() {
+      try {
+        // Fetch UOM Master List
+        const uomRes = await authFetch(`${API_BASE}/api/v1/master/uoms/?limit=500`);
+        const uomData = await uomRes.json();
+        const uomList = Array.isArray(uomData) ? uomData : uomData.results || [];
+
+        // Build UOM map => { id: name }
+        const uomMap = {};
+        uomList.forEach(u => {
+          uomMap[u.id] = u.name;
+        });
+
+        // Fetch ALL products
+        const prodRes = await authFetch(`${PRODUCTS_URL}?limit=5000`);
+        const prodData = await prodRes.json();
+        const prodList = Array.isArray(prodData) ? prodData : prodData.results || [];
+
+        // Map product_id → selling_uom_name
+        const map = {};
+        prodList.forEach(p => {
+          map[p.id] = uomMap[p.selling_uom_id] || "BASE";
+        });
+
+        setFullProductsMap(map);
+      } catch (err) {
+        console.log("UOM fetch error", err);
+      }
+    }
+
+    loadProductsAndUOMs();
+  }, []);
+
+  // ------------------ FETCH BILLING PRODUCTS ------------------
   useEffect(() => {
     const controller = new AbortController();
 
@@ -70,14 +106,14 @@ export default function GenerateBill() {
         if (!res.ok) return setProducts([]);
 
         const data = await res.json();
+
         setProducts(
           data.map((p) => ({
             id: p.product_id,
             name: p.name,
             mrp: Number(p.mrp || 0),
             gstPercent: Number(p.gst_percent || 0),
-            stock: p.stock || 0,
-            units_per_strip: p.units_per_strip || 10,
+            selling_uom_id: p.selling_uom_id, // keep selling_uom_id
           }))
         );
       } catch (e) {
@@ -104,32 +140,49 @@ export default function GenerateBill() {
     }
   }
 
-  // ---------------------------------------------
-  // NEW FLOW: WHEN PRODUCT CLICKED → OPEN UOM CARD
-  // ---------------------------------------------
-  const openUOMCard = (product) => {
-    setSelectedProduct(product);
-    setUnitsPerStrip(product.units_per_strip || 10);
-    setUomType("LOOSE");
+  // -------------------------------------------------------
+  // OPEN UOM CARD & LOAD ONLY SELLING UOM
+  // -------------------------------------------------------
+  // When opening UOM card
+const openUOMCard = async (product) => {
+  try {
+    // Fetch full product details
+    const res = await authFetch(`${PRODUCTS_URL}${product.id}/`);
+    if (!res.ok) throw new Error("Product fetch failed");
+
+    const data = await res.json();
+
+    setSelectedProduct({
+      id: data.id,
+      name: data.name,
+      mrp: Number(data.mrp || 0),
+      gstPercent: Number(data.gst_percent || gst),
+      selling_uom_id: data.selling_uom?.id || null,
+      selling_uom_name: data.selling_uom?.name || "", // fetch dynamically
+    });
+
+    // Set the selected dropdown value
+    setUomType(data.selling_uom?.name || "");
     setQtyInput(1);
-  };
+  } catch (err) {
+    console.error("Error fetching product details", err);
+    alert("Failed to fetch product details");
+  }
+};
+
+
 
   const addProductWithUOM = async () => {
     if (!selectedProduct) return;
 
     const batchLotId = await fetchBatchLotId(selectedProduct.id);
 
-    const qtyBase =
-      uomType === "LOOSE"
-        ? qtyInput
-        : qtyInput * selectedProduct.units_per_strip;
-
     setCart((prev) => [
       ...prev,
       {
         ...selectedProduct,
         qty: qtyInput,
-        qty_base: qtyBase,
+        qty_base: qtyInput, // selling_uom is single UOM
         sold_uom: uomType,
         batch_lot_id: batchLotId,
       },
@@ -138,24 +191,12 @@ export default function GenerateBill() {
     setSelectedProduct(null);
   };
 
-  // -------------------- UPDATED FUNCTION 🔥 --------------------
   const updateQty = (id, delta) => {
     setCart(
       cart.map((item) => {
         if (item.id !== id) return item;
-
         const newQty = Math.max(1, item.qty + delta);
-
-        const newQtyBase =
-          item.sold_uom === "LOOSE"
-            ? newQty
-            : newQty * (item.units_per_strip || 10);
-
-        return {
-          ...item,
-          qty: newQty,
-          qty_base: newQtyBase,
-        };
+        return { ...item, qty: newQty, qty_base: newQty };
       })
     );
   };
@@ -166,7 +207,6 @@ export default function GenerateBill() {
   const gstAmount = (subtotal * gst) / 100;
   const total = subtotal + gstAmount;
 
-  // ------------------ SUBMIT INVOICE ------------------
   const submitInvoice = async (paymentMethodId, amountPaid) => {
     if (!customer.name || !customer.phone) {
       alert("Please fill customer name and phone.");
@@ -186,8 +226,8 @@ export default function GenerateBill() {
     const lines = cart.map((item) => ({
       product: item.id,
       batch_lot: item.batch_lot_id,
-      qty_base: String(item.qty_base || item.qty),
-      sold_uom: item.sold_uom || "BASE",
+      qty_base: String(item.qty_base),
+      sold_uom: item.sold_uom,
       rate_per_base: String(item.mrp),
       discount_amount: "0",
       tax_percent: String(item.gstPercent || gst),
@@ -240,7 +280,7 @@ export default function GenerateBill() {
       </h1>
 
       <div className="grid-container" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", fontSize: "0.9rem" }}>
-        
+
         {/* CUSTOMER INFO */}
         <div className="card" style={cardStyle}>
           <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Customer Information</h3>
@@ -298,9 +338,6 @@ export default function GenerateBill() {
               >
                 <div>
                   <strong>{product.name}</strong>
-                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                    Stock: {product.stock} | ₹{product.mrp}
-                  </div>
                 </div>
 
                 <button
@@ -324,38 +361,49 @@ export default function GenerateBill() {
         {/* CART */}
         <div className="card" style={cardStyle}>
           <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Cart Items</h3>
-          {/* --- UOM Selection Card Appears Inside Cart --- */}
-          {selectedProduct && (
-            <div className="uom-card" style={{ marginBottom: "1rem", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "8px", background: "#f3f4f6" }}>
-              <h4>Select UOM for <span style={{ color: "#22c55e" }}>{selectedProduct.name}</span></h4>
-              <label>Choose UOM</label>
-              <select value={uomType} onChange={(e) => setUomType(e.target.value)}>
-                <option value="LOOSE">Loose</option>
-                <option value="STRIP">Strip</option>
-              </select>
-              {uomType === "STRIP" && (
-                <p style={{ fontSize: "0.8rem", color: "#555" }}>
-                  Units per strip: {selectedProduct.units_per_strip}
-                </p>
-              )}
-              <label>Enter Quantity</label>
-              <input
-                type="number"
-                min="1"
-                value={qtyInput}
-                onChange={(e) => setQtyInput(Number(e.target.value))}
-              />
-              <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-                <button onClick={addProductWithUOM} className="generate-btn">Add to Cart</button>
-                <button
-                  onClick={() => setSelectedProduct(null)}
-                  style={{ background: "red", color: "#fff", padding: "10px", borderRadius: "6px", border: "none" }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+
+         {selectedProduct && (
+  <div className="uom-card" style={{ marginBottom: "1rem", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "8px", background: "#f3f4f6" }}>
+    <h4>Select UOM for <span style={{ color: "#22c55e" }}>{selectedProduct.name}</span></h4>
+
+   <label>Choose UOM</label>
+<select
+  value={uomType}
+  onChange={(e) => setUomType(e.target.value)}
+>
+  {selectedProduct.selling_uom_name ? (
+    <option value={selectedProduct.selling_uom_name}>
+      {selectedProduct.selling_uom_name}
+    </option>
+  ) : (
+    <option value="">-- Select UOM --</option>
+  )}
+</select>
+
+
+    <label>MRP</label>
+    <input type="number" value={selectedProduct.mrp} readOnly />
+
+    <label>Enter Quantity</label>
+    <input
+      type="number"
+      min="1"
+      value={qtyInput}
+      onChange={(e) => setQtyInput(Number(e.target.value))}
+    />
+
+    <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
+      <button onClick={addProductWithUOM} className="generate-btn">Add to Cart</button>
+      <button
+        onClick={() => setSelectedProduct(null)}
+        style={{ background: "red", color: "#fff", padding: "10px", borderRadius: "6px", border: "none" }}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
           {cart.length === 0 ? (
             <p style={{ color: "#6b7280" }}>No items added.</p>
           ) : (
