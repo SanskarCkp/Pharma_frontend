@@ -2,178 +2,171 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
 const LS_KEY = "medicines";
+const LOCATION_ID_FALLBACK = Number(import.meta.env.VITE_DEFAULT_LOCATION_ID || 1);
 
-// Normalize VITE_API_URL
-const rawBase = import.meta.env.VITE_API_URL || "";
-const normalizeBase = (u) =>
-  u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
-const API_BASE = normalizeBase(rawBase);
-
-// API URLs (use location_id=1 as default; you can parametrize)
-const LOCATION_ID = 1;
-const API_ALL = `${API_BASE}/api/v1/inventory/medicines/?location_id=${LOCATION_ID}`;
-const API_LOW = `${API_BASE}/api/v1/inventory/low-stock/?location_id=${LOCATION_ID}`;
-const API_EXPIRING = `${API_BASE}/api/v1/inventory/expiring/?window=warning&location_id=${LOCATION_ID}`;
-const API_BATCHES = `${API_BASE}/api/v1/inventory/batches/`;
-const API_STOCK_ON_HAND = `${API_BASE}/api/v1/inventory/stock-on-hand/`;
-const API_STOCK_SUMMARY = `${API_BASE}/api/v1/inventory/stock-summary/`;
-const API_EXPIRY_ALERTS = `${API_BASE}/api/v1/inventory/expiry-alerts/`;
-const API_MOVEMENTS_LIST = `${API_BASE}/api/v1/inventory/movements/list`;
-const API_STATS = `${API_BASE}/api/v1/inventory/stats/`;
-const API_ADD_MEDICINE = `${API_BASE}/api/v1/inventory/add-medicine/`;
-const API_MOVEMENTS = `${API_BASE}/api/v1/inventory/movements/`;
+const API_GLOBAL = apiUrl("inventory/medicines/global/");
+const API_BATCHES = apiUrl("inventory/batches/");
+const API_STOCK_ON_HAND = apiUrl("inventory/stock-on-hand/");
+const API_STOCK_SUMMARY = apiUrl("inventory/stock-summary/");
+const API_EXPIRY_ALERTS = apiUrl("inventory/expiry-alerts/");
+const API_RACKS = apiUrl("inventory/rack-locations/");
+const API_CATEGORIES = apiUrl("catalog/categories/");
 
 export default function MedicineInventory() {
   const nav = useNavigate();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [tab, setTab] = useState("all"); // all | low | expiring
+  const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [rackFilter, setRackFilter] = useState("All");
+  const [rackOptions, setRackOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [locationFilter, setLocationFilter] = useState("");
 
-  // modal / details
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [batches, setBatches] = useState([]);
-  const [batchStockMap, setBatchStockMap] = useState({}); // batch_id -> stock_on_hand
+  const [batchStockMap, setBatchStockMap] = useState({});
   const [expiryAlertsSummary, setExpiryAlertsSummary] = useState(null);
 
-  // -----------------------------
-  // GET API URL BASED ON TAB
-  // -----------------------------
-  const getListAPI = () => {
-    if (tab === "low") return API_LOW;
-    if (tab === "expiring") return API_EXPIRING;
-    return API_ALL;
-  };
-
-  // -----------------------------
-  // FETCH MEDICINES
-  // -----------------------------
   useEffect(() => {
-    const fetchList = async () => {
+    async function loadMasters() {
+      try {
+        const [racksRes, catRes] = await Promise.all([authFetch(API_RACKS), authFetch(API_CATEGORIES)]);
+        const rackJson = await racksRes.json().catch(() => null);
+        const catJson = await catRes.json().catch(() => null);
+        setRackOptions(
+          Array.isArray(rackJson)
+            ? rackJson
+            : rackJson?.results || rackJson?.items || []
+        );
+        setCategoryOptions(
+          Array.isArray(catJson)
+            ? catJson
+            : catJson?.results || catJson?.items || []
+        );
+      } catch (err) {
+        console.warn("Failed to load rack/category masters", err);
+      }
+    }
+    loadMasters();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRows() {
       setLoading(true);
       setServerError(null);
-
-      const URL = getListAPI();
       try {
-        const res = await authFetch(URL, { headers: { Accept: "application/json" } });
+        const params = new URLSearchParams();
+        if (debouncedQuery) params.set("q", debouncedQuery);
+        if (categoryFilter && categoryFilter !== "All") params.set("category_id", categoryFilter);
+        if (rackFilter && rackFilter !== "All") params.set("rack_id", rackFilter);
+        if (locationFilter) params.set("location_id", locationFilter);
+        const statusParam =
+          tab === "low"
+            ? "LOW_STOCK"
+            : tab === "expiring"
+            ? "EXPIRING"
+            : statusFilter !== "All"
+            ? statusFilter
+            : null;
+        if (statusParam) params.set("status", statusParam);
 
-        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
-
+        const url = params.toString() ? `${API_GLOBAL}?${params.toString()}` : API_GLOBAL;
+        const res = await authFetch(url, { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error(`Failed (${res.status})`);
         const data = await res.json();
-        // backend sometimes returns array or paginated results
-        const list = Array.isArray(data) ? data : data?.results || [];
-
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : data?.results || data?.items || [];
         setRows(list);
-
         try {
           localStorage.setItem(LS_KEY, JSON.stringify(list));
         } catch {}
       } catch (err) {
+        if (cancelled) return;
         console.error(err);
         setServerError("Backend offline → Showing saved data");
-
         try {
-          const raw = localStorage.getItem(LS_KEY);
-          setRows(raw ? JSON.parse(raw) : []);
+          const cached = localStorage.getItem(LS_KEY);
+          setRows(cached ? JSON.parse(cached) : []);
         } catch {
           setRows([]);
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    }
+    fetchRows();
+    return () => {
+      cancelled = true;
     };
+  }, [debouncedQuery, categoryFilter, statusFilter, rackFilter, locationFilter, tab]);
 
-    fetchList();
-  }, [tab]); // refetch when tab changes
+  const getCategoryLabel = (row) =>
+    row?.category?.name ||
+    row?.category_label ||
+    row?.category_name ||
+    (typeof row?.category === "string" ? row.category : "") ||
+    "";
 
-  // -----------------------------
-  // Derived categories from rows
-  // -----------------------------
-  const categories = useMemo(() => {
-    const set = new Set(rows.map((r) => r.category).filter(Boolean));
-    return ["All", ...Array.from(set)];
-  }, [rows]);
+  const categoriesForSelect = useMemo(() => {
+    const unique = new Map();
+    categoryOptions.forEach((cat) => {
+      if (!cat) return;
+      unique.set(String(cat.id), cat.name || cat.title || `Category ${cat.id}`);
+    });
+    rows.forEach((r) => {
+      const id = r.category_id || r.category?.id;
+      if (id && !unique.has(String(id))) {
+        unique.set(String(id), getCategoryLabel(r) || `Category ${id}`);
+      }
+    });
+    return Array.from(unique.entries());
+  }, [categoryOptions, rows]);
 
-  // -----------------------------
-  // Determine status (client fallback)
-  // Prefer backend status where provided (e.g., low-stock endpoint)
-  // -----------------------------
   const getStatus = (r) => {
-    // Use backend-provided status if exists
     const backendStatus = r.status || r.stock_status || r.stock_status_text;
     if (backendStatus) {
-      // normalize common values
-      const bs = String(backendStatus).toLowerCase();
-      if (bs.includes("out") || bs.includes("out_of")) return "Out of Stock";
-      if (bs.includes("low") || bs.includes("critical")) return "Low Stock";
+      const bs = String(backendStatus).toUpperCase();
+      if (bs.includes("OUT")) return "Out of Stock";
+      if (bs.includes("LOW") || bs.includes("CRITICAL")) return "Low Stock";
       return "In Stock";
     }
-
     const qty = Number(r.quantity ?? r.quantity_base ?? r.current_stock_base ?? 0);
     if (qty <= 0) return "Out of Stock";
-    if (qty <= 30) return "Low Stock"; // simple fallback threshold
+    if (qty <= 30) return "Low Stock";
     return "In Stock";
   };
 
-  const isExpiringSoon = (dateStr) => {
-    if (!dateStr) return false;
-    const today = new Date();
-    const d = new Date(dateStr);
-    const diff = (d - today) / (1000 * 60 * 60 * 24);
-    return diff >= 0 && diff <= 60; // within 60 days
-  };
+  const filteredRows = rows;
 
-  // -----------------------------
-  // FILTERS
-  // -----------------------------
-  const filtered = rows.filter((r) => {
-    const matchesSearch =
-      !query ||
-      `${r.medicine_id || ""} ${r.batch_number || ""} ${r.medicine_name || ""} ${r.category || ""} ${r.manufacturer || ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase());
-
-    const matchesCategory = categoryFilter === "All" || r.category === categoryFilter;
-
-    const s = getStatus(r);
-    const matchesStatus = statusFilter === "All" || s === statusFilter;
-
-    const tabOk =
-      tab === "all" ||
-      (tab === "low" && (s === "Low Stock" || s === "Out of Stock")) ||
-      (tab === "expiring" && isExpiringSoon(r.expiry_date));
-
-    return matchesSearch && matchesCategory && matchesStatus && tabOk;
-  });
-
-  // -----------------------------
-  // Delete (local only for now)
-  // -----------------------------
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this medicine?")) return;
     setDeleting(true);
     setServerError(null);
-
     try {
-      // optimistic remove from UI/localStorage
-      const next = rows.filter((r) => r.id !== id);
+      const next = rows.filter((r) => r.id !== id && r.batch_id !== id);
       setRows(next);
-
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(next));
       } catch {}
-
-      // If you want to call backend delete, do it here (endpoint not provided in backend file)
-      // const resp = await authFetch(`${API_BASE}/api/v1/inventory/medicines/${id}/`, { method: 'DELETE' });
-      // if (!resp.ok) throw new Error('Delete failed on server');
     } catch (err) {
       console.error(err);
       setServerError("Delete failed");
@@ -182,14 +175,8 @@ export default function MedicineInventory() {
     }
   };
 
-  // -----------------------------
-  // Currency helper
-  // -----------------------------
   const currency = (n) => (n == null || n === "" ? "" : `₹${Number(n).toFixed(2)}`);
 
-  // -----------------------------
-  // Details modal helpers
-  // -----------------------------
   const openDetails = async (row) => {
     setSelected(row);
     setDetailOpen(true);
@@ -197,74 +184,69 @@ export default function MedicineInventory() {
     setBatches([]);
     setBatchStockMap({});
     setExpiryAlertsSummary(null);
+    const effectiveLocation = Number(locationFilter) || LOCATION_ID_FALLBACK;
 
     try {
-      // 1) Try fetch batches for the product (filter by product_id if backend supports)
-      // backend batches endpoint accepts product_id as query param per views file.
-      const prodId = row.batch_lot__product_id || row.product_id || row.medicine_id || row.medicine_id;
-      const batchesUrl = `${API_BATCHES}?product_id=${encodeURIComponent(prodId)}&status=ACTIVE`;
-      const bRes = await authFetch(batchesUrl, { headers: { Accept: "application/json" } });
-      if (bRes.ok) {
-        const bData = await bRes.json();
-        const bList = Array.isArray(bData) ? bData : bData?.results || [];
-        setBatches(bList);
-      } else {
-        // fallback: try using single row batch info if present
-        setBatches(
-          row.batch_lot_id
-            ? [
-                {
-                  id: row.batch_lot_id,
-                  product_id: prodId,
-                  batch_no: row.batch_number || row.batch_lot__batch_no,
-                  expiry_date: row.expiry_date || row.batch_lot__expiry_date,
-                  rack_no: row.rack_no || row.rack,
-                },
-              ]
-            : []
-        );
+      const prodId = row.product_id || row.batch_lot__product_id;
+      const batchesUrl = `${API_BATCHES}?product_id=${encodeURIComponent(prodId || "")}&status=ACTIVE`;
+      const batchRes = await authFetch(batchesUrl, { headers: { Accept: "application/json" } });
+      let batchList = [];
+      if (batchRes.ok) {
+        const batchJson = await batchRes.json();
+        batchList = Array.isArray(batchJson) ? batchJson : batchJson?.results || [];
+      } else if (row.batch_lot_id) {
+        batchList = [
+          {
+            id: row.batch_lot_id,
+            product_id: prodId,
+            batch_no: row.batch_number || row.batch_lot__batch_no,
+            expiry_date: row.expiry_date || row.batch_lot__expiry_date,
+            rack_no: row.rack_no || row.rack,
+          },
+        ];
       }
-
-      // 2) For each batch, fetch stock-on-hand (if batch ids exist)
-      const batchList = (batches.length && batches) || [];
-      // if batches from above are empty, use row.batch_lot_id
-      const toCheck = batchList.length ? batchList : row.batch_lot_id ? [{ id: row.batch_lot_id }] : [];
+      setBatches(batchList);
 
       const stockMap = {};
-      for (const b of toCheck) {
+      const targetBatches =
+        batchList.length > 0
+          ? batchList
+          : row.batch_lot_id
+          ? [{ id: row.batch_lot_id }]
+          : [];
+
+      for (const b of targetBatches) {
         const params = new URLSearchParams();
-        params.set("location_id", String(LOCATION_ID));
+        params.set("location_id", String(effectiveLocation));
         if (b.id) params.set("batch_lot_id", String(b.id));
-        // call stock-on-hand endpoint
         try {
           const sres = await authFetch(`${API_STOCK_ON_HAND}?${params.toString()}`, {
             headers: { Accept: "application/json" },
           });
           if (sres.ok) {
             const sjson = await sres.json();
-            // backend returns {"qty_base": "123.000"} per views
             const qty = Number(sjson.qty_base ?? sjson.qty ?? 0);
             stockMap[b.id] = qty;
           }
-        } catch (e) {
-          // ignore per-batch failures
+        } catch (err) {
+          console.warn("stock-on-hand failed", err);
         }
       }
       setBatchStockMap(stockMap);
 
-      // 3) Fetch expiry alerts summary (global or for product)
       try {
         const eparams = new URLSearchParams();
-        eparams.set("location_id", String(LOCATION_ID));
-        // if backend supports product filter on expiry-alerts, include product id (not guaranteed)
+        eparams.set("location_id", String(effectiveLocation));
         if (prodId) eparams.set("product_id", String(prodId));
-        const eres = await authFetch(`${API_EXPIRY_ALERTS}?${eparams.toString()}`, { headers: { Accept: "application/json" } });
+        const eres = await authFetch(`${API_EXPIRY_ALERTS}?${eparams.toString()}`, {
+          headers: { Accept: "application/json" },
+        });
         if (eres.ok) {
           const ej = await eres.json();
           setExpiryAlertsSummary(ej || null);
         }
-      } catch (e) {
-        // ignore
+      } catch (err) {
+        console.warn("expiry summary failed", err);
       }
     } catch (err) {
       console.error("Details fetch failed", err);
@@ -281,15 +263,11 @@ export default function MedicineInventory() {
     setExpiryAlertsSummary(null);
   };
 
-  // -----------------------------
-  // Quick action: view stock summary for product (stock-summary endpoint)
-  // -----------------------------
   const fetchStockSummaryForProduct = async (row) => {
     try {
       const params = new URLSearchParams();
-      params.set("location_id", String(LOCATION_ID));
-      // try to get product id from common fields used by backend
-      const pid = row.batch_lot__product_id || row.product_id || row.medicine_id || row.product;
+      params.set("location_id", String(Number(locationFilter) || LOCATION_ID_FALLBACK));
+      const pid = row.product_id || row.batch_lot__product_id || row.medicine_id;
       if (!pid) return alert("Product id not available for this row");
       params.set("product_id", String(pid));
       const res = await authFetch(`${API_STOCK_SUMMARY}?${params.toString()}`);
@@ -302,9 +280,13 @@ export default function MedicineInventory() {
     }
   };
 
-  // -----------------------------
-  // Render
-  // -----------------------------
+  const handleTabChange = (next) => {
+    setTab(next);
+    if (next !== "all") {
+      setStatusFilter("All");
+    }
+  };
+
   return (
     <div className="inv-wrap">
       <div className="inv-header">
@@ -313,7 +295,7 @@ export default function MedicineInventory() {
           <p>Manage your medicine inventory and stock levels</p>
         </div>
         <button className="inv-add" onClick={() => nav("/inventory/medicines/add")} disabled={loading || deleting}>
-          <span>＋</span> Add Medicine
+          + Add Medicine
         </button>
       </div>
 
@@ -322,55 +304,82 @@ export default function MedicineInventory() {
 
         <div className="inv-filters">
           <div className="inv-search">
-            <span className="inv-search-icon">🔍</span>
+            <span className="inv-search-icon">?</span>
             <input
               type="text"
-              placeholder="Search by medicine name or supplier..."
+              placeholder="Search by medicine, batch or supplier..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
 
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="inv-select">
-            {categories.map((c) => (
-              <option key={c}>{c}</option>
+            <option value="All">All Categories</option>
+            {categoriesForSelect.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
             ))}
           </select>
 
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="inv-select">
-            {["All", "In Stock", "Low Stock", "Out of Stock"].map((s) => (
-              <option key={s}>{s}</option>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="inv-select" disabled={tab !== "all"}>
+            {[
+              ["All", "All"],
+              ["IN_STOCK", "In Stock"],
+              ["LOW_STOCK", "Low Stock"],
+              ["OUT_OF_STOCK", "Out of Stock"],
+            ].map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
+
+          <select value={rackFilter} onChange={(e) => setRackFilter(e.target.value)} className="inv-select">
+            <option value="All">All Racks</option>
+            {rackOptions.map((rack) => (
+              <option key={rack.id} value={rack.id}>
+                {rack.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="number"
+            min="1"
+            placeholder="Location"
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="inv-select"
+            style={{ width: 110 }}
+          />
 
           <div className="inv-actions">
             <button
               className="inv-btn ghost"
-              onClick={async () => {
-                // Quick import/export placeholders - implement as needed
-                alert("Import feature not yet implemented");
-              }}
+              onClick={() => alert("Import feature not yet implemented")}
             >
-              ⬇️ Import
+              Import
             </button>
             <button
               className="inv-btn brown"
-              onClick={async () => {
-                // Simple export to CSV of visible rows
+              onClick={() => {
                 const csvRows = [
                   ["Medicine ID", "Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
-                  ...filtered.map((r) => [
+                  ...filteredRows.map((r) => [
                     r.medicine_id,
                     r.batch_number,
                     r.medicine_name,
-                    r.category,
+                    getCategoryLabel(r),
                     r.quantity,
                     r.mrp,
                     r.expiry_date,
                     getStatus(r),
                   ]),
                 ];
-                const csv = csvRows.map((cols) => cols.map((c) => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+                const csv = csvRows
+                  .map((cols) => cols.map((c) => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(","))
+                  .join("\n");
                 const blob = new Blob([csv], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -380,25 +389,23 @@ export default function MedicineInventory() {
                 URL.revokeObjectURL(url);
               }}
             >
-              ⬆️ Export
+              Export
             </button>
           </div>
         </div>
 
-        {/* TABS */}
         <div className="inv-tabs">
-          <button className={`inv-tab ${tab === "all" ? "active" : ""}`} onClick={() => setTab("all")}>
+          <button className={`inv-tab ${tab === "all" ? "active" : ""}`} onClick={() => handleTabChange("all")}>
             All Products
           </button>
-          <button className={`inv-tab ${tab === "low" ? "active" : ""}`} onClick={() => setTab("low")}>
+          <button className={`inv-tab ${tab === "low" ? "active" : ""}`} onClick={() => handleTabChange("low")}>
             Low Stock
           </button>
-          <button className={`inv-tab ${tab === "expiring" ? "active" : ""}`} onClick={() => setTab("expiring")}>
+          <button className={`inv-tab ${tab === "expiring" ? "active" : ""}`} onClick={() => handleTabChange("expiring")}>
             Expiring Stock
           </button>
         </div>
 
-        {/* TABLE */}
         <div className="inv-table-wrap">
           {loading ? (
             <div style={{ padding: 20 }}>Loading...</div>
@@ -420,59 +427,56 @@ export default function MedicineInventory() {
               </thead>
 
               <tbody>
-                {filtered.length ? (
-                  filtered.map((r) => {
+                {filteredRows.length ? (
+                  filteredRows.map((r) => {
                     const status = getStatus(r);
+                    const categoryLabel = getCategoryLabel(r);
+                    const rowKey =
+                      r.id ?? r.batch_id ?? `${r.product_id || r.medicine_id || "row"}-${r.batch_number || "na"}`;
+                    const quantityValue = r.quantity ?? r.quantity_base ?? r.current_stock_base ?? "";
+                    const uomLabel =
+                      r.uom || r.base_uom?.name || r.quantity_uom?.name || "";
+                    const rackLabel = r.rack || r.rack_name || r.rack_no || "";
 
                     return (
-                      <tr key={r.id}>
+                      <tr key={rowKey}>
                         <td>{r.medicine_id ?? r.batch_lot__product__code ?? ""}</td>
                         <td>{r.batch_number ?? r.batch_lot__batch_no ?? ""}</td>
                         <td>{r.medicine_name ?? r.batch_lot__product__name ?? ""}</td>
-                        <td>{r.category}</td>
-                        <td>{r.quantity ?? r.quantity_base ?? r.current_stock_base ?? ""}</td>
-                        <td>
-                          {(r.quantity_uom && r.quantity_uom.name) || r.uom || r.base_uom?.name || r.rack || r.rack_no || ""}
-                        </td>
+                        <td>{categoryLabel}</td>
+                        <td>{quantityValue}</td>
+                        <td>{[uomLabel, rackLabel].filter(Boolean).join(" / ")}</td>
                         <td>{currency(r.mrp ?? r.batch_lot__product__mrp)}</td>
                         <td>{r.expiry_date ? new Date(r.expiry_date).toLocaleDateString() : ""}</td>
 
                         <td>
-                          <span
-                            className={`badge ${
-                              status === "In Stock" ? "green" : status === "Low Stock" ? "amber" : "red"
-                            }`}
-                          >
-                            {status}
-                          </span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <span
+                              className={`badge ${
+                                status === "In Stock" ? "green" : status === "Low Stock" ? "amber" : "red"
+                              }`}
+                            >
+                              {status}
+                            </span>
+                            {r.is_expiring && (
+                              <span className="badge amber" style={{ fontSize: 11 }}>
+                                Expiring soon
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         <td className="inv-actions-cell">
-                          <button
-                            className="inv-icon"
-                            title="View details"
-                            onClick={() => {
-                              openDetails(r);
-                            }}
-                          >
-                            👁️
+                          <button className="inv-icon" title="View details" onClick={() => openDetails(r)}>
+                            View
                           </button>
 
-                          <button
-                            className="inv-icon"
-                            title="Stock summary"
-                            onClick={() => fetchStockSummaryForProduct(r)}
-                          >
-                            📊
+                          <button className="inv-icon" title="Stock summary" onClick={() => fetchStockSummaryForProduct(r)}>
+                            Stats
                           </button>
 
-                          <button
-                            className="inv-icon danger"
-                            title="Delete"
-                            onClick={() => handleDelete(r.id)}
-                            disabled={deleting}
-                          >
-                            🗑️
+                          <button className="inv-icon danger" title="Delete" onClick={() => handleDelete(r.id)} disabled={deleting}>
+                            Del
                           </button>
                         </td>
                       </tr>
@@ -491,14 +495,13 @@ export default function MedicineInventory() {
         </div>
       </div>
 
-      {/* DETAILS MODAL */}
       {detailOpen && (
         <div className="inv-modal-backdrop" onClick={closeDetails}>
           <div className="inv-modal" onClick={(e) => e.stopPropagation()}>
             <div className="inv-modal-header">
               <h3>Medicine details</h3>
               <button onClick={closeDetails} className="inv-close">
-                ×
+                X
               </button>
             </div>
 
@@ -531,7 +534,7 @@ export default function MedicineInventory() {
                     </div>
 
                     <div>
-                      <div className="small-muted">Quantity (UI)</div>
+                      <div className="small-muted">Quantity (Base)</div>
                       <div>{selected?.quantity ?? selected?.current_stock_base ?? "-"}</div>
                     </div>
 
@@ -560,10 +563,12 @@ export default function MedicineInventory() {
                           {batches.map((b) => (
                             <tr key={b.id}>
                               <td style={{ padding: "6px 4px" }}>{b.batch_no || b.batch_number || ""}</td>
-                              <td style={{ padding: "6px 4px" }}>{b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : ""}</td>
+                              <td style={{ padding: "6px 4px" }}>
+                                {b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : ""}
+                              </td>
                               <td style={{ padding: "6px 4px" }}>{b.initial_quantity ?? b.initial_quantity_base ?? "-"}</td>
                               <td style={{ padding: "6px 4px" }}>
-                                {batchStockMap[b.id] != null ? `${batchStockMap[b.id]}` : "—"}
+                                {b.id && batchStockMap[b.id] != null ? `${batchStockMap[b.id]}` : "—"}
                               </td>
                               <td style={{ padding: "6px 4px" }}>{b.rack_no || b.rack || "-"}</td>
                             </tr>
@@ -590,11 +595,12 @@ export default function MedicineInventory() {
             </div>
 
             <div className="inv-modal-footer">
-              <button onClick={closeDetails} className="inv-btn">Close</button>
+              <button onClick={closeDetails} className="inv-btn">
+                Close
+              </button>
               <button
                 className="inv-btn"
                 onClick={() => {
-                  // quick navigate to receive page for this product (if your app has one)
                   const pid = selected?.batch_lot__product_id || selected?.product_id || selected?.medicine_id;
                   if (!pid) return alert("Product id not available");
                   nav(`/inventory/receive?product_id=${pid}`);

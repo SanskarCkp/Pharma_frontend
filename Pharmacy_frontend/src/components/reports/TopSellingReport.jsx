@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./TopSellingReport.css";
 import { Bar } from "react-chartjs-2";
-import { authFetch } from "../../api/http"; // add this at the top
+import { authFetch } from "../../api/http";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,11 +11,12 @@ import {
   Legend
 } from "chart.js";
 import { Link, useLocation } from "react-router-dom";
+import { apiUrl } from "../../api/base";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const TOP_SELLING_API = `${API_BASE}/api/v1/reports/sales/top-selling/`;
+const TOP_SELLING_API = apiUrl("reports/sales/top-selling/");
+const EXPORT_URL = apiUrl("reports/exports/");
 
 export default function TopSellingReport() {
   const location = useLocation();
@@ -32,27 +33,23 @@ export default function TopSellingReport() {
   }
 
   /** ⭐ EXPORT (includes months filter) */
-  function handleExport(reportType = "TOP_SELLING") {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = `${API_BASE}/api/v1/reports/exports/`;
-    form.style.display = "none";
-
-    form.appendChild(Object.assign(document.createElement("input"), {
-      type: "hidden",
-      name: "report_type",
-      value: reportType,
-    }));
-
-    form.appendChild(Object.assign(document.createElement("input"), {
-      type: "hidden",
-      name: "params",
-      value: JSON.stringify({ months: getMonths(monthsRange) }),
-    }));
-
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => form.remove(), 1500);
+  async function handleExport(reportType = "TOP_SELLING") {
+    try {
+      const formData = new FormData();
+      formData.append("report_type", reportType);
+      formData.append("params", JSON.stringify({ months: getMonths(monthsRange) }));
+      const res = await authFetch(EXPORT_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${reportType.toLowerCase()}-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Export failed");
+    }
   }
 
   /** ⭐ Fetch data with months filter */
@@ -67,10 +64,7 @@ export default function TopSellingReport() {
     const months = getMonths(monthsRange);
 
     try {
-      const res = await fetch(`${TOP_SELLING_API}?months=${months}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+      const res = await authFetch(`${TOP_SELLING_API}?months=${months}`);
 
       if (!res.ok) throw new Error(`Failed (${res.status})`);
 

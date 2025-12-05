@@ -134,24 +134,32 @@ export default function Login() {
                           User (Name / Email){" "}
                           <span className="text-rose-500">*</span>
                         </label>
-                        <select
+                        <input
                           name="username"
+                          type="text"
                           value={form.username}
                           onChange={onChange}
                           className="mt-2 block w-full rounded-md border px-3 py-3"
-                        >
-                          <option value="">Select user</option>
-                          {userList.map((u, idx) => (
-                            <option
-                              key={idx}
-                              value={u.username || u.email} // 🔥 FIX HERE
-                            >
-                              {u.fullName
-                                ? `${u.fullName} (${u.email || u.username})`
-                                : (u.email || u.username)}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Enter username or email"
+                          list={userList.length ? "login-users" : undefined}
+                          autoComplete="username"
+                          required
+                        />
+                        {userList.length > 0 && (
+                          <datalist id="login-users">
+                            {userList.map((u, idx) => (
+                              <option
+                                key={idx}
+                                value={u.username || u.email}
+                                label={
+                                  u.fullName
+                                    ? `${u.fullName} (${u.email || u.username})`
+                                    : (u.email || u.username)
+                                }
+                              />
+                            ))}
+                          </datalist>
+                        )}
                       </div>
 
                       <div>

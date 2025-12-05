@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./ExpiryReport.css";
 import { Link, useLocation } from "react-router-dom";
-import { authFetch } from "../../api/http"; // add this at the top
+import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-
-
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const EXPIRY_API = `${API_BASE}/api/v1/reports/expiry/`;
+const EXPIRY_API = apiUrl("reports/expiry/");
+const EXPORT_URL = apiUrl("reports/exports/");
 
 export default function ExpiryReport() {
   const location = useLocation();
@@ -18,30 +17,23 @@ export default function ExpiryReport() {
   const [windowFilter, setWindowFilter] = useState("all");
 
   /** ⭐ EXPORT XLSX WITH FILTER */
-  function handleExport() {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = `${API_BASE}/api/v1/reports/exports/`;
-    form.style.display = "none";
-
-    // Report Type
-    const typeInput = document.createElement("input");
-    typeInput.type = "hidden";
-    typeInput.name = "report_type";
-    typeInput.value = "EXPIRY_STATUS";
-
-    // Pass window filter
-    const paramsInput = document.createElement("input");
-    paramsInput.type = "hidden";
-    paramsInput.name = "params";
-    paramsInput.value = JSON.stringify({ window: windowFilter });
-
-    form.appendChild(typeInput);
-    form.appendChild(paramsInput);
-    document.body.appendChild(form);
-
-    form.submit();
-    setTimeout(() => form.remove(), 1500);
+  async function handleExport() {
+    try {
+      const formData = new FormData();
+      formData.append("report_type", "EXPIRY_STATUS");
+      formData.append("params", JSON.stringify({ window: windowFilter }));
+      const res = await authFetch(EXPORT_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `expiry-report-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Export failed");
+    }
   }
 
   /** Fetch expiry list */
@@ -56,10 +48,7 @@ export default function ExpiryReport() {
         url.searchParams.set("window", windowFilter);
       }
 
-      const res = await fetch(url.toString(), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+      const res = await authFetch(url.toString());
 
       if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
 

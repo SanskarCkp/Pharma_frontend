@@ -55,18 +55,45 @@ async function doFetch(url, opts = {}) {
 // TOKEN HELPERS
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
+const LEGACY_ACCESS_KEYS = ["access"];
+const LEGACY_REFRESH_KEYS = ["refresh"];
 
-export function getAccessToken() { return localStorage.getItem(ACCESS_TOKEN_KEY); }
-export function getRefreshToken() { return localStorage.getItem(REFRESH_TOKEN_KEY); }
+const readFromStorage = (primary, legacyKeys) => {
+  const val = localStorage.getItem(primary);
+  if (val) return val;
+  for (const key of legacyKeys) {
+    const legacyVal = localStorage.getItem(key);
+    if (legacyVal) return legacyVal;
+  }
+  return null;
+};
+
+const persistToStorage = (primary, value, legacyKeys) => {
+  localStorage.setItem(primary, value);
+  legacyKeys.forEach((key) => localStorage.setItem(key, value));
+};
+
+const removeKeys = (primary, legacyKeys) => {
+  localStorage.removeItem(primary);
+  legacyKeys.forEach((key) => localStorage.removeItem(key));
+};
+
+export function getAccessToken() {
+  return readFromStorage(ACCESS_TOKEN_KEY, LEGACY_ACCESS_KEYS);
+}
+
+export function getRefreshToken() {
+  return readFromStorage(REFRESH_TOKEN_KEY, LEGACY_REFRESH_KEYS);
+}
 
 export function storeTokens({ access, refresh }) {
-  if (access) localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  if (access) persistToStorage(ACCESS_TOKEN_KEY, access, LEGACY_ACCESS_KEYS);
+  if (refresh) persistToStorage(REFRESH_TOKEN_KEY, refresh, LEGACY_REFRESH_KEYS);
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  removeKeys(ACCESS_TOKEN_KEY, LEGACY_ACCESS_KEYS);
+  removeKeys(REFRESH_TOKEN_KEY, LEGACY_REFRESH_KEYS);
 }
 
 export function logout() { clearTokens(); }
