@@ -14,12 +14,6 @@ const SettingsDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [businessExists, setBusinessExists] = useState(false);
 
-<<<<<<< HEAD
-=======
-  const [businessExists, setBusinessExists] = useState(false);
-  const [alertExists, setAlertExists] = useState(false); // ⭐ NEW — to choose POST/PUT
-
->>>>>>> ae7a50c6 (settingsdashboard)
   const settingsSections = [
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
@@ -49,7 +43,6 @@ const SettingsDashboard = () => {
     auto_remove_expired: "Manually only",
   });
 
-<<<<<<< HEAD
   // -------------------------------------------------------
   // FETCH BUSINESS DETAILS
   // -------------------------------------------------------
@@ -102,82 +95,6 @@ const SettingsDashboard = () => {
   };
 
   useEffect(() => {
-=======
-  const [taxData, setTaxData] = useState({
-    gst_rate: "",
-    tax_method: "",
-    cgst_rate: "",
-    sgst_rate: "",
-    invoice_prefix: "",
-    invoice_start: "",
-    invoice_template: "",
-    invoice_footer: "",
-    cash_payment: false,
-    card_payment: false,
-    upi_payment: false,
-    credit_sales: false,
-  });
-
-  const [backupData, setBackupData] = useState({
-    backup_type: "",
-    last_backup_at: "",
-    last_backup_size: "",
-    last_backup_status: "",
-    auto_backup_enabled: false,
-    frequency: "",
-    backup_time: "",
-    restore_file_name: "",
-  });
-
-  // ---------------------------------------------------------
-  // FETCH BUSINESS DETAILS & ALERT SETTINGS
-  // ---------------------------------------------------------
-  useEffect(() => {
-    const fetchBusinessDetails = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/settings/business-profile/`);
-        if (res.ok) {
-          const data = await res.json();
-          setBusinessExists(true);
-          setFormData({
-            business_name: data.business_name || "",
-            email: data.email || "",
-            phone: data.phone || "",
-            address: data.address || "",
-            owner_name: data.owner_name || "",
-            registration_date: data.registration_date || "",
-            gst_number: data.gst_number || "",
-            pharmacy_license_number: data.pharmacy_license_number || "",
-            drug_license_number: data.drug_license_number || "",
-          });
-        }
-      } catch (error) {
-        console.error("❌ Error fetching business:", error);
-      }
-    };
-
-    const fetchAlertSettings = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`);
-        if (res.ok) {
-          const data = await res.json();
-          setAlertExists(true);
-
-          setAlertData({
-            low_stock_threshold: data.low_stock_threshold || "",
-            out_of_stock_alert: data.out_of_stock_alert || "No",
-            critical_expiry_days: data.critical_expiry_days || "",
-            warning_expiry_days: data.warning_expiry_days || "",
-            check_frequency: data.check_frequency || "",
-            auto_remove_expired: data.auto_remove_expired || "Manually only",
-          });
-        }
-      } catch (error) {
-        console.error("❌ Error fetching alert data:", error);
-      }
-    };
-
->>>>>>> ae7a50c6 (settingsdashboard)
     fetchBusinessDetails();
     fetchAlertSettings();
   }, []);
@@ -213,25 +130,13 @@ const SettingsDashboard = () => {
     }
   };
 
-<<<<<<< HEAD
   // -------------------------------------------------------
   // SAVE ALERT SETTINGS → /settings/app/save (correct)
   // -------------------------------------------------------
   const handleAlertSave = async () => {
     setLoading(true);
-=======
-  const handleAlertChange = (e) => {
-    setAlertData({ ...alertData, [e.target.name]: e.target.value });
-  };
->>>>>>> ae7a50c6 (settingsdashboard)
 
-  // ---------------------------------------------------------
-  // SAVE BUSINESS DETAILS (POST or PUT)
-  // ---------------------------------------------------------
-  const handleSave = async () => {
-    setLoading(true);
     try {
-<<<<<<< HEAD
       const payload = {
         alerts: {
           ALERT_LOW_STOCK_DEFAULT: alertData.low_stock_threshold,
@@ -245,18 +150,11 @@ const SettingsDashboard = () => {
 
       const response = await authFetch(`${API_BASE_URL}/api/v1/settings/app/save`, {
         method: "POST",
-=======
-      const method = businessExists ? "PUT" : "POST";
-
-      const response = await fetch(`${API_BASE_URL}/settings/business-profile/`, {
-        method,
->>>>>>> ae7a50c6 (settingsdashboard)
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-<<<<<<< HEAD
         alert("Alert thresholds saved!");
         fetchAlertSettings();
       } else {
@@ -267,44 +165,6 @@ const SettingsDashboard = () => {
       alert("Error saving alert settings");
     } finally {
       setLoading(false);
-=======
-        alert("✅ Business details saved successfully!");
-        setBusinessExists(true);
-      } else {
-        alert("❌ Failed to save business details");
-      }
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
-      setSavingSection(null);
-    }
-  };
-
-  // ---------------------------------------------------------
-  // SAVE ALERT THRESHOLDS (POST or PUT)
-  // ---------------------------------------------------------
-  const handleAlertSave = async () => {
-    setLoading(true);
-
-    try {
-      const method = alertExists ? "PUT" : "POST";
-
-      const response = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(alertData),
-      });
-
-      if (response.ok) {
-        alert("✅ Alert thresholds saved!");
-        setAlertExists(true);
-      } else {
-        alert("❌ Failed to save alert settings");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("SMTP test failed");
->>>>>>> ae7a50c6 (settingsdashboard)
     }
   };
 
