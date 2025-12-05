@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./unitofmeasurement.css";
+import { authFetch } from "../../api/http";
+
 
 const empty = { id: "", name: "", description: "", uom_type: "BASE" };
 
@@ -28,7 +30,7 @@ export default function UnitOfMeasurement() {
     setLoading(true);
     setServerError(null);
     try {
-      const res = await fetch(API, { headers: { Accept: "application/json" } });
+      const res = await authFetch(API, { headers: { Accept: "application/json" } });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.results || [];
@@ -99,7 +101,7 @@ export default function UnitOfMeasurement() {
     setSaving(true);
     try {
       if (editingId) {
-        const res = await fetch(`${API}${editingId}/`, {
+        const res = await authFetch(`${API}${editingId}/`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
@@ -108,7 +110,7 @@ export default function UnitOfMeasurement() {
         const updated = await res.json();
         setRows((prev) => prev.map((r) => (r.id === editingId ? updated : r)));
       } else {
-        const res = await fetch(API, {
+        const res = await authFetch(API, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
@@ -133,7 +135,7 @@ export default function UnitOfMeasurement() {
 
     setSaving(true);
     try {
-      const res = await fetch(`${API}${deleteItem.id}/`, {
+      const res = await authFetch(`${API}${deleteItem.id}/`, {
         method: "DELETE",
         headers: { Accept: "application/json" },
       });

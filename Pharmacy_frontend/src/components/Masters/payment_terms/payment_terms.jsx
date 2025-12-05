@@ -2,6 +2,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./payment_terms.css";
 
+import { authFetch } from "../../../api/http";
+
+
+
 const USE_LOCAL_STORAGE = false;
 const LS_KEY = "payment_terms";
 
@@ -51,7 +55,7 @@ export default function PaymentTerms() {
     setLoading(true);
     setServerError(null);
     try {
-      const res = await fetch(API, { headers: { Accept: "application/json" } });
+      const res = await authFetch(API, { headers: { Accept: "application/json" } });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.results || [];
@@ -116,7 +120,7 @@ export default function PaymentTerms() {
 
     try {
       if (editingId) {
-        const res = await fetch(`${API}${editingId}/`, {
+        const res = await authFetch(`${API}${editingId}/`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
@@ -125,7 +129,7 @@ export default function PaymentTerms() {
         const updated = await res.json();
         setRows((prev) => prev.map((r) => (r.id === editingId ? updated : r)));
       } else {
-        const res = await fetch(API, {
+        const res = await authFetch(API, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload),
@@ -149,7 +153,7 @@ export default function PaymentTerms() {
     setSaving(true);
     setServerError(null);
     try {
-      const res = await fetch(`${API}${id}/`, { method: "DELETE", headers: { Accept: "application/json" } });
+      const res = await authFetch(`${API}${id}/`, { method: "DELETE", headers: { Accept: "application/json" } });
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
       setRows((r) => r.filter((x) => x.id !== id));
     } catch (err) {
