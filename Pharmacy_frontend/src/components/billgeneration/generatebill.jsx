@@ -2,8 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
+const BILLING_MEDICINES_URL = apiUrl("sales/billing/medicines/");
+const BATCHES_URL = apiUrl("catalog/batches/");
+const INVOICES_URL = apiUrl("sales/invoices/");
 
 export default function GenerateBill() {
   const navigate = useNavigate();
@@ -37,7 +41,7 @@ export default function GenerateBill() {
   useEffect(() => {
     async function loadPM() {
       try {
-        const res = await authFetch(`${API_BASE}api/v1/settings/payment-methods/`);
+        const res = await authFetch(PAYMENT_METHODS_URL);
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.results || [];
         setPaymentMethods(items);
@@ -60,7 +64,7 @@ export default function GenerateBill() {
         });
 
         const res = await authFetch(
-          `${API_BASE}/api/v1/sales/billing/medicines/?${params.toString()}`,
+          `${BILLING_MEDICINES_URL}?${params.toString()}`,
           { signal: controller.signal }
         );
         if (!res.ok) return setProducts([]);
@@ -91,7 +95,7 @@ export default function GenerateBill() {
 
   async function fetchBatchLotId(productId) {
     try {
-      const res = await authFetch(`${API_BASE}/api/v1/catalog/batches/?product=${productId}`);
+      const res = await authFetch(`${BATCHES_URL}?product_id=${productId}`);
       const data = await res.json();
       const rows = Array.isArray(data) ? data : data.results || [];
       return rows.length ? rows[0].id : null;
@@ -202,7 +206,7 @@ export default function GenerateBill() {
     };
 
     try {
-      const res = await authFetch(`${API_BASE}/api/v1/sales/invoices/`, {
+      const res = await authFetch(INVOICES_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

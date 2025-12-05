@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+const BILLING_STATS_URL = apiUrl("sales/billing/stats/");
+const INVOICES_URL = apiUrl("sales/invoices/");
 
 export default function BillList() {
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export default function BillList() {
           .slice(0, 10);
 
         const statsRes = await authFetch(
-          `${API_BASE}/sales/billing/stats/?from=${first}&to=${last}`
+          `${BILLING_STATS_URL}?from=${first}&to=${last}`
         );
         if (statsRes.ok) {
           const stats = await statsRes.json();
@@ -44,7 +46,7 @@ export default function BillList() {
         }
 
         const listRes = await authFetch(
-          `${API_BASE}/sales/invoices/?ordering=-invoice_date`
+          `${INVOICES_URL}?ordering=-invoice_date`
         );
         if (listRes.ok) {
           const data = await listRes.json();

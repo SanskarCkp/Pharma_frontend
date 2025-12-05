@@ -4,8 +4,9 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+const INVOICE_URL = apiUrl("sales/invoices/");
 
 export default function Invoice() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function Invoice() {
     async function load() {
       try {
         setError("");
-        const res = await authFetch(`${API_BASE}/sales/invoices/${id}/`);
+        const res = await authFetch(`${INVOICE_URL}${id}/`);
         if (!res.ok) {
           const txt = await res.text();
           setError(`Failed to load invoice (${res.status})${txt ? `: ${txt}` : ""}`);

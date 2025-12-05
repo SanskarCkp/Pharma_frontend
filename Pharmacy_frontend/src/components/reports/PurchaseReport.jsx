@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import "./SalesPurchaseReport.css";
 import { Bar } from "react-chartjs-2";
 import { Link, useLocation } from "react-router-dom";
-import { authFetch } from "../../api/http"; // add this at the top
+import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
 import {
   Chart as ChartJS,
@@ -15,8 +16,8 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const PURCHASE_SUMMARY_API = `${API_BASE}/api/v1/reports/purchases/summary/`;
+const PURCHASE_SUMMARY_API = apiUrl("reports/purchases/summary/");
+const EXPORT_URL = apiUrl("reports/exports/");
 
 export default function PurchaseReport() {
   const location = useLocation();
@@ -33,28 +34,23 @@ export default function PurchaseReport() {
   }
 
   /** ⭐ XLSX FILE DOWNLOAD */
-  function handleExport(reportType) {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = `${API_BASE}/api/v1/reports/exports/`;
-    form.style.display = "none";
-
-    form.appendChild(Object.assign(document.createElement("input"), {
-      type: "hidden",
-      name: "report_type",
-      value: reportType,
-    }));
-
-    form.appendChild(Object.assign(document.createElement("input"), {
-      type: "hidden",
-      name: "params",
-      value: JSON.stringify({ months: getMonths(monthsRange) }),
-    }));
-
-    document.body.appendChild(form);
-    form.submit();
-
-    setTimeout(() => form.remove(), 1500);
+  async function handleExport(reportType) {
+    try {
+      const formData = new FormData();
+      formData.append("report_type", reportType);
+      formData.append("params", JSON.stringify({ months: getMonths(monthsRange) }));
+      const res = await authFetch(EXPORT_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${reportType.toLowerCase()}-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Export failed");
+    }
   }
 
   /** ⭐ FETCH PURCHASE SUMMARY WITH MONTHS FILTER */
@@ -65,10 +61,7 @@ export default function PurchaseReport() {
     try {
       const months = getMonths(monthsRange);
 
-      const res = await fetch(`${PURCHASE_SUMMARY_API}?months=${months}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+      const res = await authFetch(`${PURCHASE_SUMMARY_API}?months=${months}`);
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
