@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Pill, Ruler, CreditCard, Calendar, Package, User } from "lucide-react";
+import { authFetch } from "../../api/http";
 
 /**
  * MastersDashboard — realtime totals for:
@@ -20,6 +21,9 @@ const normalizeBase = (u) =>
 const API_BASE = normalizeBase(rawBase);
 
 const ENDPOINTS = {
+  MedicineCategories: `${API_BASE}/api/v1/catalog/categories/`,
+  MedicineForms: `${API_BASE}/api/v1/catalog/forms/`,
+  UnitsOfMeasurement: `${API_BASE}/api/v1/catalog/uoms/`,
   paymentMethods: `${API_BASE}/api/v1/settings/payment-methods/`,
   paymentTerms: `${API_BASE}/api/v1/settings/payment-terms/`,
   rackLocations: `${API_BASE}/api/v1/inventory/rack-locations/`,
@@ -30,10 +34,17 @@ export default function MastersDashboard() {
   const [pmTotal, setPmTotal] = useState(null);
   const [ptTotal, setPtTotal] = useState(null);
   const [rlTotal, setRlTotal] = useState(null);
+  const [mcTotal, setmcTotal] = useState(null);
+  const [mfTotal, setmfTotal] = useState(null);
+  const [umTotal, setumTotal] = useState(null);
+  
 
   const [pmError, setPmError] = useState(null);
   const [ptError, setPtError] = useState(null);
   const [rlError, setRlError] = useState(null);
+  const [mcError, setmcError] = useState(null);
+  const [mfError, setmfError] = useState(null);
+  const [umError, setumError] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -44,7 +55,7 @@ export default function MastersDashboard() {
       setValue(null); // mark loading
       try {
         // If you need auth, add: headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
-        const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" }, signal });
+        const res = await authFetch(url, { method: "GET", headers: { Accept: "application/json" }, signal });
         if (!res.ok) throw new Error(`Failed (${res.status})`);
         const data = await res.json();
 
@@ -69,6 +80,9 @@ export default function MastersDashboard() {
     };
 
     // run them in parallel
+    fetchCount(ENDPOINTS.MedicineCategories, setmcTotal, setmcError);
+    fetchCount(ENDPOINTS.MedicineForms, setmfTotal, setmfError);
+    fetchCount(ENDPOINTS.UnitsOfMeasurement, setumTotal, setumError);
     fetchCount(ENDPOINTS.paymentMethods, setPmTotal, setPmError);
     fetchCount(ENDPOINTS.paymentTerms, setPtTotal, setPtError);
     fetchCount(ENDPOINTS.rackLocations, setRlTotal, setRlError);
@@ -90,21 +104,21 @@ export default function MastersDashboard() {
       path: "/medicinecategories",
       label: "Medicine Categories",
       icon: <Pill size={16} />,
-      total: 0,
+      total: mcTotal,
       accent: "teal",
     },
     {
       path: "/medicineforms",
       label: "Medicine Forms",
       icon: <Pill size={16} />,
-      total: 0,
+      total: mfTotal,
       accent: "orange",
     },
     {
       path: "/unitofmeasurement",
       label: "Units of Measurement",
       icon: <Ruler size={16} />,
-      total: 0,
+      total: umTotal,
       accent: "blue",
     },
     {
@@ -207,6 +221,11 @@ export default function MastersDashboard() {
         {pmError && <div>Payment methods load error: {pmError}</div>}
         {ptError && <div>Payment terms load error: {ptError}</div>}
         {rlError && <div>Rack locations load error: {rlError}</div>}
+
+
+
+
+        
       </div>
     </div>
   );
