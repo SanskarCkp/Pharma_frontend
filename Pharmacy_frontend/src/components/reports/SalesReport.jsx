@@ -128,9 +128,7 @@ export default function SalesReport() {
         <Link to="/reports/expiry" className={location.pathname === "/reports/expiry" ? "active" : ""}>
           Expiry Report
         </Link>
-        <Link to="/reports/top-selling" className={location.pathname === "/reports/top-selling" ? "active" : ""}>
-          Top Selling
-        </Link>
+        
       </div>
 
       {/* Filter + Export */}
