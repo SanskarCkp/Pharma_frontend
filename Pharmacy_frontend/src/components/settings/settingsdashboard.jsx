@@ -7,16 +7,16 @@ import BackupRestore from "./BackupRestore";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 
-const SETTINGS_GROUP = apiUrl("settings/app/");
-const SETTINGS_SAVE = apiUrl("settings/app/save");
-const BUSINESS_PROFILE_URL = apiUrl("settings/business-profile/");
-const NOTIFICATION_TEST_URL = apiUrl("settings/notifications/test/");
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const SettingsDashboard = () => {
   const [activeSection, setActiveSection] = useState("Business Details");
   const [savingSection, setSavingSection] = useState(null);
 
-  const tabs = [
+  const [businessExists, setBusinessExists] = useState(false);
+  const [alertExists, setAlertExists] = useState(false); // ⭐ NEW — to choose POST/PUT
+
+  const settingsSections = [
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
     { name: "Tax & Billing", icon: <CreditCard size={24} /> },
@@ -71,98 +71,56 @@ const SettingsDashboard = () => {
     restore_file_name: "",
   });
 
-  const [notificationData, setNotificationData] = useState({
-    enable_email: false,
-    low_stock_alerts: false,
-    expiry_alerts: false,
-    daily_reports: false,
-    notification_email: "",
-    enable_sms: false,
-    sms_phone: "",
-    smtp_host: "",
-    smtp_port: "",
-    smtp_username: "",
-    smtp_password: "",
-  });
-
-  const toBool = (val) => {
-    if (typeof val === "boolean") return val;
-    if (typeof val === "string") return ["true", "1", "yes", "on"].includes(val.toLowerCase());
-    return false;
-  };
-
-  const fetchGroupSettings = async () => {
-    try {
-      const res = await authFetch(SETTINGS_GROUP);
-      if (!res.ok) throw new Error("Failed to load grouped settings");
-      const payload = await res.json();
-
-      const alerts = payload.alerts || {};
-      setAlertData({
-        low_stock_threshold: alerts.ALERT_LOW_STOCK_DEFAULT || "",
-        out_of_stock_alert: alerts.OUT_OF_STOCK_ACTION || "",
-        critical_expiry_days: alerts.ALERT_EXPIRY_CRITICAL_DAYS || "",
-        warning_expiry_days: alerts.ALERT_EXPIRY_WARNING_DAYS || "",
-        check_frequency: alerts.ALERT_CHECK_FREQUENCY || "",
-        auto_remove_expired: alerts.AUTO_REMOVE_EXPIRED || "",
-      });
-
-      const tax = payload.tax || {};
-      const invoice = payload.invoice || {};
-      setTaxData((prev) => ({
-        ...prev,
-        gst_rate: tax.TAX_GST_RATE || "",
-        tax_method: tax.TAX_CALC_METHOD || "",
-        cgst_rate: tax.TAX_CGST_RATE || "",
-        sgst_rate: tax.TAX_SGST_RATE || "",
-        invoice_prefix: invoice.INVOICE_PREFIX || "",
-        invoice_start: invoice.INVOICE_START || "",
-        invoice_template: invoice.INVOICE_TEMPLATE || "",
-        invoice_footer: invoice.INVOICE_FOOTER || "",
-      }));
-
-      const backups = payload.backups || {};
-      setBackupData((prev) => ({
-        ...prev,
-        auto_backup_enabled: toBool(backups.AUTO_BACKUP_ENABLED),
-        frequency: backups.AUTO_BACKUP_FREQUENCY || "",
-        backup_time: backups.AUTO_BACKUP_TIME || "",
-      }));
-
-      const notify = payload.notifications || {};
-      setNotificationData((prev) => ({
-        ...prev,
-        enable_email: toBool(notify.NOTIFY_EMAIL_ENABLED),
-        low_stock_alerts: toBool(notify.NOTIFY_LOW_STOCK),
-        expiry_alerts: toBool(notify.NOTIFY_EXPIRY),
-        daily_reports: toBool(notify.NOTIFY_DAILY_REPORT),
-        notification_email: notify.NOTIFY_EMAIL || "",
-        enable_sms: toBool(notify.NOTIFY_SMS_ENABLED),
-        sms_phone: notify.NOTIFY_SMS_PHONE || "",
-        smtp_host: notify.SMTP_HOST || "",
-        smtp_port: notify.SMTP_PORT || "",
-        smtp_username: notify.SMTP_USER || "",
-        smtp_password: notify.SMTP_PASSWORD || "",
-      }));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchBusinessProfile = async () => {
-    try {
-      const res = await authFetch(BUSINESS_PROFILE_URL);
-      if (!res.ok) throw new Error("Failed to load business profile");
-      const data = await res.json();
-      setBusinessData((prev) => ({ ...prev, ...data }));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
+  // ---------------------------------------------------------
+  // FETCH BUSINESS DETAILS & ALERT SETTINGS
+  // ---------------------------------------------------------
   useEffect(() => {
-    fetchBusinessProfile();
-    fetchGroupSettings();
+    const fetchBusinessDetails = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/settings/business-profile/`);
+        if (res.ok) {
+          const data = await res.json();
+          setBusinessExists(true);
+          setFormData({
+            business_name: data.business_name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            address: data.address || "",
+            owner_name: data.owner_name || "",
+            registration_date: data.registration_date || "",
+            gst_number: data.gst_number || "",
+            pharmacy_license_number: data.pharmacy_license_number || "",
+            drug_license_number: data.drug_license_number || "",
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error fetching business:", error);
+      }
+    };
+
+    const fetchAlertSettings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`);
+        if (res.ok) {
+          const data = await res.json();
+          setAlertExists(true);
+
+          setAlertData({
+            low_stock_threshold: data.low_stock_threshold || "",
+            out_of_stock_alert: data.out_of_stock_alert || "No",
+            critical_expiry_days: data.critical_expiry_days || "",
+            warning_expiry_days: data.warning_expiry_days || "",
+            check_frequency: data.check_frequency || "",
+            auto_remove_expired: data.auto_remove_expired || "Manually only",
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error fetching alert data:", error);
+      }
+    };
+
+    fetchBusinessDetails();
+    fetchAlertSettings();
   }, []);
 
   const saveBusinessProfile = async () => {
@@ -184,108 +142,58 @@ const SettingsDashboard = () => {
     }
   };
 
-  const saveSection = async (key) => {
-    setSavingSection(key);
-    let payload = {};
-    if (key === "alert_thresholds") {
-      payload.alerts = {
-        ALERT_LOW_STOCK_DEFAULT: alertData.low_stock_threshold,
-        OUT_OF_STOCK_ACTION: alertData.out_of_stock_alert,
-        ALERT_EXPIRY_CRITICAL_DAYS: alertData.critical_expiry_days,
-        ALERT_EXPIRY_WARNING_DAYS: alertData.warning_expiry_days,
-        ALERT_CHECK_FREQUENCY: alertData.check_frequency,
-        AUTO_REMOVE_EXPIRED: alertData.auto_remove_expired,
-      };
-    } else if (key === "tax_billing") {
-      payload = {
-        tax: {
-          TAX_GST_RATE: taxData.gst_rate,
-          TAX_CALC_METHOD: taxData.tax_method,
-          TAX_CGST_RATE: taxData.cgst_rate,
-          TAX_SGST_RATE: taxData.sgst_rate,
-        },
-        invoice: {
-          INVOICE_PREFIX: taxData.invoice_prefix,
-          INVOICE_START: taxData.invoice_start,
-          INVOICE_TEMPLATE: taxData.invoice_template,
-          INVOICE_FOOTER: taxData.invoice_footer,
-        },
-      };
-    } else if (key === "backup_restore") {
-      payload.backups = {
-        AUTO_BACKUP_ENABLED: backupData.auto_backup_enabled,
-        AUTO_BACKUP_FREQUENCY: backupData.frequency,
-        AUTO_BACKUP_TIME: backupData.backup_time,
-      };
-    } else if (key === "notifications") {
-      payload.notifications = {
-        NOTIFY_EMAIL_ENABLED: notificationData.enable_email,
-        NOTIFY_LOW_STOCK: notificationData.low_stock_alerts,
-        NOTIFY_EXPIRY: notificationData.expiry_alerts,
-        NOTIFY_DAILY_REPORT: notificationData.daily_reports,
-        NOTIFY_EMAIL: notificationData.notification_email,
-        NOTIFY_SMS_ENABLED: notificationData.enable_sms,
-        NOTIFY_SMS_PHONE: notificationData.sms_phone,
-        SMTP_HOST: notificationData.smtp_host,
-        SMTP_PORT: notificationData.smtp_port,
-        SMTP_USER: notificationData.smtp_username,
-        SMTP_PASSWORD: notificationData.smtp_password,
-      };
-    }
+  const handleAlertChange = (e) => {
+    setAlertData({ ...alertData, [e.target.name]: e.target.value });
+  };
 
+  // ---------------------------------------------------------
+  // SAVE BUSINESS DETAILS (POST or PUT)
+  // ---------------------------------------------------------
+  const handleSave = async () => {
+    setLoading(true);
     try {
-      const res = await authFetch(SETTINGS_SAVE, {
-        method: "POST",
+      const method = businessExists ? "PUT" : "POST";
+
+      const response = await fetch(`${API_BASE_URL}/settings/business-profile/`, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(formData),
       });
-      if (!res.ok) throw new Error("Save failed");
-      alert("Settings saved");
-      fetchGroupSettings();
+
+      if (response.ok) {
+        alert("✅ Business details saved successfully!");
+        setBusinessExists(true);
+      } else {
+        alert("❌ Failed to save business details");
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to save settings");
+      console.error("Error:", err);
     } finally {
       setSavingSection(null);
     }
   };
 
-  const handleBusinessChange = (e) => {
-    const { name, value } = e.target;
-    setBusinessData((prev) => ({ ...prev, [name]: value }));
-  };
+  // ---------------------------------------------------------
+  // SAVE ALERT THRESHOLDS (POST or PUT)
+  // ---------------------------------------------------------
+  const handleAlertSave = async () => {
+    setLoading(true);
 
-  const handleAlertChange = (e) => {
-    const { name, value } = e.target;
-    setAlertData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const updateTaxField = (name, value) => {
-    setTaxData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const updateNotificationField = (name, value) => {
-    setNotificationData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const updateBackupField = (name, value) => {
-    setBackupData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNotificationTest = async () => {
     try {
-      const res = await authFetch(NOTIFICATION_TEST_URL, {
-        method: "POST",
+      const method = alertExists ? "PUT" : "POST";
+
+      const response = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smtp_host: notificationData.smtp_host,
-          smtp_port: notificationData.smtp_port,
-          smtp_username: notificationData.smtp_username,
-          smtp_password: notificationData.smtp_password,
-        }),
+        body: JSON.stringify(alertData),
       });
-      const response = await res.json().catch(() => ({}));
-      alert(response.message || (res.ok ? "SMTP test succeeded" : "SMTP test failed"));
+
+      if (response.ok) {
+        alert("✅ Alert thresholds saved!");
+        setAlertExists(true);
+      } else {
+        alert("❌ Failed to save alert settings");
+      }
     } catch (err) {
       console.error(err);
       alert("SMTP test failed");
@@ -322,7 +230,7 @@ const SettingsDashboard = () => {
                 <div className="form-row" key={key}>
                   <label>{key.replace(/_/g, " ").toUpperCase()}</label>
                   {key === "address" ? (
-                    <textarea name={key} value={value || ""} onChange={handleBusinessChange} />
+                    <textarea name={key} value={value} onChange={handleChange} />
                   ) : key === "registration_date" ? (
                     <input type="date" name={key} value={value || ""} onChange={handleBusinessChange} />
                   ) : (
