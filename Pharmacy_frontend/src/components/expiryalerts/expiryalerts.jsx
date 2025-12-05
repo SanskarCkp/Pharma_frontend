@@ -3,62 +3,56 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./expiryalerts.css";
 import { authFetch } from "../../api/http";
-import { apiUrl } from "../../api/base";
-
-const EXPIRY_ALERTS_API = apiUrl("inventory/expiry-alerts/");
-const DEFAULT_LOCATION = Number(import.meta.env.VITE_DEFAULT_LOCATION_ID || 1);
 
 export default function ExpiryAlerts() {
   const [activeTab, setActiveTab] = useState("All");
-  const [medicines, setMedicines] = useState([]);
-  const [modal, setModal] = useState({ show: false, med: null });
+  const [items, setItems] = useState([]);
+  const [summary, setSummary] = useState({ critical: 0, warning: 0, safe: 0 });
+  const [thresholds, setThresholds] = useState({ critical: 30, warning: 60 });
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({ critical: 0, warning: 0, safe: 0 });
   const [locationId, setLocationId] = useState(String(DEFAULT_LOCATION));
 
   useEffect(() => {
     async function fetchData() {
-      setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (locationId) params.set("location_id", locationId);
-        params.set("bucket", activeTab === "All" ? "all" : activeTab.toLowerCase());
-        const response = await authFetch(`${EXPIRY_ALERTS_API}?${params.toString()}`);
+        const response = await authFetch("/api/expiry-alerts"); // <-- Replace this
         if (!response.ok) throw new Error("Failed to load data");
         const data = await response.json();
-        setMedicines(Array.isArray(data.items) ? data.items : []);
-        setSummary(data.summary || { critical: 0, warning: 0, safe: 0 });
+        setMedicines(data);
       } catch (error) {
         console.error("Error fetching medicines:", error);
-        setMedicines([]);
-        setSummary({ critical: 0, warning: 0, safe: 0 });
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [activeTab, locationId]);
+  }, []);
 
-  const filtered = medicines;
+  // ✅ Filter logic
+  const filtered =
+    activeTab === "All" ? medicines : medicines.filter((m) => m.status === activeTab);
 
+  // ✅ KPI calculations
   const kpi = {
-    critical: summary.critical || 0,
-    warning: summary.warning || 0,
-    safe: summary.safe || 0,
+    critical: medicines.filter((m) => m.status === "Critical").length,
+    warning: medicines.filter((m) => m.status === "Warning").length,
+    safe: medicines.filter((m) => m.status === "Safe").length,
     totalValue: medicines
-      .filter((m) => (m.status || "").toUpperCase() !== "SAFE")
-      .reduce((sum, m) => sum + Number(m.quantity_base || 0), 0)
+      .filter((m) => m.status === "Critical" || m.status === "Warning")
+      .reduce((sum, m) => sum + parseFloat(m.stock?.replace(/[₹,]/g, "") || 0), 0)
       .toFixed(2),
   };
 
+  // ✅ Export PDF (Critical + Warning)
   const handleExportPDF = () => {
     const exportData = medicines.filter(
-      (m) => (m.status || "").toUpperCase() === "CRITICAL" || (m.status || "").toUpperCase() === "WARNING"
+      (m) => m.status === "Critical" || m.status === "Warning"
     );
 
     if (!exportData.length) {
-      alert("No critical or warning medicines to export!");
+      alert("⚠️ No critical or warning medicines to export!");
       return;
     }
 
@@ -67,23 +61,43 @@ export default function ExpiryAlerts() {
     doc.setFontSize(14);
     doc.text("Medicine Expiry Report (Critical & Warning Only)", 14, 15);
 
-    const tableData = exportData.map((m) => [
-      m.product_name || m.product_id,
-      m.batch_no,
-      Number(m.quantity_base || 0).toLocaleString(),
-      m.expiry_date,
-      `${m.days_left != null ? m.days_left : "-"} days`,
-      m.status,
-    ]);
+    const tableData = exportData.map((m) => {
+      const numericStock = parseFloat(m.stock?.replace(/[₹,]/g, "") || 0);
+      const formattedStock = `₹. ${numericStock.toLocaleString("en-IN")}`;
+      return [
+        m.name,
+        m.category,
+        m.batch,
+        m.qty,
+        formattedStock,
+        m.expiry,
+        `${m.daysLeft} days`,
+        m.supplier,
+        m.status,
+      ];
+    });
 
     autoTable(doc, {
       startY: 25,
-      head: [["Product", "Batch No.", "Qty (Base)", "Expiry Date", "Days Left", "Status"]],
+      head: [
+        [
+          "Medicine Name",
+          "Category",
+          "Batch No.",
+          "Qty",
+          "Stock Value",
+          "Expiry Date",
+          "Days Left",
+          "Supplier",
+          "Status",
+        ],
+      ],
       body: tableData,
       theme: "grid",
       styles: { fontSize: 10, cellPadding: 3, font: "helvetica" },
       headStyles: { fillColor: [20, 184, 166], textColor: 255, halign: "center" },
       bodyStyles: { halign: "center" },
+      columnStyles: { 4: { halign: "right" } },
     });
 
     const pageHeight = doc.internal.pageSize.height;
@@ -95,17 +109,18 @@ export default function ExpiryAlerts() {
     );
 
     doc.save(`ExpiryReport-${new Date().toISOString().slice(0, 10)}.pdf`);
-    alert("Critical & warning medicines exported successfully!");
+    alert("✅ Critical & Warning medicines exported successfully!");
   };
 
+  // ✅ Handle Return
   const handleReturn = (medicine) => {
     setModal({ show: true, med: medicine });
   };
 
   const confirmReturn = () => {
     if (modal.med) {
-      setMedicines((prev) => prev.filter((m) => m.batch_lot_id !== modal.med.batch_lot_id));
-      alert(`Batch ${modal.med.batch_no} has been marked as returned (local only).`);
+      setMedicines((prev) => prev.filter((m) => m.id !== modal.med.id));
+      alert(`✅ ${modal.med.name} has been marked as returned to supplier.`);
     }
     setModal({ show: false, med: null });
   };
@@ -113,53 +128,43 @@ export default function ExpiryAlerts() {
   if (loading) {
     return (
       <div className="expiryalerts-page">
-        <p>Loading medicine data...</p>
+        <p>Loading...</p>
       </div>
     );
   }
 
   return (
     <div className="expiryalerts-page">
-      <div className="expiryalerts-header">
-        <div>
-          <h2 className="page-title">Medicine Expiry Alerts</h2>
-          <p className="page-subtitle">Monitor and manage medicines nearing expiration</p>
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: "#555" }}>Location</label>
-          <input
-            type="number"
-            min="1"
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-            className="location-input"
-          />
-        </div>
-      </div>
+      <h2 className="page-title">Medicine Expiry Alerts</h2>
+      <p className="page-subtitle">Monitor and manage medicines nearing expiration</p>
 
+      {/* KPI Cards */}
       <div className="kpi-cards">
         <div className="kpi-card critical">
-          <h4>Critical (&lt;30 days)</h4>
-          <h2>{kpi.critical}</h2>
-          <p>Immediate action required</p>
+          <h4>Critical (≤ {thresholds.critical} days)</h4>
+          <h2>{summary.critical}</h2>
         </div>
+
         <div className="kpi-card warning">
-          <h4>Warning (31–90 days)</h4>
-          <h2>{kpi.warning}</h2>
-          <p>Plan for clearance</p>
+          <h4>
+            Warning ({thresholds.critical + 1}–{thresholds.warning} days)
+          </h4>
+          <h2>{summary.warning}</h2>
         </div>
+
         <div className="kpi-card safe">
           <h4>Safe (&gt;90 days)</h4>
           <h2>{kpi.safe}</h2>
           <p>No immediate concern</p>
         </div>
         <div className="kpi-card value">
-          <h4>At-Risk Quantity</h4>
-          <h2>{kpi.totalValue}</h2>
-          <p>Critical + warning base units</p>
+          <h4>At-Risk Value</h4>
+          <h2>₹{kpi.totalValue}</h2>
+          <p>Critical + warning stock</p>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="tabs">
         <div>
           {["All", "Critical", "Warning", "Safe"].map((tab) => (
@@ -170,62 +175,61 @@ export default function ExpiryAlerts() {
             >
               {tab} (
               {tab === "All"
-                ? Object.values(summary).reduce((sum, val) => sum + Number(val || 0), 0)
-                : summary[tab.toLowerCase()] || 0}
+                ? medicines.length
+                : medicines.filter((m) => m.status === tab).length}
               )
             </button>
           ))}
         </div>
 
         <button className="export-btn" onClick={handleExportPDF}>
-          Export
+          📄 Export Report
         </button>
       </div>
 
+      {/* Table */}
       <div className="table-container">
-        {activeTab !== "All" && (
-          <div className={`alert-banner ${activeTab.toLowerCase()}`}>
-            <strong>{activeTab}:</strong>{" "}
-            {activeTab === "Critical"
-              ? "Expiring within 30 days"
-              : activeTab === "Warning"
-              ? "Expiring in 31–90 days"
-              : "No immediate concern"}
-          </div>
-        )}
-
         <table className="expiry-table">
           <thead>
             <tr>
-              <th>Product</th>
+              <th>Medicine Name</th>
+              <th>Category</th>
               <th>Batch Number</th>
-              <th>Quantity (Base)</th>
+              <th>Quantity</th>
+              <th>Stock Value</th>
               <th>Expiry Date</th>
               <th>Days Left</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Qty</th>
             </tr>
           </thead>
+
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((m) => (
-                <tr key={`${m.batch_lot_id}-${m.batch_no}`}>
-                  <td>{m.product_name || m.medicine_name || m.product_id || "-"}</td>
-                  <td>{m.batch_no}</td>
-                  <td>{Number(m.quantity_base || 0).toLocaleString()}</td>
-                  <td>{m.expiry_date}</td>
+                <tr key={m.id}>
+                  <td>{m.name}</td>
+                  <td>{m.category}</td>
+                  <td>{m.batch}</td>
+                  <td>{m.qty}</td>
+                  <td>{m.stock}</td>
+                  <td>{m.expiry}</td>
                   <td className={m.status?.toLowerCase()}>
-                    {m.days_left != null ? `${m.days_left} days` : "-"}
+                    {m.daysLeft} days
                   </td>
+                  <td>{m.supplier}</td>
                   <td>
                     <span className={`status-badge ${m.status?.toLowerCase()}`}>
                       {m.status}
                     </span>
                   </td>
                   <td>
-                    {m.status?.toUpperCase() !== "SAFE" ? (
-                      <button className="return-btn" onClick={() => handleReturn(m)}>
-                        Return
+                    {m.status !== "Safe" ? (
+                      <button
+                        className="return-btn"
+                        onClick={() => handleReturn(m)}
+                      >
+                        ↩ Return
                       </button>
                     ) : (
                       "-"
@@ -235,7 +239,7 @@ export default function ExpiryAlerts() {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="ts-no-data">
+                <td colSpan="10" style={{ textAlign: "center", color: "#999" }}>
                   No medicines found.
                 </td>
               </tr>
@@ -244,16 +248,20 @@ export default function ExpiryAlerts() {
         </table>
       </div>
 
+      {/* Modal */}
       {modal.show && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Return Confirmation</h3>
             <p>
               Are you sure you want to return{" "}
-              <strong>{modal.med.product_name || modal.med.product_id}</strong> (Batch: {modal.med.batch_no})?
+              <strong>{modal.med.name}</strong> (Batch: {modal.med.batch})?
             </p>
             <div className="modal-actions">
-              <button className="cancel-btn" onClick={() => setModal({ show: false, med: null })}>
+              <button
+                className="cancel-btn"
+                onClick={() => setModal({ show: false, med: null })}
+              >
                 Cancel
               </button>
               <button className="confirm-btn" onClick={confirmReturn}>
