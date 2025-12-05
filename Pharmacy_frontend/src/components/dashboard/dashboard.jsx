@@ -217,23 +217,8 @@ const Dashboard = () => {
               <div className="flex justify-between">
                 <span className="font-medium">{item.product_name}</span>
                 <span className="text-sm text-gray-600">
-                  {Number(item.stock_base || 0)} / {Number(item.reorder_level || 0)}
+                  {Number(item.stock_base || 0)} units available
                 </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div
-                  className="h-2 rounded-full"
-                  style={{
-                    width:
-                      Number(item.reorder_level || 0) > 0
-                        ? `${Math.min(
-                            100,
-                            (Number(item.stock_base || 0) / Number(item.reorder_level || 1)) * 100
-                          )}%`
-                        : "15%",
-                    background: "#E67E22",
-                  }}
-                />
               </div>
             </div>
           ))}

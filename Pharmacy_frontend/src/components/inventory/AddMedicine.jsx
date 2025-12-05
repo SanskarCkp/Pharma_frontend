@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
+import { getDefaultLocationId } from "../../config/location";
 
 const rawBase = import.meta.env.VITE_API_URL || "";
 const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
@@ -13,10 +14,18 @@ const FORMS_API = `${API_BASE}/api/v1/catalog/forms/`;
 const UOMS_API = `${API_BASE}/api/v1/catalog/uoms/`;
 const RACKS_API = `${API_BASE}/api/v1/inventory/rack-locations/`;
 const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
+const MEDICINE_DETAIL_API = (id) => `${API_BASE}/api/v1/inventory/medicines/${id}/`;
+const MOVEMENT_API = `${API_BASE}/api/v1/inventory/movements/`;
 
-const DEFAULT_LOCATION_ID = Number(import.meta.env.VITE_DEFAULT_LOCATION_ID || import.meta.env.VITE_LOCATION_ID || 1);
+const DEFAULT_LOCATION_ID = getDefaultLocationId();
+const dispatchInventoryRefresh = () => {
+  try {
+    window.dispatchEvent(new CustomEvent("inventory:refresh"));
+  } catch {}
+};
 
-const initialMedicine = {
+const createInitialMedicine = () => ({
+  id: null,
   name: "",
   generic_name: "",
   category: "",
@@ -27,7 +36,6 @@ const initialMedicine = {
   rack_location: "",
   description: "",
   gst_percent: "",
-  reorder_level: "",
   tablets_per_strip: "",
   strips_per_box: "",
   ml_per_bottle: "",
@@ -38,16 +46,17 @@ const initialMedicine = {
   tubes_per_box: "",
   units_per_pack: "",
   mrp: "",
-};
+});
 
-const initialBatch = {
+const createInitialBatch = () => ({
+  id: null,
   batch_number: "",
   quantity: "",
   quantity_uom: "",
   purchase_price: "",
   mfg_date: "",
   expiry_date: "",
-};
+});
 
 const numberOrUndefined = (value) => {
   if (value === "" || value === null || value === undefined) return undefined;
@@ -90,17 +99,22 @@ const flattenErrors = (payload) => {
   return flat;
 };
 
-const PACKAGING_MATCHERS = [
-  { key: "tablets", test: (n) => /TABLET|CAPSULE/i.test(n) },
-  { key: "syrup", test: (n) => /SYRUP|SUSPENSION/i.test(n) },
-  { key: "injection", test: (n) => /INJECTION|VIAL/i.test(n) },
-  { key: "ointment", test: (n) => /OINTMENT|CREAM|GEL/i.test(n) },
-];
+const PACKAGING_FORMS = {
+  tablets: { form: /TABLET|CAPSULE/i, base: /TAB/i },
+  syrup: { form: /SYRUP|SUSPENSION/i, base: /ML/i },
+  injection: { form: /INJECTION|VIAL/i, base: /VIAL/i },
+  ointment: { form: /OINTMENT|CREAM|GEL/i, base: /GM|GRAM/i },
+};
 
-const detectPackagingType = (formName = "") => {
-  const upper = (formName || "").toUpperCase();
-  const match = PACKAGING_MATCHERS.find((cfg) => cfg.test(upper));
-  return match?.key || null;
+const detectPackagingType = (formName = "", baseUom = "") => {
+  const f = (formName || "").toUpperCase();
+  const b = (baseUom || "").toUpperCase();
+  for (const [key, cfg] of Object.entries(PACKAGING_FORMS)) {
+    if ((cfg.form && cfg.form.test(f)) || (cfg.base && cfg.base.test(b))) {
+      return key;
+    }
+  }
+  return null;
 };
 
 const numberVal = (value) => {
@@ -172,13 +186,18 @@ async function fetchWithAuthRetry(url, options = {}) {
   }
 }
 
-export default function AddMedicine() {
+export default function AddMedicine({
+  open = true,
+  asDrawer = false,
+  mode = "add",
+  initialData = null,
+  onClose,
+  onSaved,
+  locationIdOverride,
+} = {}) {
   const nav = useNavigate();
-  const [locationId, setLocationId] = useState(
-    Number.isFinite(DEFAULT_LOCATION_ID) ? String(DEFAULT_LOCATION_ID) : ""
-  );
-  const [medicine, setMedicine] = useState(initialMedicine);
-  const [batch, setBatch] = useState(initialBatch);
+  const [medicine, setMedicine] = useState(() => createInitialMedicine());
+  const [batch, setBatch] = useState(() => createInitialBatch());
   const [categories, setCategories] = useState([]);
   const [forms, setForms] = useState([]);
   const [uoms, setUoms] = useState([]);
@@ -188,11 +207,144 @@ export default function AddMedicine() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [currentStock, setCurrentStock] = useState("");
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustError, setAdjustError] = useState("");
+  const [adjustSuccess, setAdjustSuccess] = useState("");
+  const [adjustLoading, setAdjustLoading] = useState(false);
+  const resolvedLocationId = useMemo(
+    () => Number(locationIdOverride ?? DEFAULT_LOCATION_ID),
+    [locationIdOverride]
+  );
+  const isDrawer = Boolean(asDrawer);
+  const isEdit = mode === "edit";
   const renderFieldError = (field) => {
     const message = fieldErrors[field] || errors[field];
     if (!message) return null;
     return <div className="err">{message}</div>;
   };
+
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      nav(-1);
+    }
+  }, [nav, onClose]);
+
+  const handleSuccess = useCallback(
+    (body, message) => {
+      if (onSaved) {
+        onSaved(body);
+      }
+      dispatchInventoryRefresh();
+      if (isDrawer) {
+        handleClose();
+      } else {
+        nav("/inventory/medicines", {
+          state: { flash: message },
+          replace: true,
+        });
+      }
+    },
+    [handleClose, isDrawer, nav, onSaved]
+  );
+
+  const resetForm = useCallback(() => {
+    setMedicine(createInitialMedicine());
+    setBatch(createInitialBatch());
+    setErrors({});
+    setFieldErrors({});
+    setServerError("");
+    setAdjustQty("");
+    setAdjustError("");
+    setAdjustSuccess("");
+    setCurrentStock("");
+  }, []);
+
+  const applyInitialData = useCallback((detail) => {
+    if (!detail) return;
+    const med = detail.medicine || {};
+    const batchInfo = detail.batch || {};
+    setCurrentStock(
+      detail.inventory?.stock_on_hand_base ??
+        batchInfo.current_stock_base ??
+        ""
+    );
+    setMedicine({
+      ...createInitialMedicine(),
+      id: med.id ?? null,
+      name: med.name || "",
+      generic_name: med.generic_name || "",
+      category: med.category?.id ? String(med.category.id) : "",
+      form: med.form?.id ? String(med.form.id) : "",
+      strength: med.strength || "",
+      base_uom: med.base_uom?.id ? String(med.base_uom.id) : "",
+      selling_uom: med.selling_uom?.id ? String(med.selling_uom.id) : "",
+      rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
+      description: med.description || "",
+      gst_percent: med.gst_percent || "",
+      tablets_per_strip: med.tablets_per_strip ?? "",
+      strips_per_box: med.strips_per_box ?? "",
+      units_per_pack: med.units_per_pack ?? "",
+      mrp: med.mrp ?? "",
+    });
+    setBatch({
+      ...createInitialBatch(),
+      id: batchInfo.id ?? null,
+      batch_number: batchInfo.batch_number || "",
+      quantity: batchInfo.quantity ? Number(batchInfo.quantity) : "",
+      quantity_uom: batchInfo.quantity_uom?.id ? String(batchInfo.quantity_uom.id) : "",
+      purchase_price: batchInfo.purchase_price ?? "",
+      mfg_date: batchInfo.mfg_date || "",
+      expiry_date: batchInfo.expiry_date || "",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDrawer) return;
+    if (!open) {
+      resetForm();
+      return;
+    }
+    if (isEdit && initialData) {
+      applyInitialData(initialData);
+    } else if (!isEdit) {
+      resetForm();
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit, open, resetForm]);
+
+  useEffect(() => {
+    if (!isDrawer && isEdit && initialData) {
+      applyInitialData(initialData);
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit]);
+
+  useEffect(() => {
+    if (initialData?.inventory?.stock_on_hand_base != null) {
+      setCurrentStock(initialData.inventory.stock_on_hand_base);
+    }
+  }, [initialData]);
+
+  const refreshCurrentStock = useCallback(async () => {
+    if (!batch.id) return;
+    try {
+      const params = new URLSearchParams();
+      const loc = resolvedLocationId || DEFAULT_LOCATION_ID;
+      if (loc) params.set("location_id", String(loc));
+      const url = params.toString()
+        ? `${MEDICINE_DETAIL_API(batch.id)}?${params.toString()}`
+        : MEDICINE_DETAIL_API(batch.id);
+      const res = await fetchWithAuthRetry(url);
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (data?.inventory?.stock_on_hand_base != null) {
+        setCurrentStock(data.inventory.stock_on_hand_base);
+      }
+    } catch {
+      // ignore
+    }
+  }, [batch.id, resolvedLocationId]);
 
   useEffect(() => {
     async function loadMasters() {
@@ -229,9 +381,16 @@ export default function AddMedicine() {
     return form?.name || "";
   }, [forms, medicine.form]);
 
+  const selectedBaseUomLabel = useMemo(() => {
+    const entry = uoms.find(
+      (u) => String(u.id) === String(medicine.base_uom) || String(u.code) === String(medicine.base_uom)
+    );
+    return entry?.code || entry?.name || "";
+  }, [uoms, medicine.base_uom]);
+
   const packagingType = useMemo(
-    () => detectPackagingType(selectedFormName),
-    [selectedFormName]
+    () => detectPackagingType(selectedFormName, selectedBaseUomLabel),
+    [selectedFormName, selectedBaseUomLabel]
   );
 
   const autoUnitsPerPack = useMemo(
@@ -266,9 +425,20 @@ export default function AddMedicine() {
     setBatch((prev) => ({ ...prev, [name]: value }));
   };
 
+  const lastSellingRef = useRef(null);
+  useEffect(() => {
+    if (!medicine.selling_uom) return;
+    if (lastSellingRef.current === medicine.selling_uom) return;
+    lastSellingRef.current = medicine.selling_uom;
+    setBatch((prev) => ({
+      ...prev,
+      quantity_uom:
+        prev.quantity_uom && prev.quantity_uom !== "" ? prev.quantity_uom : medicine.selling_uom,
+    }));
+  }, [medicine.selling_uom]);
+
   const validate = () => {
     const localErrors = {};
-    if (!locationId || Number.isNaN(Number(locationId))) localErrors.location_id = "Location is required";
     if (!medicine.name.trim()) localErrors.name = "Required";
     if (!medicine.category) localErrors.category = "Required";
     if (!medicine.form) localErrors.form = "Required";
@@ -276,7 +446,6 @@ export default function AddMedicine() {
     if (!medicine.selling_uom) localErrors.selling_uom = "Required";
     if (!medicine.rack_location) localErrors.rack_location = "Required";
     if (!medicine.mrp) localErrors.mrp = "Required";
-    if (medicine.reorder_level === "") localErrors.reorder_level = "Required";
     if (!batch.batch_number.trim()) localErrors.batch_number = "Required";
     if (!batch.quantity) localErrors.quantity = "Required";
     if (!batch.quantity_uom) localErrors.quantity_uom = "Required";
@@ -347,52 +516,72 @@ export default function AddMedicine() {
       </div>
     );
 
+    let fields = unitsField;
     switch (packagingType) {
       case "tablets":
-        return (
+        fields = (
           <>
             {numberInput("tablets_per_strip", "Tablets per Strip")}
             {numberInput("strips_per_box", "Strips per Box")}
             {unitsField}
           </>
         );
+        break;
       case "syrup":
-        return (
+        fields = (
           <>
             {numberInput("ml_per_bottle", "ML per Bottle")}
             {numberInput("bottles_per_box", "Bottles per Box")}
             {unitsField}
           </>
         );
+        break;
       case "injection":
-        return (
+        fields = (
           <>
             {numberInput("vials_per_box", "Vials per Box")}
             {numberInput("ml_per_vial", "ML per Vial (optional)")}
             {unitsField}
           </>
         );
+        break;
       case "ointment":
-        return (
+        fields = (
           <>
             {numberInput("grams_per_tube", "Grams per Tube")}
             {numberInput("tubes_per_box", "Tubes per Box")}
             {unitsField}
           </>
         );
+        break;
       default:
-        return unitsField;
+        fields = unitsField;
     }
+    const previewUnits =
+      autoUnitsPerPack != null
+        ? Number(autoUnitsPerPack)
+        : numberVal(medicine.units_per_pack);
+    return (
+      <>
+        {fields}
+        {previewUnits ? (
+          <div className="hint">
+            Units per pack: {previewUnits} {selectedBaseUomLabel || "base units"}
+          </div>
+        ) : null}
+      </>
+    );
   };
 
   const buildPayload = () => {
-    const location = Number(locationId);
+    const location = Number(resolvedLocationId) || DEFAULT_LOCATION_ID;
     const unitsPerPack =
       autoUnitsPerPack != null
         ? Number(autoUnitsPerPack)
         : numberOrUndefined(medicine.units_per_pack);
 
     const medPayload = {
+      ...(medicine.id ? { id: medicine.id } : {}),
       name: medicine.name.trim(),
       generic_name: medicine.generic_name.trim() || undefined,
       category: Number(medicine.category),
@@ -403,7 +592,6 @@ export default function AddMedicine() {
       rack_location: Number(medicine.rack_location),
       description: medicine.description.trim(),
       gst_percent: decimalStringOrUndefined(medicine.gst_percent) ?? "0",
-      reorder_level: numberOrUndefined(medicine.reorder_level) ?? 0,
       tablets_per_strip: numberOrUndefined(medicine.tablets_per_strip),
       strips_per_box: numberOrUndefined(medicine.strips_per_box),
       ml_per_bottle: numberOrUndefined(medicine.ml_per_bottle),
@@ -416,12 +604,14 @@ export default function AddMedicine() {
       mrp: decimalStringOrUndefined(medicine.mrp),
     };
 
+    const resolvedQuantityUom = batch.quantity_uom || medicine.selling_uom;
     const batchPayload = {
+      ...(batch.id ? { id: batch.id } : {}),
       batch_number: batch.batch_number.trim(),
       mfg_date: batch.mfg_date || undefined,
       expiry_date: batch.expiry_date,
       quantity: Number(batch.quantity),
-      quantity_uom: Number(batch.quantity_uom),
+      quantity_uom: resolvedQuantityUom ? Number(resolvedQuantityUom) : undefined,
       purchase_price: decimalStringOrUndefined(batch.purchase_price),
     };
     return {
@@ -445,8 +635,12 @@ export default function AddMedicine() {
     const payload = buildPayload();
     setSubmitting(true);
     try {
-      const response = await fetchWithAuthRetry(ADD_MEDICINE_API, {
-        method: "POST",
+      const endpoint =
+        isEdit && payload.batch.id
+          ? MEDICINE_DETAIL_API(payload.batch.id)
+          : ADD_MEDICINE_API;
+      const response = await fetchWithAuthRetry(endpoint, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -460,10 +654,10 @@ export default function AddMedicine() {
         }
         return;
       }
-      nav("/inventory/medicines", {
-        state: { flash: `Medicine ${body?.medicine?.name || ""} added successfully.` },
-        replace: true,
-      });
+      handleSuccess(
+        body,
+        `Medicine ${body?.medicine?.name || ""} ${isEdit ? "updated" : "added"} successfully.`
+      );
     } catch (err) {
       console.error("Add medicine failed", err);
       setServerError("Network error. Please try again.");
@@ -472,33 +666,65 @@ export default function AddMedicine() {
     }
   };
 
-  return (
-    <div className="inv-form-wrap">
-      <div className="inv-form-header">
-        <button className="btn-secondary" type="button" onClick={() => nav(-1)}>
-          ← Back
-        </button>
-        <h2>Add New Medicine</h2>
-        <p>Create the product master and its opening batch in one step</p>
-      </div>
+  const handleStockAdjustment = async () => {
+    setAdjustError("");
+    setAdjustSuccess("");
+    if (!adjustQty || Number(adjustQty) === 0) {
+      setAdjustError("Enter a non-zero quantity.");
+      return;
+    }
+    if (!batch.id) {
+      setAdjustError("Batch id missing.");
+      return;
+    }
+    setAdjustLoading(true);
+    try {
+      const payload = {
+        location_id: resolvedLocationId || DEFAULT_LOCATION_ID,
+        batch_lot_id: batch.id,
+        qty_change_base: adjustQty,
+        reason: "ADJUSTMENT",
+      };
+      const res = await fetchWithAuthRetry(MOVEMENT_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || `Adjustment failed (${res.status})`);
+      }
+      setAdjustSuccess("Stock updated successfully.");
+      setAdjustQty("");
+      await refreshCurrentStock();
+      dispatchInventoryRefresh();
+    } catch (err) {
+      setAdjustError(err.message || "Failed to update stock.");
+    } finally {
+      setAdjustLoading(false);
+    }
+  };
 
-      <div className="inv-form-card">
-        {serverError && <div className="inv-error-banner">{serverError}</div>}
-        {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data…</div>}
+  if (isDrawer && !open) {
+    return null;
+  }
 
-        <form className="grid2" onSubmit={handleSubmit}>
-          <div className="field">
-            <label>Location ID *</label>
-            <input
-              name="location_id"
-              type="number"
-              value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              className={errors.location_id ? "error" : ""}
-            />
-            {renderFieldError("location_id")}
-          </div>
+  const header = (
+    <div className="inv-form-header">
+      <button className="btn-secondary" type="button" onClick={handleClose}>
+        {isDrawer ? "Close" : "Back"}
+      </button>
+      <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>
+      <p>Create the product master and its opening batch in one step</p>
+    </div>
+  );
 
+  const formContent = (
+    <div className="inv-form-card">
+      {serverError && <div className="inv-error-banner">{serverError}</div>}
+      {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data…</div>}
+
+      <form className="grid2" onSubmit={handleSubmit}>
           <div className="field">
             <label>Medicine Name *</label>
             <input
@@ -608,19 +834,6 @@ export default function AddMedicine() {
           </div>
 
           <div className="field">
-            <label>Reorder Level *</label>
-            <input
-              name="reorder_level"
-              type="number"
-              min="0"
-              value={medicine.reorder_level}
-              onChange={handleMedicineChange}
-              className={errors.reorder_level ? "error" : ""}
-            />
-            {renderFieldError("reorder_level")}
-          </div>
-
-          <div className="field">
             <label>GST %</label>
             <input name="gst_percent" value={medicine.gst_percent} onChange={handleMedicineChange} />
             {renderFieldError("gst_percent")}
@@ -678,6 +891,8 @@ export default function AddMedicine() {
               value={batch.quantity}
               onChange={handleBatchChange}
               className={errors.quantity ? "error" : ""}
+              readOnly={isEdit}
+              disabled={isEdit}
             />
             {renderFieldError("quantity")}
             {totalBaseUnits != null && (
@@ -741,16 +956,70 @@ export default function AddMedicine() {
             {renderFieldError("expiry_date")}
           </div>
 
-          <div style={{ gridColumn: "1 / 3", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" className="btn-secondary" onClick={() => nav("/inventory/medicines")}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Medicine"}
-            </button>
+        <div style={{ gridColumn: "1 / 3", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={(evt) => {
+              evt.preventDefault();
+              handleClose();
+            }}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn-primary" disabled={submitting}>
+            {submitting ? "Saving..." : "Save Medicine"}
+          </button>
+        </div>
+      </form>
+      {isEdit && (
+        <div className="inv-form-card" style={{ marginTop: 20 }}>
+          <h3 className="section-title">Stock Adjustment</h3>
+          <div className="section-line" />
+          <p className="small-muted">
+            Current stock (base units): <strong>{currentStock ?? "0"}</strong>
+          </p>
+          <div className="field">
+            <label>Adjust by (base units)</label>
+            <input
+              type="number"
+              step="any"
+              value={adjustQty}
+              onChange={(e) => setAdjustQty(e.target.value)}
+              placeholder="e.g., 100 or -50"
+            />
           </div>
-        </form>
+          {adjustError && <div className="err">{adjustError}</div>}
+          {adjustSuccess && <div className="hint" style={{ color: "#047857" }}>{adjustSuccess}</div>}
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleStockAdjustment}
+            disabled={adjustLoading}
+            style={{ marginTop: 12 }}
+          >
+            {adjustLoading ? "Updating..." : "Update Stock"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isDrawer) {
+    return (
+      <div className="drawer-backdrop">
+        <div className="drawer-panel">
+          {header}
+          {formContent}
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="inv-form-wrap">
+      {header}
+      {formContent}
     </div>
   );
 }

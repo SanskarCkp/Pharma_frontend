@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import "./createorder.css";
 import { authFetch } from "../../../api/http";
+import { getDefaultLocationId } from "../../../config/location";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
 const CreateOrder = () => {
   const navigate = useNavigate();
@@ -136,7 +138,6 @@ const CreateOrder = () => {
       units_per_pack: 1,
       base_unit_step: 1,
       gst_percent: 0,
-      reorder_level: 0,
       description: "",
       storage_instructions: "",
       is_sensitive: false,
@@ -216,7 +217,7 @@ const CreateOrder = () => {
 
     const payload = {
       vendor: Number(vendorData.id),
-      location: Number(vendorData.default_location || vendorData.location_id || 1),
+      location: DEFAULT_LOCATION_ID,
       order_date: orderDate,
       expected_date: expectedDate || null,
       status: "DRAFT",
@@ -225,7 +226,7 @@ const CreateOrder = () => {
     };
 
     try {
-      const res = await authFetch(`${API_BASE}api/v1/procurement/purchase-orders/`, {
+      const res = await authFetch(`${API_BASE}/api/v1/procurement/purchase-orders/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

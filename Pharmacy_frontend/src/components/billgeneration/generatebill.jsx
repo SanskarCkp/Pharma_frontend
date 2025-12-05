@@ -1,196 +1,357 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
+import { getDefaultLocationId } from "../../config/location";
 
 const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
-const BILLING_MEDICINES_URL = apiUrl("sales/billing/medicines/");
-const BATCHES_URL = apiUrl("catalog/batches/");
+const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
+const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/`);
 const INVOICES_URL = apiUrl("sales/invoices/");
+
+const numberOrZero = (value, digits = null) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  if (digits === null) return num;
+  return Number(num.toFixed(digits));
+};
+
+const formatCurrency = (value) => {
+  const num = numberOrZero(value, 2);
+  return `Rs.${num.toFixed(2)}`;
+};
+
+const qtyToString = (value) => {
+  const num = numberOrZero(value, 3);
+  return num.toFixed(3);
+};
+
+const deriveUnitsPerPack = (med = {}) => {
+  const parse = (v) => numberOrZero(v);
+  if (med.units_per_pack) {
+    const n = parse(med.units_per_pack);
+    if (n > 0) return n;
+  }
+  const tabletsPerStrip = parse(med.tablets_per_strip);
+  const stripsPerBox = parse(med.strips_per_box);
+  if (tabletsPerStrip && stripsPerBox) {
+    return tabletsPerStrip * stripsPerBox;
+  }
+  if (tabletsPerStrip) return tabletsPerStrip;
+  return 1;
+};
 
 export default function GenerateBill() {
   const navigate = useNavigate();
+  const locationId = getDefaultLocationId();
 
-  const [customer, setCustomer] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    city: "",
-  });
-
+  const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "" });
   const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState([]);
-  const [gst, setGst] = useState(12);
-
-  // NEW STATES 🔥
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [uomType, setUomType] = useState("LOOSE");
+  const [selectedUomKey, setSelectedUomKey] = useState("BASE");
   const [qtyInput, setQtyInput] = useState(1);
-  const [unitsPerStrip, setUnitsPerStrip] = useState(10);
-
-  // Payment
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState("");
   const [amountPaying, setAmountPaying] = useState("");
+  const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
-  const locationId = 1;
+  const dispatchInventoryRefresh = () => {
+    try {
+      window.dispatchEvent(new CustomEvent("inventory:refresh"));
+    } catch {
+      /* ignore */
+    }
+  };
 
-  // ------------------ FETCH PAYMENT METHODS ------------------
   useEffect(() => {
-    async function loadPM() {
+    const handler = () => setInventoryRefreshTick((prev) => prev + 1);
+    window.addEventListener("inventory:refresh", handler);
+    return () => window.removeEventListener("inventory:refresh", handler);
+  }, []);
+
+  useEffect(() => {
+    async function loadPaymentMethods() {
       try {
         const res = await authFetch(PAYMENT_METHODS_URL);
         const data = await res.json();
-        const items = Array.isArray(data) ? data : data.results || [];
-        setPaymentMethods(items);
-      } catch {
+        const list = Array.isArray(data) ? data : data.results || [];
+        setPaymentMethods(list);
+      } catch (err) {
+        console.error(err);
         setPaymentMethods([]);
       }
     }
-    loadPM();
+    loadPaymentMethods();
   }, []);
 
-  // ------------------ FETCH PRODUCTS ------------------
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetchProducts() {
+      setProductsLoading(true);
+      setProductsError("");
       try {
-        const params = new URLSearchParams({
-          location_id: String(locationId),
-          q: searchTerm || "",
-        });
-
-        const res = await authFetch(
-          `${BILLING_MEDICINES_URL}?${params.toString()}`,
-          { signal: controller.signal }
-        );
-        if (!res.ok) return setProducts([]);
-
+        const params = new URLSearchParams();
+        if (locationId) params.set("location_id", String(locationId));
+        if (searchTerm) params.set("q", searchTerm.trim());
+        params.set("status", "IN_STOCK");
+        const res = await authFetch(`${INVENTORY_GLOBAL_URL}?${params.toString()}`, { signal: controller.signal });
+        if (!res.ok) {
+          throw new Error(`Failed to load inventory (${res.status})`);
+        }
         const data = await res.json();
+        const list = Array.isArray(data) ? data : data.results || [];
         setProducts(
-          data.map((p) => ({
-            id: p.product_id,
-            name: p.name,
-            mrp: Number(p.mrp || 0),
-            gstPercent: Number(p.gst_percent || 0),
-            stock: p.stock || 0,
-            units_per_strip: p.units_per_strip || 10,
+          list.map((row) => ({
+            batch_id: row.batch_id,
+            batch_number: row.batch_number,
+            product_id: row.product_id,
+            name: row.medicine_name || row.medicine_id || "",
+            stock_base: numberOrZero(row.quantity),
+            mrp: numberOrZero(row.mrp, 2),
+            base_uom: row.uom || "units",
+            rack: row.rack || "",
+            status: row.status,
           }))
         );
-      } catch (e) {
-        if (e.name !== "AbortError") setProducts([]);
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        console.error(err);
+        setProducts([]);
+        setProductsError(err.message || "Unable to load inventory");
+      } finally {
+        setProductsLoading(false);
       }
     }
 
     fetchProducts();
     return () => controller.abort();
-  }, [searchTerm]);
+  }, [searchTerm, inventoryRefreshTick, locationId]);
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  async function fetchBatchLotId(productId) {
-    try {
-      const res = await authFetch(`${BATCHES_URL}?product_id=${productId}`);
-      const data = await res.json();
-      const rows = Array.isArray(data) ? data : data.results || [];
-      return rows.length ? rows[0].id : null;
-    } catch {
-      return null;
+  const fetchBatchDetail = async (batchId) => {
+    const params = new URLSearchParams();
+    if (locationId) params.set("location_id", String(locationId));
+    const res = await authFetch(
+      params.toString() ? `${MEDICINE_DETAIL_URL(batchId)}?${params.toString()}` : MEDICINE_DETAIL_URL(batchId)
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Unable to fetch batch detail");
     }
-  }
+    return res.json();
+  };
 
-  // ---------------------------------------------
-  // NEW FLOW: WHEN PRODUCT CLICKED → OPEN UOM CARD
-  // ---------------------------------------------
-  const openUOMCard = (product) => {
-    setSelectedProduct(product);
-    setUnitsPerStrip(product.units_per_strip || 10);
-    setUomType("LOOSE");
+  const openUOMCard = async (product) => {
+    if (!product?.batch_id) return;
+    setLoadingDetail(true);
+    setSelectedProduct(null);
+    try {
+      const detail = await fetchBatchDetail(product.batch_id);
+      const medicine = detail.medicine || {};
+      const inventory = detail.inventory || {};
+      const baseLabel = medicine.base_uom?.name || product.base_uom || "Units";
+      const sellingLabel = medicine.selling_uom?.name || "";
+      const gstPercent = numberOrZero(medicine.gst_percent);
+      const packPrice = numberOrZero(medicine.mrp || product.mrp, 2);
+      const unitsPerPack = Math.max(1, deriveUnitsPerPack(medicine));
+      const ratePerBase = unitsPerPack > 0 ? packPrice / unitsPerPack : packPrice;
+      const availableBase = numberOrZero(inventory.stock_on_hand_base || product.stock_base || 0);
+
+      const options = [];
+      if (unitsPerPack > 0) {
+        const packLabelText = sellingLabel?.trim()
+          ? sellingLabel.trim()
+          : `${baseLabel} Pack`;
+        options.push({
+          key: "PACK",
+          code: "PACK",
+          displayLabel: `${packLabelText} (${unitsPerPack} ${baseLabel})`,
+          factor: unitsPerPack,
+        });
+      }
+      options.push({
+        key: "BASE",
+        code: "BASE",
+        displayLabel: `${baseLabel} (base)`,
+        factor: 1,
+      });
+
+      const detailData = {
+        batch_id: product.batch_id,
+        batch_number: product.batch_number,
+        product_id: product.product_id,
+        name: medicine.name || product.name,
+        gstPercent,
+        packPrice,
+        ratePerBase,
+        availableBase,
+        baseLabel,
+        uomOptions: options,
+      };
+
+      setSelectedProduct(detailData);
+      setSelectedUomKey(options[0]?.key || "BASE");
+      setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Unable to load medicine details. Please try again.");
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const selectedOption = selectedProduct?.uomOptions?.find((o) => o.key === selectedUomKey) || null;
+  const maxQtyForSelected = useMemo(() => {
+    if (!selectedProduct || !selectedOption) return undefined;
+    if (!selectedProduct.availableBase || selectedProduct.availableBase <= 0) return 0;
+    const factor = selectedOption.factor || 1;
+    if (factor <= 0) return undefined;
+    return Math.floor(selectedProduct.availableBase / factor);
+  }, [selectedProduct, selectedOption]);
+
+  useEffect(() => {
+    if (!selectedProduct || maxQtyForSelected === undefined) return;
+    if (maxQtyForSelected === 0) {
+      setQtyInput(0);
+    } else if (qtyInput <= 0) {
+      setQtyInput(1);
+    } else if (qtyInput > maxQtyForSelected) {
+      setQtyInput(maxQtyForSelected);
+    }
+  }, [selectedProduct, maxQtyForSelected]);
+
+  const addProductWithUOM = () => {
+    if (!selectedProduct || !selectedOption) return;
+    if (!maxQtyForSelected || maxQtyForSelected <= 0) {
+      alert("No stock available for this unit.");
+      return;
+    }
+    const qty = Math.max(1, Math.min(qtyInput || 1, maxQtyForSelected));
+    const conversionFactor = selectedOption.factor || 1;
+    const qtyBase = qty * conversionFactor;
+    const soldLabel = selectedOption.displayLabel;
+    const soldCode = selectedOption.code;
+    const unitPrice = soldCode === "PACK" ? selectedProduct.packPrice : selectedProduct.ratePerBase;
+
+    setCart((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((item) => item.batch_id === selectedProduct.batch_id);
+      const line = {
+        batch_id: selectedProduct.batch_id,
+        batch_number: selectedProduct.batch_number,
+        product_id: selectedProduct.product_id,
+        name: selectedProduct.name,
+        gstPercent: selectedProduct.gstPercent,
+        packPrice: selectedProduct.packPrice,
+        ratePerBase: selectedProduct.ratePerBase,
+        unitPrice,
+        qty,
+        qty_base: qtyBase,
+        sold_uom_code: soldCode,
+        sold_uom_label: soldLabel,
+        conversionFactor,
+        availableBase: selectedProduct.availableBase,
+      };
+      if (idx >= 0) {
+        next[idx] = line;
+      } else {
+        next.push(line);
+      }
+      return next;
+    });
+    setSelectedProduct(null);
+    setSelectedUomKey("BASE");
     setQtyInput(1);
   };
 
-  const addProductWithUOM = async () => {
-    if (!selectedProduct) return;
-
-    const batchLotId = await fetchBatchLotId(selectedProduct.id);
-
-    const qtyBase =
-      uomType === "LOOSE"
-        ? qtyInput
-        : qtyInput * selectedProduct.units_per_strip;
-
-    setCart((prev) => [
-      ...prev,
-      {
-        ...selectedProduct,
-        qty: qtyInput,
-        qty_base: qtyBase,
-        sold_uom: uomType,
-        batch_lot_id: batchLotId,
-      },
-    ]);
-
-    setSelectedProduct(null);
-  };
-
-  // -------------------- UPDATED FUNCTION 🔥 --------------------
-  const updateQty = (id, delta) => {
-    setCart(
-      cart.map((item) => {
-        if (item.id !== id) return item;
-
-        const newQty = Math.max(1, item.qty + delta);
-
-        const newQtyBase =
-          item.sold_uom === "LOOSE"
-            ? newQty
-            : newQty * (item.units_per_strip || 10);
-
+  const updateQty = (batchId, delta) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.batch_id !== batchId) return item;
+        const desired = Math.max(1, item.qty + delta);
+        const maxQty = item.conversionFactor > 0 && item.availableBase
+          ? Math.max(1, Math.floor(item.availableBase / item.conversionFactor))
+          : undefined;
+        const qty = maxQty ? Math.min(desired, maxQty) : desired;
         return {
           ...item,
-          qty: newQty,
-          qty_base: newQtyBase,
+          qty,
+          qty_base: qty * (item.conversionFactor || 1),
         };
       })
     );
   };
 
-  const removeItem = (id) => setCart(cart.filter((item) => item.id !== id));
+  const removeItem = (batchId) => {
+    setCart((prev) => prev.filter((item) => item.batch_id !== batchId));
+  };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.mrp * item.qty, 0);
-  const gstAmount = (subtotal * gst) / 100;
-  const total = subtotal + gstAmount;
+  const totals = useMemo(() => {
+    let subtotal = 0;
+    let taxAmount = 0;
+    cart.forEach((item) => {
+      const lineSubtotal = numberOrZero(item.unitPrice) * numberOrZero(item.qty);
+      subtotal += lineSubtotal;
+      const pct = numberOrZero(item.gstPercent);
+      taxAmount += lineSubtotal * (pct / 100);
+    });
+    return { subtotal, taxAmount, total: subtotal + taxAmount };
+  }, [cart]);
 
-  // ------------------ SUBMIT INVOICE ------------------
-  const submitInvoice = async (paymentMethodId, amountPaid) => {
-    if (!customer.name || !customer.phone) {
-      alert("Please fill customer name and phone.");
+  useEffect(() => {
+    if (!cart.length) {
+      setAmountPaying("");
       return;
     }
-    if (cart.length === 0) {
-      alert("Cart is empty. Please add products.");
+    if (!amountPaying) {
+      const amt = totals.total;
+      if (amt > 0) {
+        setAmountPaying(numberOrZero(amt, 2).toFixed(2));
+      }
+    }
+  }, [cart, totals.total]);
+
+  const submitInvoice = async () => {
+    if (submitting) return;
+    if (!customer.name || !customer.phone || !customer.city) {
+      alert("Customer name, phone, and city are required.");
+      return;
+    }
+    if (!cart.length) {
+      alert("Cart is empty. Please add medicines.");
+      return;
+    }
+    if (!selectedMethod) {
+      alert("Select a payment method.");
+      return;
+    }
+    const amountPaid = parseFloat(amountPaying);
+    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+      alert("Enter a valid payment amount.");
       return;
     }
 
-    const withoutBatch = cart.filter((item) => !item.batch_lot_id);
-    if (withoutBatch.length) {
-      alert("Some items do not have stock batches. Add stock before billing.");
+    const missingBatch = cart.find((item) => !item.batch_id);
+    if (missingBatch) {
+      alert("One or more items are missing batch information. Remove them and try again.");
       return;
     }
 
     const lines = cart.map((item) => ({
-      product: item.id,
-      batch_lot: item.batch_lot_id,
-      qty_base: String(item.qty_base || item.qty),
-      sold_uom: item.sold_uom || "BASE",
-      rate_per_base: String(item.mrp),
+      product: item.product_id,
+      batch_lot: item.batch_id,
+      qty_base: qtyToString(item.qty_base),
+      sold_uom: item.sold_uom_code || "BASE",
+      rate_per_base: numberOrZero(item.ratePerBase, 4).toFixed(4),
       discount_amount: "0",
-      tax_percent: String(item.gstPercent || gst),
+      tax_percent: numberOrZero(item.gstPercent, 2).toFixed(2),
     }));
 
     const payload = {
@@ -201,28 +362,34 @@ export default function GenerateBill() {
       customer_email: customer.email || "",
       customer_city: customer.city || "",
       lines,
-      payment_method: paymentMethodId,
-      amount_paid: amountPaid !== undefined ? amountPaid : total,
+      payment_method: selectedMethod,
+      amount_paid: amountPaid,
     };
 
     try {
+      setSubmitting(true);
       const res = await authFetch(INVOICES_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
-        const t = await res.text();
-        alert("Invoice failed: " + t);
-        return;
+        const text = await res.text();
+        throw new Error(text || `Invoice failed (${res.status})`);
       }
-
-      const invoice = await res.json();
-      navigate(`/billgeneration/invoice/${invoice.id}`);
-    } catch (e) {
-      alert("Payment failed");
-      console.error(e);
+      const data = await res.json();
+      dispatchInventoryRefresh();
+      setCart([]);
+      setSelectedProduct(null);
+      setAmountPaying("");
+      setSelectedMethod("");
+      setSearchTerm("");
+      navigate(`/billgeneration/invoice/${data.id}`);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Unable to submit invoice");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -235,58 +402,33 @@ export default function GenerateBill() {
 
   return (
     <div className="billgeneration-page" style={{ maxWidth: "1200px", margin: "auto", padding: "1rem" }}>
-      <h1 className="page-title" style={{ fontWeight: "600", marginBottom: "1.5rem" }}>
+      <h1 className="page-title" style={{ fontWeight: 600, marginBottom: "1.5rem" }}>
         Billing & Invoicing
       </h1>
 
       <div className="grid-container" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", fontSize: "0.9rem" }}>
-        
-        {/* CUSTOMER INFO */}
         <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Customer Information</h3>
-          <label>Customer Name</label>
-          <input
-            type="text"
-            value={customer.name}
-            placeholder="Enter customer name"
-            onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-          />
-          <label style={{ marginTop: "0.75rem" }}>Phone</label>
-          <input
-            type="text"
-            value={customer.phone}
-            placeholder="Phone number"
-            onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
-          />
+          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Customer Information</h3>
+          <label>Customer Name *</label>
+          <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="Enter customer name" />
+          <label style={{ marginTop: "0.75rem" }}>Phone *</label>
+          <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone number" />
           <label style={{ marginTop: "0.75rem" }}>Email</label>
-          <input
-            type="email"
-            value={customer.email}
-            placeholder="Customer email"
-            onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
-          />
-          <label style={{ marginTop: "0.75rem" }}>City</label>
-          <input
-            type="text"
-            value={customer.city}
-            placeholder="Customer city"
-            onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
-          />
+          <input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Customer email" />
+          <label style={{ marginTop: "0.75rem" }}>City *</label>
+          <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Customer city" />
         </div>
 
-        {/* MEDICINES */}
         <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Select Medicines</h3>
-          <input
-            type="text"
-            placeholder="Search medicines..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <div style={{ maxHeight: "360px", overflowY: "auto" }}>
-            {filteredProducts.map((product) => (
+          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Select Medicines</h3>
+          <input type="text" placeholder="Search medicines..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <div style={{ maxHeight: "360px", overflowY: "auto", marginTop: "0.75rem" }}>
+            {productsLoading && <p>Loading medicines...</p>}
+            {!productsLoading && productsError && <p style={{ color: "#dc2626" }}>{productsError}</p>}
+            {!productsLoading && !productsError && !products.length && <p>No medicines available.</p>}
+            {products.map((product) => (
               <div
-                key={product.id}
+                key={product.batch_id}
                 style={{
                   marginBottom: "0.5rem",
                   padding: "0.75rem",
@@ -294,15 +436,15 @@ export default function GenerateBill() {
                   borderRadius: "6px",
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
                 <div>
                   <strong>{product.name}</strong>
                   <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                    Stock: {product.stock} | ₹{product.mrp}
+                    Batch: {product.batch_number || "-"} | Stock: {product.stock_base} {product.base_uom}
                   </div>
                 </div>
-
                 <button
                   onClick={() => openUOMCard(product)}
                   style={{
@@ -313,6 +455,7 @@ export default function GenerateBill() {
                     padding: "0.25rem 0.75rem",
                     fontSize: "1.3rem",
                   }}
+                  title="Add to bill"
                 >
                   +
                 </button>
@@ -321,36 +464,55 @@ export default function GenerateBill() {
           </div>
         </div>
 
-        {/* CART */}
         <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Cart Items</h3>
-          {/* --- UOM Selection Card Appears Inside Cart --- */}
+          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Cart Items</h3>
+          {loadingDetail && <p>Loading medicine details...</p>}
           {selectedProduct && (
-            <div className="uom-card" style={{ marginBottom: "1rem", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "8px", background: "#f3f4f6" }}>
-              <h4>Select UOM for <span style={{ color: "#22c55e" }}>{selectedProduct.name}</span></h4>
-              <label>Choose UOM</label>
-              <select value={uomType} onChange={(e) => setUomType(e.target.value)}>
-                <option value="LOOSE">Loose</option>
-                <option value="STRIP">Strip</option>
+            <div className="uom-card" style={{ marginBottom: "1rem", border: "1px solid #e5e7eb", padding: "12px", borderRadius: "8px", background: "#f3f4f6" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h4 style={{ margin: 0 }}>Sell {selectedProduct.name}</h4>
+                <button onClick={() => setSelectedProduct(null)} style={{ border: "none", background: "transparent", fontSize: "1.1rem" }}>x</button>
+              </div>
+              <p style={{ fontSize: "0.8rem", color: "#555" }}>
+                Available: {numberOrZero(selectedProduct.availableBase)} {selectedProduct.baseLabel}
+              </p>
+              <label>Unit of Measure</label>
+              <select value={selectedUomKey} onChange={(e) => setSelectedUomKey(e.target.value)}>
+                {selectedProduct.uomOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.displayLabel}
+                  </option>
+                ))}
               </select>
-              {uomType === "STRIP" && (
-                <p style={{ fontSize: "0.8rem", color: "#555" }}>
-                  Units per strip: {selectedProduct.units_per_strip}
-                </p>
-              )}
-              <label>Enter Quantity</label>
+              <label style={{ marginTop: "0.5rem" }}>Quantity</label>
               <input
                 type="number"
-                min="1"
+                min={maxQtyForSelected && maxQtyForSelected > 0 ? 1 : 0}
                 value={qtyInput}
-                onChange={(e) => setQtyInput(Number(e.target.value))}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (!Number.isFinite(val)) {
+                    setQtyInput(1);
+                    return;
+                  }
+                  const max = maxQtyForSelected;
+                  if (max !== undefined && max > 0) {
+                    setQtyInput(Math.max(1, Math.min(val, max)));
+                  } else {
+                    setQtyInput(Math.max(0, val));
+                  }
+                }}
               />
+              {maxQtyForSelected !== undefined && (
+                <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                  {maxQtyForSelected > 0 ? `Max available: ${maxQtyForSelected}` : "Out of stock for this unit"}
+                </p>
+              )}
               <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-                <button onClick={addProductWithUOM} className="generate-btn">Add to Cart</button>
-                <button
-                  onClick={() => setSelectedProduct(null)}
-                  style={{ background: "red", color: "#fff", padding: "10px", borderRadius: "6px", border: "none" }}
-                >
+                <button onClick={addProductWithUOM} className="generate-btn" disabled={!maxQtyForSelected || maxQtyForSelected <= 0}>
+                  Add to Cart
+                </button>
+                <button onClick={() => setSelectedProduct(null)} style={{ background: "#f87171", color: "#fff", padding: "10px", borderRadius: "6px", border: "none" }}>
                   Cancel
                 </button>
               </div>
@@ -371,27 +533,26 @@ export default function GenerateBill() {
               </thead>
               <tbody>
                 {cart.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.batch_id}>
                     <td>
                       {item.name}
                       <br />
                       <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                        ({item.sold_uom})
+                        Batch {item.batch_number || "-"} ({item.sold_uom_label})
                       </span>
                     </td>
                     <td style={{ textAlign: "center" }}>
-                      <button onClick={() => updateQty(item.id, -1)}>−</button>
+                      <button onClick={() => updateQty(item.batch_id, -1)} disabled={item.qty <= 1}>
+                        -
+                      </button>
                       <span style={{ margin: "0 6px" }}>{item.qty}</span>
-                      <button onClick={() => updateQty(item.id, 1)}>+</button>
+                      <button onClick={() => updateQty(item.batch_id, 1)}>+</button>
                     </td>
-                    <td>₹{item.mrp.toFixed(2)}</td>
-                    <td>₹{(item.qty * item.mrp).toFixed(2)}</td>
+                    <td>{formatCurrency(item.unitPrice)}</td>
+                    <td>{formatCurrency(item.unitPrice * item.qty)}</td>
                     <td>
-                      <button
-                        style={{ color: "red", fontSize: "1.2rem" }}
-                        onClick={() => removeItem(item.id)}
-                      >
-                        ×
+                      <button style={{ color: "#dc2626" }} onClick={() => removeItem(item.batch_id)}>
+                        Remove
                       </button>
                     </td>
                   </tr>
@@ -401,37 +562,23 @@ export default function GenerateBill() {
           )}
         </div>
 
-        {/* SUMMARY */}
         <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: "600" }}>Bill Summary</h3>
+          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Bill Summary</h3>
           <p style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Subtotal:</span> <strong>₹{subtotal.toFixed(2)}</strong>
+            <span>Subtotal:</span> <strong>{formatCurrency(totals.subtotal)}</strong>
           </p>
           <p style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>GST ({gst}%):</span> <strong>₹{gstAmount.toFixed(2)}</strong>
+            <span>GST:</span> <strong>{formatCurrency(totals.taxAmount)}</strong>
           </p>
           <hr />
-          <p
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "1.2rem",
-            }}
-          >
-            <strong>Total:</strong> <strong>₹{total.toFixed(2)}</strong>
+          <p style={{ display: "flex", justifyContent: "space-between", fontSize: "1.2rem" }}>
+            <strong>Total:</strong> <strong>{formatCurrency(totals.total)}</strong>
           </p>
 
-          {/* PAYMENT METHOD */}
           <div style={{ marginTop: "1rem" }}>
-            <label style={{ fontWeight: "600" }}>Select Payment Method</label>
+            <label style={{ fontWeight: 600 }}>Payment Method</label>
             <select
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                marginTop: "0.4rem",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-              }}
+              style={{ width: "100%", padding: "0.6rem", marginTop: "0.4rem", borderRadius: "8px", border: "1px solid #ccc" }}
               value={selectedMethod}
               onChange={(e) => setSelectedMethod(e.target.value)}
             >
@@ -444,31 +591,24 @@ export default function GenerateBill() {
             </select>
           </div>
 
-          {/* AMOUNT */}
           <div style={{ marginTop: "1rem" }}>
-            <label style={{ fontWeight: "600" }}>Amount Paying</label>
+            <label style={{ fontWeight: 600 }}>Amount Paying</label>
             <input
               type="number"
               placeholder="Enter Amount"
               value={amountPaying}
               onChange={(e) => setAmountPaying(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                marginTop: "0.4rem",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-              }}
+              style={{ width: "100%", padding: "0.6rem", marginTop: "0.4rem", borderRadius: "8px", border: "1px solid #ccc" }}
             />
           </div>
 
           <button
             className="generate-btn"
             style={{ width: "100%", marginTop: "1rem" }}
-            onClick={() => submitInvoice(selectedMethod, parseFloat(amountPaying))}
-            disabled={!selectedMethod || !amountPaying}
+            onClick={submitInvoice}
+            disabled={submitting || !cart.length}
           >
-            Complete Payment
+            {submitting ? "Processing..." : "Complete Payment"}
           </button>
         </div>
       </div>

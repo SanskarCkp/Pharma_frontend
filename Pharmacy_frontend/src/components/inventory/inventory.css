@@ -201,3 +201,65 @@ button.btn.primary {
 .custom-popup-content button:hover {
   background: #0c71d1;
 }
+
+.inv-stock-adjust {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+
+.drawer-panel {
+  width: min(520px, 100%);
+  max-height: 100vh;
+  overflow-y: auto;
+  background: #fff;
+  padding: 20px;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+}
+
+.inv-detail-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.inv-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.inv-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.info-label {
+  color: #6b7280;
+}
+
+.info-value {
+  font-weight: 600;
+}

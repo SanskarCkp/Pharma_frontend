@@ -196,6 +196,7 @@ const ReceiveItems = () => {
           }
           const last = prefillKey ? lastDetails[prefillKey] : {};
           const prodMaster = productDetailsMap[productId] || {};
+          const orderUom = item.uom || item.uom_code || "";
           return {
             id: item.id || idx,
             po_line: item.id,
@@ -211,8 +212,8 @@ const ReceiveItems = () => {
             medicine_form: last?.medicine_form || prodMaster.medicine_form || "",
             strength: last?.strength || prodMaster.strength || "",
             quantity: last?.quantity || prodMaster.quantity || "",
-            base_uom: last?.base_uom || prodMaster.base_uom || "",
-            selling_uom: last?.selling_uom || prodMaster.selling_uom || "",
+            base_uom: last?.base_uom || prodMaster.base_uom || orderUom || "",
+            selling_uom: last?.selling_uom || prodMaster.selling_uom || orderUom || "",
             hsn_code: last?.hsn_code || prodMaster.hsn_code || "",
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
             category: last?.category || "",
@@ -267,6 +268,9 @@ const ReceiveItems = () => {
       prev.map((row, i) => {
         if (i !== idx) return row;
         let updated = { ...row, [field]: value };
+        if (field === "received_packs") {
+          updated.quantity = value;
+        }
         if (field === "batch") {
           const batchKey = `${row.product_id}_${value || ""}`;
           const last = lastDetailsMapRef.current[batchKey];
@@ -323,6 +327,7 @@ const ReceiveItems = () => {
         unit_cost: Number(item.unit_cost || 0),
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
+        quantity_uom: item.selling_uom || item.base_uom || "",
         // include the new fields so GRN entry contains them
         medicine_form: item.medicine_form || "",
         strength: item.strength || "",
@@ -606,13 +611,14 @@ const ReceiveItems = () => {
                       />
                     </td>
 
-                    {/* Quantity */}
+                    {/* Quantity (auto-filled from received packs, non-editable) */}
                     <td>
                       <input
                         type="number"
                         min="0"
                         value={item.quantity || ""}
-                        onChange={(e) => handleItemEdit(idx, "quantity", e.target.value)}
+                        readOnly
+                        className="readonly-input"
                       />
                     </td>
 
@@ -623,11 +629,14 @@ const ReceiveItems = () => {
                         onChange={(e) => handleItemEdit(idx, "base_uom", e.target.value)}
                       >
                         <option value="">Select</option>
-                        {uoms.map((u) => (
-                          <option key={u.id || u.name} value={u.name || u.id}>
-                            {u.name || u.display || u.id}
-                          </option>
-                        ))}
+                        {uoms.map((u) => {
+                          const value = u.code || u.name || u.id;
+                          return (
+                            <option key={u.id || value} value={value}>
+                              {u.name || value}
+                            </option>
+                          );
+                        })}
                       </select>
                     </td>
 
@@ -638,11 +647,14 @@ const ReceiveItems = () => {
                         onChange={(e) => handleItemEdit(idx, "selling_uom", e.target.value)}
                       >
                         <option value="">Select</option>
-                        {uoms.map((u) => (
-                          <option key={u.id || u.name} value={u.name || u.id}>
-                            {u.name || u.display || u.id}
-                          </option>
-                        ))}
+                        {uoms.map((u) => {
+                          const value = u.code || u.name || u.id;
+                          return (
+                            <option key={u.id || value} value={value}>
+                              {u.name || value}
+                            </option>
+                          );
+                        })}
                       </select>
                     </td>
 
