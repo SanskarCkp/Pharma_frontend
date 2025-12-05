@@ -7,12 +7,36 @@ import BackupRestore from "./BackupRestore";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+// ---- AUTH HELPERS -------------------------------------------------
+
+// Read the token exactly as stored in localStorage
+const getToken = () => {
+  const token = localStorage.getItem("access_token"); // <-- your key
+  if (!token) {
+    console.warn("[AUTH] access_token not found in localStorage");
+  }
+  return token;
+};
+
+const getAuthHeaders = () => {
+  const token = getToken();
+  if (!token) return {};
+
+  // For JWT/SimpleJWT:
+  return { Authorization: `Bearer ${token}` };
+
+  // If you're using DRF TokenAuthentication instead, use:
+  // return { Authorization: `Token ${token}` };
+};
+
+// -------------------------------------------------------------------
+
 const SettingsDashboard = () => {
   const [activeSection, setActiveSection] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const [businessExists, setBusinessExists] = useState(false);
-  const [alertExists, setAlertExists] = useState(false); // ⭐ NEW — to choose POST/PUT
+  const [alertExists, setAlertExists] = useState(false);
 
   const settingsSections = [
     { name: "Business Details", icon: <Home size={24} /> },
@@ -49,7 +73,17 @@ const SettingsDashboard = () => {
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/business-profile/`);
+        console.log("[API] GET business-profile");
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/settings/business-profile/`,
+          {
+            method: "GET",
+            headers: {
+              ...getAuthHeaders(),
+            },
+          }
+        );
+
         if (res.ok) {
           const data = await res.json();
           setBusinessExists(true);
@@ -64,6 +98,16 @@ const SettingsDashboard = () => {
             pharmacy_license_number: data.pharmacy_license_number || "",
             drug_license_number: data.drug_license_number || "",
           });
+        } else if (res.status === 401) {
+          const text = await res.text();
+          console.error("❌ Unauthorized (business-profile):", text);
+        } else {
+          const text = await res.text();
+          console.error(
+            "❌ Failed to fetch business details. Status:",
+            res.status,
+            text
+          );
         }
       } catch (error) {
         console.error("❌ Error fetching business:", error);
@@ -72,7 +116,17 @@ const SettingsDashboard = () => {
 
     const fetchAlertSettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`);
+        console.log("[API] GET alert-thresholds");
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/settings/alert-thresholds/`,
+          {
+            method: "GET",
+            headers: {
+              ...getAuthHeaders(),
+            },
+          }
+        );
+
         if (res.ok) {
           const data = await res.json();
           setAlertExists(true);
@@ -85,6 +139,16 @@ const SettingsDashboard = () => {
             check_frequency: data.check_frequency || "",
             auto_remove_expired: data.auto_remove_expired || "Manually only",
           });
+        } else if (res.status === 401) {
+          const text = await res.text();
+          console.error("❌ Unauthorized (alert-thresholds):", text);
+        } else {
+          const text = await res.text();
+          console.error(
+            "❌ Failed to fetch alert settings. Status:",
+            res.status,
+            text
+          );
         }
       } catch (error) {
         console.error("❌ Error fetching alert data:", error);
@@ -113,21 +177,39 @@ const SettingsDashboard = () => {
     setLoading(true);
     try {
       const method = businessExists ? "PUT" : "POST";
+      console.log("[API]", method, "business-profile");
 
-      const response = await fetch(`${API_BASE_URL}/settings/business-profile/`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/settings/business-profile/`,
+        {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (response.ok) {
         alert("✅ Business details saved successfully!");
         setBusinessExists(true);
+      } else if (response.status === 401) {
+        const text = await response.text();
+        console.error("❌ Unauthorized (save business-profile):", text);
+        alert("❌ Unauthorized. Please log in again.");
       } else {
+        const text = await response.text();
+        console.error(
+          "❌ Failed to save business details. Status:",
+          response.status,
+          text
+        );
         alert("❌ Failed to save business details");
       }
     } catch (err) {
       console.error("Error:", err);
+      alert("❌ Failed to save business details");
     } finally {
       setLoading(false);
     }
@@ -141,17 +223,34 @@ const SettingsDashboard = () => {
 
     try {
       const method = alertExists ? "PUT" : "POST";
+      console.log("[API]", method, "alert-thresholds");
 
-      const response = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(alertData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/settings/alert-thresholds/`,
+        {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify(alertData),
+        }
+      );
 
       if (response.ok) {
         alert("✅ Alert thresholds saved!");
         setAlertExists(true);
+      } else if (response.status === 401) {
+        const text = await response.text();
+        console.error("❌ Unauthorized (save alert-thresholds):", text);
+        alert("❌ Unauthorized. Please log in again.");
       } else {
+        const text = await response.text();
+        console.error(
+          "❌ Failed to save alert settings. Status:",
+          response.status,
+          text
+        );
         alert("❌ Failed to save alert settings");
       }
     } catch (err) {
@@ -198,7 +297,11 @@ const SettingsDashboard = () => {
                   <label>{key.replace(/_/g, " ").toUpperCase()}</label>
 
                   {key === "address" ? (
-                    <textarea name={key} value={value} onChange={handleChange} />
+                    <textarea
+                      name={key}
+                      value={value}
+                      onChange={handleChange}
+                    />
                   ) : key === "registration_date" ? (
                     <input
                       type="date"
