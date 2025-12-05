@@ -90,7 +90,9 @@ const CreateOrder = () => {
         isNew: false,
       }));
 
-      setItems(normalized);
+      // ❗ FILTER OUT INVALID PRODUCTS
+      setItems(normalized.filter(item => item.id && item.name));
+
     } catch (err) {
       console.error("Fetch error:", err);
     }
@@ -116,75 +118,27 @@ const CreateOrder = () => {
 
   const handleAddProduct = () => setShowAddProduct(true);
 
-  const handleAddManualProduct = async () => {
+  const handleAddManualProduct = () => {
     if (!manualProductName.trim()) return alert("Enter product name");
     if (!manualQty || Number(manualQty) <= 0) return alert("Enter valid qty");
-    if (!manualCategory) return alert("Select category");
-    if (!manualUOM) return alert("Select UOM");
-    if (!vendorData?.id) return alert("Vendor not loaded");
-
-    const productPayload = {
-      code: generateProductCode(manualProductName.trim()),
+    // create a lightweight in-order item for manual entries
+    const newItem = {
+      uid: `m_${Date.now()}`,
+      id: null,
       name: manualProductName.trim(),
-      generic_name: "",
-      dosage_strength: "",
-      hsn: "",
-      schedule: "OTC",
-      pack_size: "",
-      manufacturer: "",
-      mrp: 0,
-      base_unit: manualUOM,
-      pack_unit: String(manualQty),
-      units_per_pack: 1,
-      base_unit_step: 1,
-      gst_percent: 0,
-      description: "",
-      storage_instructions: "",
-      is_sensitive: false,
-      is_active: true,
-      category: Number(manualCategory),
-      preferred_vendor: Number(vendorData.id),
+      quantity: Number(manualQty),
+      expected_unit_cost: 0,
+      category: manualCategory ? Number(manualCategory) : null,
+      uom: manualUOM || "",
+      isNew: true,
     };
 
-    try {
-      const productRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(productPayload),
-      });
-
-      if (!productRes.ok) {
-        const err = await productRes.json();
-        console.log("❌ Product Create Failed:", err);
-        alert("Product save failed");
-        return;
-      }
-
-      const created = await productRes.json();
-      const newItem = {
-        uid: `p_${created.id}`,
-        id: created.id,
-        name: created.name,
-        quantity: Number(manualQty),
-        expected_unit_cost: created.mrp || 0,
-        category:
-          typeof created.category === "object"
-            ? created.category.id
-            : created.category || Number(manualCategory),
-        uom: manualUOM,
-        isNew: false,
-      };
-
-      setItems((prev) => [...prev, newItem]);
-      setManualProductName("");
-      setManualQty(1);
-      setManualCategory("");
-      setManualUOM("");
-      setShowAddProduct(false);
-    } catch (err) {
-      console.error("Manual product error:", err);
-      alert("Error creating product");
-    }
+    setItems((prev) => [...prev, newItem]);
+    setManualProductName("");
+    setManualQty(1);
+    setManualCategory("");
+    setManualUOM("");
+    setShowAddProduct(false);
   };
 
   const handleQuantityChange = (uid, value) =>
@@ -200,30 +154,46 @@ const CreateOrder = () => {
   const handleDelete = (uid) =>
     setItems((prev) => prev.filter((it) => it.uid !== uid));
 
+  const toDDMMYYYY = (dateStr) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${d}-${m}-${y}`;
+  };
+
   const handleCreateOrder = async () => {
     if (!vendorData?.id) return alert("Vendor not loaded");
 
-    const orderRows = items.filter((r) => Number(r.quantity) > 0);
-    if (orderRows.length === 0) return alert("Add at least one product");
+  // REMOVE EMPTY / BROKEN ITEMS
+  const orderRows = items.filter(r =>
+    Number(r.quantity) > 0 && (r.id || r.name)
+  );
 
-    const lines = orderRows.map((r) => ({
-      product: r.id,
-      requested_name: "",
+  const lines = orderRows.map((r) => {
+    const line = {
       qty_packs_ordered: Number(r.quantity),
-      expected_unit_cost: r.expected_unit_cost || null,
+      expected_unit_cost: String(r.expected_unit_cost || 0),
       gst_percent_override: null,
       uom: r.uom || null,
-    }));
-
-    const payload = {
-      vendor: Number(vendorData.id),
-      location: DEFAULT_LOCATION_ID,
-      order_date: orderDate,
-      expected_date: expectedDate || null,
-      status: "DRAFT",
-      note: notes || "",
-      lines: lines,
     };
+
+    if (r.id) line.product = r.id;
+    else line.requested_name = r.name;
+    return line;
+  });
+
+  // SAFETY FILTER → remove any invalid line
+  const cleanedLines = lines.filter(
+    l => l.product || l.requested_name
+  );
+
+  const payload = {
+    vendor: Number(vendorData.id),
+    location: Number(vendorData.default_location || DEFAULT_LOCATION_ID),
+    order_date: orderDate,
+    expected_date: expectedDate || null,
+    note: notes || "",
+    lines: cleanedLines,
+  };
 
     try {
       const res = await authFetch(`${API_BASE}/api/v1/procurement/purchase-orders/`, {
@@ -234,13 +204,12 @@ const CreateOrder = () => {
 
       if (!res.ok) {
         const err = await res.json();
-        console.log("❌ PO Create Failed:", err);
-        setPopupMessage("Order creation failed!");
-        setShowPopup(true);
+        console.log("❌ PO Create Failed:", err);   // Print full backend error
+        alert(JSON.stringify(err, null, 2));        // Show full error in popup
         return;
       }
 
-      // ✅ Show success popup
+
       setPopupMessage("Order created successfully!");
       setShowPopup(true);
     } catch (err) {
@@ -249,7 +218,7 @@ const CreateOrder = () => {
       setShowPopup(true);
     }
   };
-
+  
   if (!vendorData) return null;
 
   return (
