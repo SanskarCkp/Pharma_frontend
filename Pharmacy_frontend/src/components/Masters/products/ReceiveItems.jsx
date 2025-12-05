@@ -506,237 +506,250 @@ const ReceiveItems = () => {
           </button>
         </div>
 
-        {/* ITEMS TABLE */}
-        <div className="kpi-card items-table-card">
-          <h3>Items Received</h3>
-          <table className="items-received-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Ordered</th>
-                <th> Received</th>
-                <th>Damaged</th>
-                <th>Batch</th>
+       {/* ITEMS TABLE */}
+<div className="kpi-card items-table-card">
+  <h3>Items Received</h3>
 
-                <th>Medicine Form</th>
-                <th>Strength</th>
-                <th>Quantity</th>
-                <th>Base UOM *</th>
-                <th>Selling UOM</th>
-                <th>HSN Code</th>
-                <th>GST %</th>
+  <table className="items-received-table">
+    <thead>
+      <tr>
+        <th>Product</th>
+                {/* ✅ ADDED */}
 
-                <th>Category</th>
-                <th>Rack No</th>
-                <th>Purchase Price</th>
-                <th>MRP</th>
+        <th>Ordered</th>
+        <th>Received</th>
+        <th>Damaged</th>
+        <th>Batch</th>
 
-                <th>MFG Date</th>
-                <th>Expiry Date</th>
-              </tr>
-            </thead>
+        <th>Medicine Form</th>
+        <th>Strength</th>
 
-            <tbody>
-              {itemsReceived.map((item, idx) => {
-                const rowKey = `${item.po_line}_${item.batch || ""}`;
-                const prevReceived = grnReceivedMap[rowKey] || 0;
+        <th>Quantity</th>
+        <th>Units/Pack</th>           {/* ✅ ADDED */}
+        <th>Base UOM *</th>
+        <th>Selling UOM</th>
+        <th>HSN Code</th>
+        <th>GST %</th>
 
-                return (
-                  <tr
-                    key={item.id}
-                    onClick={() => setSelectedSummaryIdx(idx)}
-                    style={{
-                      cursor: "pointer",
-                      background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
-                    }}
-                  >
-                    <td>{item.product_name}</td>
-                    <td>{item.ordered}</td>
+        <th>Category</th>
+        <th>Rack No</th>
+        <th>Purchase Price</th>
+        <th>MRP</th>
 
-                    {/* Packs received */}
-                    <td>
-                      <input
-                        type="number"
-                        value={item.received_packs}
-                        min="0"
-                        onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
-                      />
-                    </td>
+        <th>MFG Date</th>
+        <th>Expiry Date</th>
+      </tr>
+    </thead>
 
-                    {/* damaged */}
-                    <td>
-                      <input
-                        type="number"
-                        value={item.damaged_base}
-                        min="0"
-                        onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
-                      />
-                    </td>
+    <tbody>
+      {itemsReceived.map((item, idx) => {
+        const rowKey = `${item.po_line}_${item.batch || ""}`;
+        const prevReceived = grnReceivedMap[rowKey] || 0;
 
-                    {/* batch */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.batch}
-                        onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
-                      />
-                    </td>
+        return (
+          <tr
+            key={item.id}
+            onClick={() => setSelectedSummaryIdx(idx)}
+            style={{
+              cursor: "pointer",
+              background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
+            }}
+          >
+            {/* Product */}
+            <td>{item.product_name}</td>
 
-                    {/* Medicine Form (dropdown) */}
-                    <td>
-                      <select
-                        value={item.medicine_form || ""}
-                        onChange={(e) => handleItemEdit(idx, "medicine_form", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {medicineForms.map((f) => (
-                          <option key={f.id || f.name} value={f.name || f.id}>
-                            {f.name || f.display || f.id}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+            {/* Generic Name */}
+            
 
-                    {/* Strength */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.strength || ""}
-                        onChange={(e) => handleItemEdit(idx, "strength", e.target.value)}
-                      />
-                    </td>
+            {/* Ordered */}
+            <td>{item.ordered}</td>
 
-                    {/* Quantity */}
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.quantity || ""}
-                        onChange={(e) => handleItemEdit(idx, "quantity", e.target.value)}
-                      />
-                    </td>
+            {/* Received */}
+            <td>
+              <input
+                type="number"
+                value={item.received_packs}
+                min="0"
+                onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
+              />
+            </td>
 
-                    {/* Base UOM (dropdown) */}
-                    <td>
-                      <select
-                        value={item.base_uom || ""}
-                        onChange={(e) => handleItemEdit(idx, "base_uom", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {uoms.map((u) => (
-                          <option key={u.id || u.name} value={u.name || u.id}>
-                            {u.name || u.display || u.id}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+            {/* Damaged */}
+            <td>
+              <input
+                type="number"
+                min="0"
+                value={item.damaged_base}
+                onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
+              />
+            </td>
 
-                    {/* Selling UOM (dropdown) */}
-                    <td>
-                      <select
-                        value={item.selling_uom || ""}
-                        onChange={(e) => handleItemEdit(idx, "selling_uom", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {uoms.map((u) => (
-                          <option key={u.id || u.name} value={u.name || u.id}>
-                            {u.name || u.display || u.id}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+            {/* Batch */}
+            <td>
+              <input
+                type="text"
+                value={item.batch}
+                onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
+              />
+            </td>
 
-                    {/* HSN */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.hsn_code || ""}
-                        onChange={(e) => handleItemEdit(idx, "hsn_code", e.target.value)}
-                      />
-                    </td>
+            {/* Medicine Form */}
+            <td>
+              <select
+                value={item.medicine_form || ""}
+                onChange={(e) => handleItemEdit(idx, "medicine_form", e.target.value)}
+              >
+                <option value="">Select</option>
+                {medicineForms.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </td>
 
-                    {/* GST */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.gst_percentage || ""}
-                        onChange={(e) => handleItemEdit(idx, "gst_percentage", e.target.value)}
-                      />
-                    </td>
+            {/* Strength */}
+            <td>
+              <input
+                type="text"
+                value={item.strength || ""}
+                onChange={(e) => handleItemEdit(idx, "strength", e.target.value)}
+              />
+            </td>
 
-                    {/* Category */}
-                    <td>
-                      <select
-                        value={item.category || ""}
-                        onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {category.map((c) => (
-                          <option key={c.id} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+            {/* Quantity */}
+            <td>
+              <input
+                type="number"
+                min="0"
+                value={item.quantity || ""}
+                onChange={(e) => handleItemEdit(idx, "quantity", e.target.value)}
+              />
+            </td>
 
-                    {/* Rack */}
-                    <td>
-                      <select
-                        value={item.rack_no || ""}
-                        onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {rackLocations.map((rack) => (
-                          <option key={rack.id} value={rack.name}>
-                            {rack.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+            {/* Units per Pack */}
+            <td>
+              <input
+                type="number"
+                min="0"
+                value={item.units_per_pack || ""}
+                onChange={(e) => handleItemEdit(idx, "units_per_pack", e.target.value)}
+              />
+            </td>
 
-                    {/* Unit Cost */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.unit_cost || ""}
-                        onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
-                      />
-                    </td>
+            {/* Base UOM */}
+            <td>
+              <select
+                value={item.base_uom || ""}
+                onChange={(e) => handleItemEdit(idx, "base_uom", e.target.value)}
+              >
+                <option value="">Select</option>
+                {uoms.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </td>
 
-                    {/* MRP */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.mrp || ""}
-                        onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
-                      />
-                    </td>
+            {/* Selling UOM */}
+            <td>
+              <select
+                value={item.selling_uom || ""}
+                onChange={(e) => handleItemEdit(idx, "selling_uom", e.target.value)}
+              >
+                <option value="">Select</option>
+                {uoms.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </td>
 
-                    {/* MFG Date */}
-                    <td>
-                      <input
-                        type="date"
-                        value={item.mfg_date || ""}
-                        onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
-                      />
-                    </td>
+            {/* HSN */}
+            <td>
+              <input
+                type="text"
+                value={item.hsn_code || ""}
+                onChange={(e) => handleItemEdit(idx, "hsn_code", e.target.value)}
+              />
+            </td>
 
-                    {/* Expiry Date */}
-                    <td>
-                      <input
-                        type="date"
-                        value={item.expiry_date || ""}
-                        onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            {/* GST */}
+            <td>
+              <input
+                type="number"
+                step="0.01"
+                value={item.gst_percentage || ""}
+                onChange={(e) => handleItemEdit(idx, "gst_percentage", e.target.value)}
+              />
+            </td>
+
+            {/* Category */}
+            <td>
+              <select
+                value={item.category || ""}
+                onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
+              >
+                <option value="">Select</option>
+                {category.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </td>
+
+            {/* Rack */}
+            <td>
+              <select
+                value={item.rack_no || ""}
+                onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
+              >
+                <option value="">Select</option>
+                {rackLocations.map((rack) => (
+                  <option key={rack.id} value={rack.id}>{rack.name}</option>
+                ))}
+              </select>
+            </td>
+
+            {/* Purchase Price */}
+            <td>
+              <input
+                type="number"
+                step="0.01"
+                value={item.unit_cost || ""}
+                onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
+              />
+            </td>
+
+            {/* MRP */}
+            <td>
+              <input
+                type="number"
+                step="0.01"
+                value={item.mrp || ""}
+                onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
+              />
+            </td>
+
+            {/* MFG Date */}
+            <td>
+              <input
+                type="date"
+                value={item.mfg_date || ""}
+                onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
+              />
+            </td>
+
+            {/* Expiry Date */}
+            <td>
+              <input
+                type="date"
+                value={item.expiry_date || ""}
+                onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
+              />
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+
+
         </div>
       </div>
     </div>
