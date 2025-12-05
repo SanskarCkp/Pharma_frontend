@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./SalesPurchaseReport.css";
 import { Line } from "react-chartjs-2";
 import { Link, useLocation } from "react-router-dom";
+import { authFetch } from "../../api/http"; // add this at the top
 
 import {
   Chart as ChartJS,
@@ -16,7 +17,7 @@ import {
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const SALES_SUMMARY_API = `${API_BASE}/reports/sales/summary/`;
+const SALES_SUMMARY_API = `${API_BASE}/api/v1/reports/sales/summary/`;
 
 export default function SalesReport() {
   const location = useLocation();
@@ -36,7 +37,7 @@ export default function SalesReport() {
   function handleExport(reportType) {
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = `${API_BASE}/reports/exports/`;
+    form.action = `${API_BASE}/api/v1/reports/exports/`;
     form.style.display = "none";
 
     form.appendChild(Object.assign(document.createElement("input"), {

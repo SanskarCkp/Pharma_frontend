@@ -37,7 +37,7 @@ export default function GenerateBill() {
   useEffect(() => {
     async function loadPM() {
       try {
-        const res = await authFetch(`${API_BASE}/settings/payment-methods/`);
+        const res = await authFetch(`${API_BASE}api/v1/settings/payment-methods/`);
         const data = await res.json();
         const items = Array.isArray(data) ? data : data.results || [];
         setPaymentMethods(items);
@@ -60,7 +60,7 @@ export default function GenerateBill() {
         });
 
         const res = await authFetch(
-          `${API_BASE}/sales/billing/medicines/?${params.toString()}`,
+          `${API_BASE}/api/v1/sales/billing/medicines/?${params.toString()}`,
           { signal: controller.signal }
         );
         if (!res.ok) return setProducts([]);
@@ -91,7 +91,7 @@ export default function GenerateBill() {
 
   async function fetchBatchLotId(productId) {
     try {
-      const res = await authFetch(`${API_BASE}/catalog/batches/?product=${productId}`);
+      const res = await authFetch(`${API_BASE}/api/v1/catalog/batches/?product=${productId}`);
       const data = await res.json();
       const rows = Array.isArray(data) ? data : data.results || [];
       return rows.length ? rows[0].id : null;
@@ -202,7 +202,7 @@ export default function GenerateBill() {
     };
 
     try {
-      const res = await authFetch(`${API_BASE}/sales/invoices/`, {
+      const res = await authFetch(`${API_BASE}/api/v1/sales/invoices/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

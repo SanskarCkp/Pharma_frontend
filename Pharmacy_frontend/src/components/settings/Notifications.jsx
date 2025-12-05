@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./notifications.css";
+import { authFetch } from "../../api/http"; // add this at the top
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -25,7 +27,7 @@ const Notifications = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/notifications/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/notifications/`);
         if (!res.ok) {
           console.warn("Settings not found");
           return;
@@ -75,7 +77,7 @@ const Notifications = () => {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/notifications/`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/settings/notifications/`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settingsData),
@@ -96,7 +98,7 @@ const Notifications = () => {
   // POST - SMTP test
   const handleTestConnection = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/notifications/test/`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/settings/notifications/test/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

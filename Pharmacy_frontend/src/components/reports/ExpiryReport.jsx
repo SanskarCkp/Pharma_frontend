@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import "./ExpiryReport.css";
 import { Link, useLocation } from "react-router-dom";
+import { authFetch } from "../../api/http"; // add this at the top
+
+
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const EXPIRY_API = `${API_BASE}/reports/expiry/`;
+const EXPIRY_API = `${API_BASE}/api/v1/reports/expiry/`;
 
 export default function ExpiryReport() {
   const location = useLocation();
@@ -18,7 +21,7 @@ export default function ExpiryReport() {
   function handleExport() {
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = `${API_BASE}/reports/exports/`;
+    form.action = `${API_BASE}/api/v1/reports/exports/`;
     form.style.display = "none";
 
     // Report Type

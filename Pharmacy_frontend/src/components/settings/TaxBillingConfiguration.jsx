@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from "react";
 import "./taxbilling.css";
 import { FileText } from "lucide-react";
+import { authFetch } from "../../api/http"; // add this at the top
+
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -28,7 +31,7 @@ const TaxBilling = () => {
   useEffect(() => {
     const fetchTaxData = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/tax-billing/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/tax-billing/`);
         if (!res.ok) return;
 
         const data = await res.json();
@@ -71,7 +74,7 @@ const TaxBilling = () => {
   // POST METHOD — Save individual key/value
   // ----------------------------------------------------
   const saveKeyValue = async (key, value) => {
-    await fetch(`${API_BASE_URL}/settings/settings/`, {
+    await authFetch(`${API_BASE_URL}/api/v1/settings/settings/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value }),
@@ -97,7 +100,7 @@ const TaxBilling = () => {
       credit_sales: taxData.creditSales,
     };
 
-    await fetch(`${API_BASE_URL}/settings/tax-billing/`, {
+    await authFetch(`${API_BASE_URL}/api/v1/settings/tax-billing/`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

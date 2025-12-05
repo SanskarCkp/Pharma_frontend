@@ -4,6 +4,7 @@ import "./settingsdashboard.css";
 import TaxBillingConfiguration from "./TaxBillingConfiguration";
 import Notifications from "./Notifications";
 import BackupRestore from "./BackupRestore";
+import { authFetch } from "../../api/http"; // add this at the top
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -49,7 +50,7 @@ const SettingsDashboard = () => {
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/business-profile/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/business-profile/`);
         if (res.ok) {
           const data = await res.json();
           setBusinessExists(true);
@@ -72,7 +73,7 @@ const SettingsDashboard = () => {
 
     const fetchAlertSettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`);
+        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/alert-thresholds/`);
         if (res.ok) {
           const data = await res.json();
           setAlertExists(true);
@@ -114,7 +115,7 @@ const SettingsDashboard = () => {
     try {
       const method = businessExists ? "PUT" : "POST";
 
-      const response = await fetch(`${API_BASE_URL}/settings/business-profile/`, {
+      const response = await authFetch(`${API_BASE_URL}/api/v1/settings/business-profile/`, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -142,7 +143,7 @@ const SettingsDashboard = () => {
     try {
       const method = alertExists ? "PUT" : "POST";
 
-      const response = await fetch(`${API_BASE_URL}/settings/alert-thresholds/`, {
+      const response = await authFetch(`${API_BASE_URL}/api/v1/settings/alert-thresholds/`, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(alertData),

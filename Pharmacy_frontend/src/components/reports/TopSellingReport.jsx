@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./TopSellingReport.css";
 import { Bar } from "react-chartjs-2";
+import { authFetch } from "../../api/http"; // add this at the top
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,7 +15,7 @@ import { Link, useLocation } from "react-router-dom";
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const TOP_SELLING_API = `${API_BASE}/reports/sales/top-selling/`;
+const TOP_SELLING_API = `${API_BASE}/api/v1/reports/sales/top-selling/`;
 
 export default function TopSellingReport() {
   const location = useLocation();
@@ -34,7 +35,7 @@ export default function TopSellingReport() {
   function handleExport(reportType = "TOP_SELLING") {
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = `${API_BASE}/reports/exports/`;
+    form.action = `${API_BASE}/api/v1/reports/exports/`;
     form.style.display = "none";
 
     form.appendChild(Object.assign(document.createElement("input"), {
@@ -128,7 +129,7 @@ export default function TopSellingReport() {
         <Link to="/reports/sales" className={location.pathname === "/reports/sales" ? "ts-tab active" : "ts-tab"}>Sales Report</Link>
         <Link to="/reports/purchases" className={location.pathname === "/reports/purchases" ? "ts-tab active" : "ts-tab"}>Purchase Report</Link>
         <Link to="/reports/expiry" className={location.pathname === "/reports/expiry" ? "ts-tab active" : "ts-tab"}>Expiry Report</Link>
-        <Link to="/reports/top-selling" className={location.pathname === "/reports/top-selling" ? "ts-tab active" : "ts-tab"}>Top Selling</Link>
+        {/* <Link to="/reports/top-selling" className={location.pathname === "/reports/top-selling" ? "ts-tab active" : "ts-tab"}>Top Selling</Link> */}
       </div>
 
       {/* TABLE */}
