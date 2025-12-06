@@ -93,9 +93,7 @@ export default function ExpiryReport() {
           Expiry Report
         </Link>
 
-        <Link to="/reports/top-selling" className={location.pathname === "/reports/top-selling" ? "er-tab active" : "er-tab"}>
-          Top Selling
-        </Link>
+        
       </div>
 
       {/* Main Card */}

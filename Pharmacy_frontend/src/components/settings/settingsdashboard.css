@@ -288,3 +288,18 @@
   color: #ffffff;
   font-weight: 600;
 }
+
+
+.alert-row-horizontal {
+  display: flex;
+  gap: 16px;
+}
+
+.alert-field {
+  flex: 1;
+}
+
+/* make the empty placeholder not visible but keep width */
+.alert-field-empty {
+  visibility: hidden;
+}

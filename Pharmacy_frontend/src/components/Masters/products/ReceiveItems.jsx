@@ -109,6 +109,7 @@ const ReceiveItems = () => {
                 medicine_form: p.medicine_form || "",
                 strength: p.strength || "",
                 quantity: p.quantity || "",
+                units_per_pack: p.units_per_pack || "",
                 base_uom: p.base_uom || "",
                 selling_uom: p.selling_uom || "",
                 hsn_code: p.hsn_code || "",
@@ -212,6 +213,7 @@ const ReceiveItems = () => {
             medicine_form: last?.medicine_form || prodMaster.medicine_form || "",
             strength: last?.strength || prodMaster.strength || "",
             quantity: last?.quantity || prodMaster.quantity || "",
+            units_per_pack: last?.units_per_pack || prodMaster.units_per_pack || "",
             base_uom: last?.base_uom || prodMaster.base_uom || orderUom || "",
             selling_uom: last?.selling_uom || prodMaster.selling_uom || orderUom || "",
             hsn_code: last?.hsn_code || prodMaster.hsn_code || "",
@@ -327,6 +329,7 @@ const ReceiveItems = () => {
         unit_cost: Number(item.unit_cost || 0),
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
+        units_per_pack: item.units_per_pack ? Number(item.units_per_pack) : null,
         quantity_uom: item.selling_uom || item.base_uom || "",
         // include the new fields so GRN entry contains them
         medicine_form: item.medicine_form || "",
@@ -526,6 +529,7 @@ const ReceiveItems = () => {
                 <th>Medicine Form</th>
                 <th>Strength</th>
                 <th>Quantity</th>
+                <th>Units / Pack</th>
                 <th>Base UOM *</th>
                 <th>Selling UOM</th>
                 <th>HSN Code</th>
@@ -619,6 +623,16 @@ const ReceiveItems = () => {
                         value={item.quantity || ""}
                         readOnly
                         className="readonly-input"
+                      />
+                    </td>
+
+                    {/* Units per Pack */}
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.units_per_pack || ""}
+                        onChange={(e) => handleItemEdit(idx, "units_per_pack", e.target.value)}
                       />
                     </td>
 

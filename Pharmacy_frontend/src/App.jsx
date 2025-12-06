@@ -11,8 +11,7 @@ import Login from "./components/user/login";
 import ResetPassword from "./components/user/ResetPassword"; // ensure path: src/components/user/ResetPassword.jsx
 
 // Protected (Masters) user management
-import Users from "./components/users/users.jsx"; // <-- single import for Users
-
+import UserList from "./components/users/UserList.jsx";    
 // Guard
 import PrivateRoute from "./components/user/privateroute";
 
@@ -129,7 +128,8 @@ function AppLayout() {
 
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
-            <Route path="/masters/users" element={<Users />} />
+            <Route path="/masters/users" element={<UserList />} />
+
             <Route path="/masters/vendors" element={<Vendorsdashboard />} />
             <Route path="/masters/vendors/add" element={<AddVendors />} />
             <Route path="/masters/vendors/view/:id" element={<ViewVendor />} />
