@@ -1,420 +1,343 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Trash2 } from "lucide-react";
-import "./createorder.css";
-import { authFetch } from "../../../api/http";
-import { getDefaultLocationId } from "../../../config/location";
+// src/components/settings/SettingsDashboard.jsx
+import React, { useState, useEffect } from "react";
+import { Home, AlertCircle, CreditCard, Database, Bell } from "lucide-react";
+import "./settingsdashboard.css";
+import TaxBillingConfiguration from "./TaxBillingConfiguration";
+import Notifications from "./Notifications";
+import BackupRestore from "./BackupRestore";
+import { authFetch } from "../../api/http";
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
-const DEFAULT_LOCATION_ID = getDefaultLocationId();
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const CreateOrder = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const vendor = location.state?.vendor;
+const SettingsDashboard = () => {
+  const [activeSection, setActiveSection] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [businessExists, setBusinessExists] = useState(false);
 
-  const [vendorData, setVendorData] = useState(null);
-  const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
-  const [expectedDate, setExpectedDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const settingsSections = [
+    { name: "Business Details", icon: <Home size={24} /> },
+    { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
+    { name: "Tax & Billing", icon: <CreditCard size={24} /> },
+    { name: "Backup & Restore", icon: <Database size={24} /> },
+    { name: "Notifications", icon: <Bell size={24} /> },
+  ];
 
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [uoms, setUoms] = useState([]);
-
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [manualProductName, setManualProductName] = useState("");
-  const [manualQty, setManualQty] = useState(1);
-  const [manualCategory, setManualCategory] = useState("");
-  const [manualUOM, setManualUOM] = useState("");
-
-  const [totalItems, setTotalItems] = useState(0);
-
-  // ⭐ Popup state
-  const [popupMessage, setPopupMessage] = useState("");
-  const [showPopup, setShowPopup] = useState(false);
-
-  useEffect(() => {
-    if (!vendor) {
-      navigate("/masters/vendors");
-      return;
-    }
-
-    const fetchVendor = async () => {
-      try {
-        const res = await authFetch(`${API_BASE}/api/v1/procurement/vendors/${vendor.id}/`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setVendorData(data);
-      } catch (err) {
-        console.error("Vendor fetch error:", err);
-      }
-    };
-
-    fetchVendor();
-  }, [vendor, navigate]);
-
-  const fetchUOMs = async () => {
-    try {
-      const res = await authFetch(`${API_BASE}/api/v1/catalog/uoms/`);
-      const data = await res.json();
-      setUoms(Array.isArray(data) ? data : data.results || []);
-    } catch (err) {
-      console.error("UOM fetch error:", err);
-    }
-  };
-
-  const fetchProductsAndCategories = async () => {
-    try {
-      const pRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`);
-      const pData = await pRes.json();
-      const productList = Array.isArray(pData) ? pData : pData.results || [];
-
-      const cRes = await authFetch(`${API_BASE}/api/v1/catalog/categories/`);
-      let categoryList = [];
-      if (cRes.ok) {
-        const cData = await cRes.json();
-        categoryList = Array.isArray(cData) ? cData : cData.results || [];
-      }
-
-      setCategories(categoryList);
-
-      const normalized = productList.map((p) => ({
-        uid: `p_${p.id}`,
-        id: p.id,
-        name: p.name,
-        quantity: Number(p.pack_unit) || 0,
-        expected_unit_cost: p.purchase_price || 0,
-        category: typeof p.category === "object" ? p.category.id : p.category || null,
-        uom: p.base_unit || "",
-        isNew: false,
-      }));
-
-      // ❗ FILTER OUT INVALID PRODUCTS
-      setItems(normalized.filter(item => item.id && item.name));
-
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (vendorData) {
-      fetchProductsAndCategories();
-      fetchUOMs();
-    }
-  }, [vendorData]);
-
-  useEffect(() => {
-    const totalQty = items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
-    setTotalItems(totalQty);
-  }, [items]);
-
-  const generateProductCode = (name) => {
-    const slug = name.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6);
-    const rand = Math.floor(Math.random() * 9000) + 1000;
-    return `${slug || "PRD"}${rand}`;
-  };
-
-  const handleAddProduct = () => setShowAddProduct(true);
-
-  const handleAddManualProduct = () => {
-    if (!manualProductName.trim()) return alert("Enter product name");
-    if (!manualQty || Number(manualQty) <= 0) return alert("Enter valid qty");
-    // create a lightweight in-order item for manual entries
-    const newItem = {
-      uid: `m_${Date.now()}`,
-      id: null,
-      name: manualProductName.trim(),
-      quantity: Number(manualQty),
-      expected_unit_cost: 0,
-      category: manualCategory ? Number(manualCategory) : null,
-      uom: manualUOM || "",
-      isNew: true,
-    };
-
-    setItems((prev) => [...prev, newItem]);
-    setManualProductName("");
-    setManualQty(1);
-    setManualCategory("");
-    setManualUOM("");
-    setShowAddProduct(false);
-  };
-
-  const handleQuantityChange = (uid, value) =>
-    setItems((prev) =>
-      prev.map((it) => (it.uid === uid ? { ...it, quantity: Number(value) || 0 } : it))
-    );
-
-  const handleUOMChange = (uid, value) =>
-    setItems((prev) =>
-      prev.map((it) => (it.uid === uid ? { ...it, uom: value } : it))
-    );
-
-  const handleDelete = (uid) =>
-    setItems((prev) => prev.filter((it) => it.uid !== uid));
-
-  const toDDMMYYYY = (dateStr) => {
-    if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}-${m}-${y}`;
-  };
-
-  const handleCreateOrder = async () => {
-    if (!vendorData?.id) return alert("Vendor not loaded");
-
-  // REMOVE EMPTY / BROKEN ITEMS
-  const orderRows = items.filter(r =>
-    Number(r.quantity) > 0 && (r.id || r.name)
-  );
-
-  const lines = orderRows.map((r) => {
-    const line = {
-      qty_packs_ordered: Number(r.quantity),
-      expected_unit_cost: String(r.expected_unit_cost || 0),
-      gst_percent_override: null,
-      uom: r.uom || null,
-    };
-
-    if (r.id) line.product = r.id;
-    else line.requested_name = r.name;
-    return line;
+  const [formData, setFormData] = useState({
+    business_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    owner_name: "",
+    registration_date: "",
+    gst_number: "",
+    pharmacy_license_number: "",
+    drug_license_number: "",
   });
 
-  // SAFETY FILTER → remove any invalid line
-  const cleanedLines = lines.filter(
-    l => l.product || l.requested_name
-  );
+  const [alertData, setAlertData] = useState({
+    low_stock_threshold: "",
+    out_of_stock_alert: "No",
+    critical_expiry_days: "",
+    warning_expiry_days: "",
+    check_frequency: "",
+    auto_remove_expired: "Manually only",
+  });
 
-  const payload = {
-    vendor: Number(vendorData.id),
-    location: Number(vendorData.default_location || DEFAULT_LOCATION_ID),
-    order_date: orderDate,
-    expected_date: expectedDate || null,
-    note: notes || "",
-    lines: cleanedLines,
+  // -------------------------------------------------------
+  // FETCH BUSINESS DETAILS
+  // -------------------------------------------------------
+  const fetchBusinessDetails = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/settings/business-profile/`);
+      if (res.ok) {
+        const data = await res.json();
+        setBusinessExists(true);
+
+        setFormData({
+          business_name: data.business_name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          address: data.address || "",
+          owner_name: data.owner_name || "",
+          registration_date: data.registration_date || "",
+          gst_number: data.gst_number || "",
+          pharmacy_license_number: data.pharmacy_license_number || "",
+          drug_license_number: data.drug_license_number || "",
+        });
+      }
+    } catch (err) {
+      console.error("Business fetch error:", err);
+    }
   };
 
+  // -------------------------------------------------------
+  // FETCH ALERT SETTINGS (Correct Backend: /settings/app/)
+  // -------------------------------------------------------
+  const fetchAlertSettings = async () => {
     try {
-      const res = await authFetch(`${API_BASE}/api/v1/procurement/purchase-orders/`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/settings/app/`);
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const alerts = data.alerts || {};
+
+      setAlertData({
+        low_stock_threshold: alerts.ALERT_LOW_STOCK_DEFAULT || "",
+        out_of_stock_alert: alerts.OUT_OF_STOCK_ACTION || "No",
+        critical_expiry_days: alerts.ALERT_EXPIRY_CRITICAL_DAYS || "",
+        warning_expiry_days: alerts.ALERT_EXPIRY_WARNING_DAYS || "",
+        check_frequency: alerts.ALERT_CHECK_FREQUENCY || "",
+        auto_remove_expired: alerts.AUTO_REMOVE_EXPIRED || "Manually only",
+      });
+    } catch (err) {
+      console.error("Alert fetch error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchBusinessDetails();
+    fetchAlertSettings();
+  }, []);
+
+  // -------------------------------------------------------
+  // HANDLERS
+  // -------------------------------------------------------
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleAlertChange = (e) => setAlertData({ ...alertData, [e.target.name]: e.target.value });
+
+  // -------------------------------------------------------
+  // SAVE BUSINESS INFO
+  // -------------------------------------------------------
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const method = businessExists ? "PUT" : "POST";
+
+      const response = await authFetch(`${API_BASE_URL}/api/v1/settings/business-profile/`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        alert("Business details saved!");
+        setBusinessExists(true);
+      } else {
+        alert("Failed to save business details");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------
+  // SAVE ALERT SETTINGS → /settings/app/save (correct)
+  // -------------------------------------------------------
+  const handleAlertSave = async () => {
+    setLoading(true);
+
+    try {
+      const payload = {
+        alerts: {
+          ALERT_LOW_STOCK_DEFAULT: alertData.low_stock_threshold,
+          OUT_OF_STOCK_ACTION: alertData.out_of_stock_alert,
+          ALERT_EXPIRY_CRITICAL_DAYS: alertData.critical_expiry_days,
+          ALERT_EXPIRY_WARNING_DAYS: alertData.warning_expiry_days,
+          ALERT_CHECK_FREQUENCY: alertData.check_frequency,
+          AUTO_REMOVE_EXPIRED: alertData.auto_remove_expired,
+        },
+      };
+
+      const response = await authFetch(`${API_BASE_URL}/api/v1/settings/app/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        console.log("❌ PO Create Failed:", err);   // Print full backend error
-        alert(JSON.stringify(err, null, 2));        // Show full error in popup
-        return;
+      if (response.ok) {
+        alert("Alert thresholds saved!");
+        fetchAlertSettings();
+      } else {
+        alert("Failed to save alert settings");
       }
-
-
-      setPopupMessage("Order created successfully!");
-      setShowPopup(true);
     } catch (err) {
-      console.error("Order error:", err);
-      setPopupMessage("Error creating order");
-      setShowPopup(true);
+      console.error(err);
+      alert("Error saving alert settings");
+    } finally {
+      setLoading(false);
     }
   };
-  
-  if (!vendorData) return null;
 
+  // -------------------------------------------------------
+  // UI
+  // -------------------------------------------------------
   return (
-    <div className="createorder-container">
-      {/* Header */}
-      <div className="page-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} />
-          <span>Back</span>
-        </button>
-        <h1 className="page-title">Create Order</h1>
+    <div className="settings-container">
+      <h1 className="settings-title">Settings</h1>
+      <h2 className="settings-heading">Manage application configuration</h2>
+
+      <div className="settings-tab-container">
+        {settingsSections.map((section) => (
+          <div
+            key={section.name}
+            className={`settings-tab ${activeSection === section.name ? "active" : ""}`}
+            onClick={() => setActiveSection(section.name)}
+          >
+            {section.icon}
+            <span>{section.name}</span>
+          </div>
+        ))}
       </div>
 
-      {/* Main */}
-      <div className="order-main">
-        <div className="left-section">
-          {/* Supplier Info */}
-          <div className="kpi-card">
-            <h3>Supplier Info</h3>
-            <div className="kpi-item">Supplier: {vendorData.name}</div>
-            <div className="kpi-item">
-              Order Date:
-              <input
-                type="date"
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
-              />
-            </div>
-          </div>
+      <div style={{ marginTop: 40 }}>
+        {/* --------------------------------------------- */}
+        {/* BUSINESS DETAILS UI */}
+        {/* --------------------------------------------- */}
+        {activeSection === "Business Details" && (
+          <div className="business-section">
+            <h2><Home size={28} /> Business Information</h2>
 
-          {/* Products */}
-          <div className="kpi-card add-product-card">
-            <div className="card-header">
-              <h3>Order Items</h3>
-              <button className="add-btn" onClick={handleAddProduct}>
-                + Add Product
+            <div className="business-form">
+              {Object.entries(formData).map(([key, value]) => (
+                <div className="form-row" key={key}>
+                  <label>{key.replace(/_/g, " ").toUpperCase()}</label>
+
+                  {key === "address" ? (
+                    <textarea name={key} value={value} onChange={handleChange} />
+                  ) : key === "registration_date" ? (
+                    <input type="date" name={key} value={value} onChange={handleChange} />
+                  ) : (
+                    <input type="text" name={key} value={value} onChange={handleChange} />
+                  )}
+                </div>
+              ))}
+
+              <button className="save-btn" onClick={handleSave} disabled={loading}>
+                {loading ? "Saving..." : "Save"}
               </button>
             </div>
+          </div>
+        )}
 
-            {showAddProduct && (
-              <div className="add-product-box">
-                <input
-                  type="text"
-                  placeholder="Enter product name"
-                  value={manualProductName}
-                  onChange={(e) => setManualProductName(e.target.value)}
-                />
-                <select
-                  value={manualCategory}
-                  onChange={(e) => setManualCategory(e.target.value)}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={manualQty}
-                  onChange={(e) => setManualQty(e.target.value)}
-                />
-                <select
-                  value={manualUOM}
-                  onChange={(e) => setManualUOM(e.target.value)}
-                >
-                  <option value="">Select UOM</option>
-                  {uoms.map((u) => (
-                    <option key={u.id} value={u.code}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <button className="submit-btn" onClick={handleAddManualProduct}>
-                  Add
-                </button>
+        {/* --------------------------------------------- */}
+        {/* ALERT THRESHOLDS UI */}
+        {/* --------------------------------------------- */}
+        {activeSection === "Alert Thresholds" && (
+          <div className="alert-section">
+            <h2><AlertCircle size={28} /> Alert Configuration</h2>
+
+            <div className="alert-card">
+              <h3>Inventory Alerts</h3>
+
+              <div className="alert-row-horizontal">
+                <div className="alert-field">
+                  <label>Low Stock Threshold</label>
+                  <input
+                    type="number"
+                    name="low_stock_threshold"
+                    value={alertData.low_stock_threshold}
+                    onChange={handleAlertChange}
+                  />
+                </div>
+
+                <div className="alert-field">
+                  <label>Out of Stock Alert</label>
+                  <select
+                    name="out_of_stock_alert"
+                    value={alertData.out_of_stock_alert}
+                    onChange={handleAlertChange}
+                  >
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                  </select>
+                </div>
               </div>
-            )}
 
-            {items.length === 0 ? (
-              <div className="no-products">No products available.</div>
-            ) : (
-              <table className="products-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Qty</th>
-                    <th>UOM</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.uid}>
-                      <td>{item.name}</td>
-                      <td>
-                        {categories.find((c) => String(c.id) === String(item.category))
-                          ?.name || "—"}
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(item.uid, e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={item.uom || ""}
-                          onChange={(e) => handleUOMChange(item.uid, e.target.value)}
-                        >
-                          <option value="">Select</option>
-                          {uoms.map((u) => (
-                            <option key={u.id} value={u.code}>
-                              {u.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(item.uid)}
-                        >
-                          <Trash2 size={18} color="red" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+              <h3>Expiry Alerts</h3>
+              <div className="alert-row-horizontal">
+                <div className="alert-field">
+                  <label>Critical Expiry Days</label>
+                  <input
+                    type="number"
+                    name="critical_expiry_days"
+                    value={alertData.critical_expiry_days}
+                    onChange={handleAlertChange}
+                  />
+                </div>
 
-          {/* Additional Info */}
-          <div className="kpi-card">
-            <h3>Additional Information</h3>
-            <div className="kpi-item">
-              Expected Delivery:
-              <input
-                type="date"
-                value={expectedDate}
-                onChange={(e) => setExpectedDate(e.target.value)}
-              />
-            </div>
-            <div className="kpi-item">
-              Notes:
-              <textarea
-                placeholder="Enter notes..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+                <div className="alert-field">
+                  <label>Warning Expiry Days</label>
+                  <input
+                    type="number"
+                    name="warning_expiry_days"
+                    value={alertData.warning_expiry_days}
+                    onChange={handleAlertChange}
+                  />
+                </div>
+              </div>
+
+              <div className="alert-row-horizontal">
+                <div className="alert-field">
+                  <label>Auto Remove Expired</label>
+                  <select
+                    name="auto_remove_expired"
+                    value={alertData.auto_remove_expired}
+                    onChange={handleAlertChange}
+                  >
+                    <option value="Manually only">Manually only</option>
+                    <option value="Automatically">Automatically</option>
+                    <option value="Auto Remove (after 7 days)">Auto Remove (after 7 days)</option>
+                  </select>
+                </div>
+
+                {/* empty placeholder to keep 2-column layout and same width */}
+                <div className="alert-field alert-field-empty" />
+              </div>
+
+
+
+
+{/* 
+              <div className="alert-row-horizontal">
+                <div className="alert-field">
+                  <label>Check Frequency (hours)</label>
+                  <input
+                    type="number"
+                    name="check_frequency"
+                    value={alertData.check_frequency}
+                    onChange={handleAlertChange}
+                  />
+                </div>
+
+                <div className="alert-field">
+                  <label>Auto Remove Expired</label>
+                  <select
+                    name="auto_remove_expired"
+                    value={alertData.auto_remove_expired}
+                    onChange={handleAlertChange}
+                  >
+                    <option value="Manually only">Manually only</option>
+                    <option value="Automatically">Automatically</option>
+                    <option value="Auto Remove (after 7 days)">
+                      Auto Remove (after 7 days)
+                    </option>
+                  </select>
+                </div>
+              </div> */}
+
+              <button className="save-btn" onClick={handleAlertSave} disabled={loading}>
+                {loading ? "Saving..." : "Save"}
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Right Section */}
-        <div className="right-section">
-          <div className="kpi-card summary-card">
-            <h3>Summary</h3>
-            <div className="kpi-item">Total Items: {totalItems}</div>
-          </div>
-
-          <div className="form-actions">
-            <button className="submit-btn" onClick={handleCreateOrder}>
-              Create Order
-            </button>
-            <button className="cancel-btn" onClick={() => navigate(-1)}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        {activeSection === "Tax & Billing" && <TaxBillingConfiguration />}
+        {activeSection === "Backup & Restore" && <BackupRestore />}
+        {activeSection === "Notifications" && <Notifications />}
       </div>
-
-      {/* ⭐ Popup */}
-      {showPopup && (
-        <div className="custom-popup-overlay">
-          <div className="custom-popup-box">
-            <h3>{popupMessage}</h3>
-            <button
-              className="submit-btn"
-              onClick={() => setShowPopup(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default CreateOrder;
+export default SettingsDashboard;

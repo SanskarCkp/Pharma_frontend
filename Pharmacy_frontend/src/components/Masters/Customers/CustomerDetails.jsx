@@ -26,7 +26,7 @@ const CustomerDetails = () => {
 
     const fetchCustomer = async () => {
       try {
-        const res = await fetch(`${API_BASE}/customers/${id}/?summary=true`);
+        const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/?summary=true`);
         if (!res.ok) throw new Error(`HTTP error! ${res.status}`);
         const data = await res.json();
         console.log("Fetched customer summary:", data); // Debug log
@@ -47,7 +47,7 @@ const CustomerDetails = () => {
       setShowInvoices(true);
       setInvoiceLoading(true);
       try {
-        const res = await authFetch(`${API_BASE}/customers/${id}/invoices/`);
+        const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/invoices/`);
         if (res.ok) {
           const data = await res.json();
           setInvoices(Array.isArray(data) ? data : data.results || []);

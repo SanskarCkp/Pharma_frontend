@@ -263,3 +263,27 @@ button.btn.primary {
 .info-value {
   font-weight: 600;
 }
+.pm-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+.pm-icon:hover {
+  transform: scale(1.08);
+}
+
+.pm-icon.danger:hover {
+  transform: scale(1.08);
+}
+.pm-actions {
+  display: flex;
+  flex-direction: row;   /* horizontal */
+  gap: 8px;              /* spacing between icons */
+  align-items: center;
+}

@@ -18,7 +18,7 @@ const SettingsDashboard = () => {
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
     { name: "Tax & Billing", icon: <CreditCard size={24} /> },
-    { name: "Backup & Restore", icon: <Database size={24} /> },
+    // { name: "Backup & Restore", icon: <Database size={24} /> },
     { name: "Notifications", icon: <Bell size={24} /> },
   ];
 
@@ -333,7 +333,7 @@ const SettingsDashboard = () => {
         )}
 
         {activeSection === "Tax & Billing" && <TaxBillingConfiguration />}
-        {activeSection === "Backup & Restore" && <BackupRestore />}
+        {/* {activeSection === "Backup & Restore" && <BackupRestore />} */}
         {activeSection === "Notifications" && <Notifications />}
       </div>
     </div>

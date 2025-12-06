@@ -373,17 +373,32 @@ export default function GenerateBill() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Invoice failed (${res.status})`);
       }
+
       const data = await res.json();
+
+      // 🔥 MAKE PAYMENT RIGHT HERE
+      await authFetch(`${INVOICES_URL}${data.id}/complete-payment/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: selectedMethod,
+          amount: amountPaying
+        })
+      });
+
+      // continue the remaining code
       dispatchInventoryRefresh();
       setCart([]);
       setSelectedProduct(null);
       setAmountPaying("");
       setSelectedMethod("");
       setSearchTerm("");
+
       navigate(`/billgeneration/invoice/${data.id}`);
     } catch (err) {
       console.error(err);
@@ -407,17 +422,49 @@ export default function GenerateBill() {
       </h1>
 
       <div className="grid-container" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", fontSize: "0.9rem" }}>
-        <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Customer Information</h3>
-          <label>Customer Name *</label>
-          <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="Enter customer name" />
-          <label style={{ marginTop: "0.75rem" }}>Phone *</label>
-          <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone number" />
-          <label style={{ marginTop: "0.75rem" }}>Email</label>
-          <input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Customer email" />
-          <label style={{ marginTop: "0.75rem" }}>City *</label>
-          <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Customer city" />
-        </div>
+        <div className="customer-card-ui">
+            <h3 className="section-title">Customer Information</h3>
+            
+              <div className="field-group">
+            <label>Customer Name</label>
+            <input
+                  type="text"
+                  value={customer.name}
+                  placeholder="Enter customer name"
+                  onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                />
+            </div>
+            
+              <div className="field-group">
+            <label>Phone</label>
+            <input
+                  type="text"
+                  value={customer.phone}
+                  placeholder="Phone number"
+                  onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+                />
+            </div>
+            
+              <div className="field-group">
+            <label>Email</label>
+            <input
+                  type="email"
+                  value={customer.email}
+                  placeholder="Customer email"
+                  onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
+                />
+            </div>
+            
+              <div className="field-group">
+            <label>City</label>
+            <input
+                  type="text"
+                  value={customer.city}
+                  placeholder="Customer city"
+                  onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+                />
+            </div>
+            </div>
 
         <div className="card" style={cardStyle}>
           <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Select Medicines</h3>

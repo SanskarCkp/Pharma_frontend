@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import "./customersdashboard.css";
 import { Eye, Trash2 } from "lucide-react";
 
+import { authFetch } from "../../../api/http";
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
 
 const CustomersDashboard = () => {
@@ -24,7 +26,7 @@ const CustomersDashboard = () => {
   const fetchStats = async (filter = "none") => {
     try {
       setLoadingStats(true);
-      let url = `${API_BASE}/customers/?stats=true`;
+      let url = `${API_BASE}/api/v1/customers/?stats=true`;
       if (filter !== "none") url += `&filter=${filter}`;
 
       const res = await fetch(url);
@@ -47,7 +49,7 @@ const CustomersDashboard = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/customers/`);
+      const res = await authFetch(`${API_BASE}/api/v1/customers/`);
       if (!res.ok) throw new Error("Customers fetch error");
 
       const data = await res.json();
@@ -81,7 +83,7 @@ const CustomersDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/customers/${id}/`, { method: "DELETE" });
+      const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/`, { method: "DELETE" });
       if (res.ok) {
         alert("Customer deleted!");
         fetchCustomers();
