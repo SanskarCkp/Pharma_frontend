@@ -149,7 +149,7 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="summary-grid">
         {cards.map((card, index) => (
           <div key={index} className="summary-card shadow bg-white p-4 rounded-xl border border-gray-100">
             <div className="font-medium text-gray-600">{card.title}</div>

@@ -33,8 +33,26 @@
   border: 1px solid #ccc;
 }
 
-.checkboxGroup input {
-  margin-right: 8px;
+.checkboxGroup label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  margin-right: 10px;
 }
 
 .submitBtn {
@@ -226,4 +244,24 @@
   box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
   border: 1px solid #e5e7eb;
   padding: 16px 20px 12px;
+}
+
+.users-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.users-actions button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.users-actions button.danger {
+  border-color: #fca5a5;
+  color: #b91c1c;
+  background: #fff1f2;
 }

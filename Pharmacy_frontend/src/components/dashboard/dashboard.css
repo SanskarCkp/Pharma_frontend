@@ -2,6 +2,13 @@
   padding: 20px;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
 .summary-card {
   transition: 0.2s ease;
 }

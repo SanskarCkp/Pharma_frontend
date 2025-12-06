@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 // Layout
 import Sidebar from "./components/sidebar";
 import Footer from "./components/Footer";
+import Topbar from "./components/Topbar.jsx";
 
 // Public
 import Login from "./components/user/login";
@@ -113,9 +114,10 @@ import TopSellingReport from "./components/reports/TopSellingReport.jsx";
 
 function AppLayout() {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50 overflow-x-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-grow ml-0 lg:ml-64">
+      <div className="flex flex-col flex-grow ml-0 lg:ml-[240px]">
+        <Topbar />
         <main className="flex-grow p-6">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

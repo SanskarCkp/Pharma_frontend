@@ -115,7 +115,10 @@ export default function ExpiryAlerts() {
   if (loading) {
     return (
       <div className="expiryalerts-page">
-        <p>Loading...</p>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Loading expiry alerts...</p>
+        </div>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
+import QuickAddMedicine from "./QuickAddMedicine";
 
 const LS_KEY = "medicines";
 const PAGE_SIZE = 250;
@@ -30,6 +31,7 @@ export default function MedicineInventory() {
   const [rackOptions, setRackOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [manualRefresh, setManualRefresh] = useState(0);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const statusToParam = (value) => {
     if (!value || value === "All") return null;
@@ -230,6 +232,12 @@ export default function MedicineInventory() {
 
   const openAddDrawer = () => nav("/inventory/medicines/add");
 
+  const handleQuickAddSaved = (body) => {
+    triggerRefresh();
+    // Optional: show success message
+    console.log("Medicine added successfully:", body);
+  };
+
   const fetchStockSummaryForProduct = async (row) => {
     try {
       const params = new URLSearchParams();
@@ -261,9 +269,19 @@ export default function MedicineInventory() {
           <h2>Inventory Management</h2>
           <p>Manage your medicine inventory and stock levels</p>
         </div>
-        <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
-          + Add Medicine
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+          <button
+            className="inv-add"
+            style={{ background: '#06b6d4', marginLeft: 0 }}
+            onClick={() => setQuickAddOpen(true)}
+            disabled={loading || deleting}
+          >
+            Quick Add
+          </button>
+          <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
+            + Add Medicine
+          </button>
+        </div>
       </div>
 
       <div className="inv-card">
@@ -464,7 +482,12 @@ export default function MedicineInventory() {
         </div>
       </div>
 
-      {/* Drawer removed for full page add/edit */}
+      {/* Quick Add Modal */}
+      <QuickAddMedicine
+        open={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onSaved={handleQuickAddSaved}
+      />
     </div>
   );
 }

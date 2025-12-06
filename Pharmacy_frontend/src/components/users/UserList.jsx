@@ -2,7 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./users.css";
-import { fetchUsersFromBackend } from "../../api/users";
+import {
+  fetchUsersFromBackend,
+  deleteUserFromBackend,
+  updateUserOnBackend,
+} from "../../api/users";
 import UserCreate from "./UserCreate";
 
 const STORAGE_KEY = "app_users";
@@ -19,9 +23,17 @@ const getNextUserId = (users) => {
   return `USR${String(nextNum).padStart(3, "0")}`;
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString();
+};
+
 export default function UserList() {
   const [users, setUsers] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,6 +62,7 @@ export default function UserList() {
       const normalized = (Array.isArray(data) ? data : []).map((u, idx) => {
         const firstLast = `${u.first_name || ""} ${u.last_name || ""}`.trim();
         return {
+          id: u.id,
           userId: u.userId || `USR${String(u.id || idx + 1).padStart(3, "0")}`,
           fullName: u.full_name || firstLast || u.username || "",
           email: u.email || "",
@@ -71,24 +84,62 @@ export default function UserList() {
 
   const nextUserId = getNextUserId(users);
 
+  const updateLocalUsers = (updated) => {
+    setUsers(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
+  };
+
+  async function handleToggleStatus(user) {
+    const targetStatus = !user.isActive;
+    try {
+      if (user.id) {
+        await updateUserOnBackend(user.id, { is_active: targetStatus });
+      }
+      const updated = users.map((u) =>
+        u.userId === user.userId ? { ...u, isActive: targetStatus } : u
+      );
+      updateLocalUsers(updated);
+    } catch (err) {
+      console.error("Failed to update status", err);
+      alert("Failed to update status on server.");
+    }
+  }
+
+  async function handleDelete(user) {
+    const confirmDelete = window.confirm(`Delete user ${user.fullName}?`);
+    if (!confirmDelete) return;
+    try {
+      if (user.id) {
+        await deleteUserFromBackend(user.id);
+      }
+      const remaining = users.filter((u) => u.userId !== user.userId);
+      updateLocalUsers(remaining);
+    } catch (err) {
+      console.error("Failed to delete user", err);
+      alert("Failed to delete user on server.");
+    }
+  }
+
   return (
     <div className="users-page">
       <div className="users-shell">
         {/* Header row */}
         <div className="users-header">
-          <div className="users-header-left">
-            <button
-              type="button"
-              className="users-back-btn"
-              onClick={() => navigate(-1)}
-            >
-              ← Back
-            </button>
-            <div className="users-title-block">
-              <h2 className="users-title">Users</h2>
-              <p className="users-subtitle">Manage all application users</p>
-            </div>
+        <div className="users-header-left">
+          <button
+            type="button"
+            className="users-back-btn"
+            onClick={() => navigate(-1)}
+          >
+            &lt; Back
+          </button>
+          <div className="users-title-block">
+            <h2 className="users-title">Users</h2>
+            <p className="users-subtitle">Manage all application users</p>
           </div>
+        </div>
 
           <button
             className="users-add-btn"
@@ -116,6 +167,7 @@ export default function UserList() {
                     <th>Email</th>
                     <th>Created At</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -124,9 +176,26 @@ export default function UserList() {
                       <td>{u.userId}</td>
                       <td>{u.fullName}</td>
                       <td>{u.email}</td>
-                      <td>{u.createdAt}</td>
+                      <td>{formatDateTime(u.createdAt)}</td>
                       <td style={{ color: u.isActive ? "green" : "red" }}>
                         {u.isActive ? "Active" : "Inactive"}
+                      </td>
+                      <td>
+                        <div className="users-actions">
+                          <button type="button" onClick={() => setEditingUser(u)}>
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => handleToggleStatus(u)}>
+                            {u.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => handleDelete(u)}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -145,6 +214,21 @@ export default function UserList() {
           onCreated={() => {
             loadUsersFromBackend();
             setShowCreate(false);
+          }}
+        />
+      )}
+      {editingUser && (
+        <UserCreate
+          mode="edit"
+          user={editingUser}
+          nextUserId={nextUserId}
+          onClose={() => setEditingUser(null)}
+          onUpdated={(updatedUser) => {
+            const merged = users.map((u) =>
+              u.userId === (updatedUser?.userId || u.userId) ? { ...u, ...updatedUser } : u
+            );
+            updateLocalUsers(merged);
+            setEditingUser(null);
           }}
         />
       )}

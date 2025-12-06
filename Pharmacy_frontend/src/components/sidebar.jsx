@@ -114,6 +114,7 @@ const Sidebar = () => {
         {/* Masters */}
         <NavLink
           to="/masters"
+          end
           className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
         >
           <span className="sidebar-icon"><Layers size={18} /></span>
