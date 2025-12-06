@@ -5,17 +5,8 @@ import jsPDF from "jspdf";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
-import { getDefaultLocationId } from "../../config/location";
 
 const INVOICE_URL = apiUrl("sales/invoices/");
-const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/`);
-
-const safeNumber = (value, digits = null) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return 0;
-  if (digits === null) return num;
-  return Number(num.toFixed(digits));
-};
 
 export default function Invoice() {
   const { id } = useParams();
@@ -24,7 +15,6 @@ export default function Invoice() {
   const [invoice, setInvoice] = useState(null);
   const [error, setError] = useState("");
   const [autoPrintDone, setAutoPrintDone] = useState(false);
-  const [lineExtras, setLineExtras] = useState({});
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -40,7 +30,6 @@ export default function Invoice() {
         }
         const data = await res.json();
         setInvoice(data);
-        setLineExtras({});
       } catch (e) {
         console.error(e);
         setError("Network error while loading invoice");
@@ -187,32 +176,9 @@ export default function Invoice() {
                 <td>{index + 1}</td>
                 <td>{item.product_name}</td>
                 <td>{item.batch_no || item.batch_lot}</td>
-                {(() => {
-                  const key = item.id ?? `${item.batch_lot}-${index}`;
-                  const extras = lineExtras[key] || {};
-                  const unitsPerPack = extras.unitsPerPack && extras.unitsPerPack > 0 ? extras.unitsPerPack : 1;
-                  const baseQty = safeNumber(item.qty_base, 3);
-                  const baseQtyDisplay = baseQty.toFixed(3);
-                  const soldQty =
-                    item.sold_uom === "PACK" ? baseQty / unitsPerPack : baseQty;
-                  const soldQtyDisplay =
-                    Math.abs(soldQty % 1) > 0 ? soldQty.toFixed(3) : String(soldQty);
-                  const qtyLabel =
-                    item.sold_uom === "PACK"
-                      ? `${soldQtyDisplay} ${extras.sellingLabel || "Pack"} (${baseQtyDisplay} ${extras.baseLabel || "Units"})`
-                      : `${soldQtyDisplay} ${extras.baseLabel || "Units"}`;
-                  const soldRate =
-                    item.sold_uom === "PACK"
-                      ? safeNumber(item.rate_per_base) * unitsPerPack
-                      : safeNumber(item.rate_per_base);
-                  return (
-                    <>
-                      <td style={{ textAlign: "right" }}>{qtyLabel}</td>
-                      <td style={{ textAlign: "right" }}>₹{soldRate.toFixed(2)}</td>
-                      <td style={{ textAlign: "right" }}>₹{Number(item.line_total).toFixed(2)}</td>
-                    </>
-                  );
-                })()}
+                <td style={{ textAlign: "right" }}>{item.qty_base}</td>
+                <td style={{ textAlign: "right" }}>₹{Number(item.rate_per_base).toFixed(2)}</td>
+                <td style={{ textAlign: "right" }}>₹{Number(item.line_total).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -253,50 +219,3 @@ export default function Invoice() {
   );
 }
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadLineExtras() {
-      if (!invoice?.lines?.length) {
-        setLineExtras({});
-        return;
-      }
-      const next = {};
-      await Promise.all(
-        invoice.lines.map(async (line, idx) => {
-          const key = line.id ?? `${line.batch_lot}-${idx}`;
-          const defaults = {
-            unitsPerPack: 1,
-            baseLabel: "Units",
-            sellingLabel: "Pack",
-          };
-          try {
-            const params = new URLSearchParams();
-            const loc = getDefaultLocationId();
-            if (loc) params.set("location_id", String(loc));
-            const url = params.toString()
-              ? `${MEDICINE_DETAIL_URL(line.batch_lot)}?${params.toString()}`
-              : MEDICINE_DETAIL_URL(line.batch_lot);
-            const res = await authFetch(url);
-            if (!res.ok) {
-              next[key] = defaults;
-              return;
-            }
-            const detail = await res.json();
-            next[key] = {
-              unitsPerPack: Math.max(1, safeNumber(detail.medicine?.units_per_pack)),
-              baseLabel: detail.medicine?.base_uom?.name || defaults.baseLabel,
-              sellingLabel: detail.medicine?.selling_uom?.name || defaults.sellingLabel,
-            };
-          } catch (err) {
-            console.error(err);
-            next[key] = defaults;
-          }
-        })
-      );
-      if (!cancelled) setLineExtras(next);
-    }
-    loadLineExtras();
-    return () => {
-      cancelled = true;
-    };
-  }, [invoice]);

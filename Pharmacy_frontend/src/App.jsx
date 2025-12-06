@@ -230,7 +230,7 @@ export default function App() {
   // This runs once on mount. It's guarded to run only in development by default.
   useEffect(() => {
     try {
-      if (process.env.NODE_ENV === "development") {
+      if (import.meta.env.DEV) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
       }
