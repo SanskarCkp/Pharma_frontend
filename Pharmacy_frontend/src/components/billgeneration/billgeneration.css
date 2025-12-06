@@ -258,5 +258,45 @@
   from { transform: scale(0.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
-
-
+.customer-card-ui {
+  background: #fff;
+  padding: 18px 22px;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid #ececec;
+  margin-bottom: 18px;
+}
+ 
+.section-title {
+  margin-bottom: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+ 
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+}
+ 
+.field-group label {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+ 
+.field-group input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d5d5d5;
+  outline: none;
+  font-size: 14px;
+  transition: 0.2s;
+}
+ 
+.field-group input:focus {
+  border-color: #3a86ff;
+  box-shadow: 0 0 0 2px rgba(58, 134, 255, 0.15);
+}

@@ -1,21 +1,55 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./taxbilling.css";
 import { FileText } from "lucide-react";
+import { authFetch } from "../../api/http";
 
-export default function TaxBillingConfiguration({
-  data,
-  onFieldChange,
-  onTogglePayment,
-  onSave,
-  saving,
-}) {
+// --------------------
+// USE ENV BASE URL
+// --------------------
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+const API_URL = `${API_BASE}/api/v1/settings/tax-billing/`;
+
+export default function TaxBillingConfiguration() {
+  const [data, setData] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // ------------------------
+  // GET TAX SETTINGS
+  // ------------------------
+  const fetchData = async () => {
+    try {
+      const res = await authFetch(API_URL);
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error("GET error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ------------------------
+  // HANDLE FIELD CHANGE
+  // ------------------------
+  const onFieldChange = (name, value) => {
+    setData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     onFieldChange(name, value);
   };
 
   const toggle = (key) => {
-    onTogglePayment(key, !Boolean(data?.[key]));
+    setData((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   const booleanRow = (key, label) => (
@@ -27,6 +61,35 @@ export default function TaxBillingConfiguration({
       </label>
     </div>
   );
+
+  // ------------------------
+  // SAVE BUTTON (POST/PUT)
+  // ------------------------
+  const onSave = async () => {
+    setSaving(true);
+
+    try {
+      const method = data.id ? "PUT" : "POST";
+
+      const res = await authFetch(API_URL, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+      setData(json);
+
+      alert("Saved Successfully!");
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Save Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p>Loading Tax Settings...</p>;
 
   return (
     <div className="tax-section">

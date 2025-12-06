@@ -1,189 +1,374 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
+import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
+import { getDefaultLocationId } from "../../config/location";
 
 const rawBase = import.meta.env.VITE_API_URL || "";
-const normalizeBase = (u) =>
-  u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
-
+const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
 const API_BASE = normalizeBase(rawBase);
-const PRODUCTS_API = `${API_BASE}/api/v1/catalog/products/`;
+
 const CATEGORY_API = `${API_BASE}/api/v1/catalog/categories/`;
 const FORMS_API = `${API_BASE}/api/v1/catalog/forms/`;
 const UOMS_API = `${API_BASE}/api/v1/catalog/uoms/`;
 const RACKS_API = `${API_BASE}/api/v1/inventory/rack-locations/`;
+const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
+const MEDICINE_DETAIL_API = (id) => `${API_BASE}/api/v1/inventory/medicines/${id}/`;
+const MOVEMENT_API = `${API_BASE}/api/v1/inventory/movements/`;
 
-/* ---------- initial form state (unchanged) ---------- */
-const emptyForm = {
-  medicine_name: "",
+const DEFAULT_LOCATION_ID = getDefaultLocationId();
+const dispatchInventoryRefresh = () => {
+  try {
+    window.dispatchEvent(new CustomEvent("inventory:refresh"));
+  } catch {}
+};
+
+const createInitialMedicine = () => ({
+  id: null,
+  name: "",
   generic_name: "",
   category: "",
-  medicine_form: "",
+  form: "",
   strength: "",
   base_uom: "",
+  selling_uom: "",
+  rack_location: "",
+  description: "",
+  gst_percent: "",
   tablets_per_strip: "",
   strips_per_box: "",
-  capsules_per_strip: "",
-  units_per_box: "",
   ml_per_bottle: "",
-  units_per_pack: "",
+  bottles_per_box: "",
+  vials_per_box: "",
   ml_per_vial: "",
-  ml_per_ampoule: "",
-  g_per_sachet: "",
-  g_per_tube: "",
-  g_per_jar: "",
-  units_per_roll: "",
-  ml_per_dropper: "",
+  grams_per_tube: "",
+  tubes_per_box: "",
+  units_per_pack: "",
+  mrp: "",
+});
+
+const createInitialBatch = () => ({
+  id: null,
+  batch_number: "",
   quantity: "",
   quantity_uom: "",
-  selling_uom: "",
-  manufacturer: "",
-  mrp: "",
   purchase_price: "",
-  expiry_date: "",
   mfg_date: "",
-  gst_percent: "",
-  description: "",
-  reorder_level: "",
-  batch_number: "",
-  hsn: "",
-  rack_location: "",
-  schedule: "OTC",
-  pack_size: "",
+  expiry_date: "",
+});
+
+const numberOrUndefined = (value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
 };
 
-/* ---------- improved UOM matching (robust) ---------- */
-const uomKeywords = {
-  tablet: ["tablet", "tab", "tabs", "tablets"],
-  capsule: ["capsule", "cap", "caps", "capsules"],
-  strip: ["strip", "strips"],
-  bottle: ["bottle", "bottles"],
-  syrupbottle: ["syrup", "syrup bottle"],
-  box: ["box", "boxes"],
-  vial: ["vial", "vials"],
-  ampoule: ["ampoule", "amp"],
-  sachet: ["sachet"],
-  tube: ["tube"],
-  jar: ["jar"],
-  pack: ["pack"],
-  roll: ["roll"],
-  dropper: ["dropper"],
+const decimalStringOrUndefined = (value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  if (typeof value === "number") return value.toString();
+  return value;
 };
 
-const uomFieldMap = {
-  tablet: [
-    { field: "tablets_per_strip", label: "Tablets per Strip", type: "number" },
-    { field: "strips_per_box", label: "Strips per Box", type: "number" },
-  ],
-  strip: [{ field: "strips_per_box", label: "Strips per Box", type: "number" }],
-  capsule: [
-    { field: "capsules_per_strip", label: "Capsules per Strip", type: "number" },
-    { field: "strips_per_box", label: "Strips per Box", type: "number" },
-  ],
-  bottle: [
-    { field: "ml_per_bottle", label: "ml per Bottle", type: "number" },
-    { field: "units_per_bottle", label: "Units per Bottle", type: "number" },
-  ],
-  syrupbottle: [{ field: "ml_per_bottle", label: "ml per Bottle", type: "number" }],
-  box: [
-    { field: "units_per_box", label: "Units per Box", type: "number" },
-    { field: "strips_per_box", label: "Strips per Box", type: "number" },
-  ],
-  vial: [{ field: "ml_per_vial", label: "ml per Vial", type: "number" }],
-  ampoule: [{ field: "ml_per_ampoule", label: "ml per Ampoule", type: "number" }],
-  sachet: [{ field: "g_per_sachet", label: "g per Sachet", type: "number" }],
-  tube: [{ field: "g_per_tube", label: "g per Tube", type: "number" }],
-  jar: [{ field: "g_per_jar", label: "g per Jar", type: "number" }],
-  pack: [{ field: "units_per_pack", label: "Units per Pack", type: "number" }],
-  roll: [{ field: "units_per_roll", label: "Units per Roll", type: "number" }],
-  dropper: [{ field: "ml_per_dropper", label: "ml per Dropper", type: "number" }],
+const flattenErrors = (payload) => {
+  if (!payload || typeof payload !== "object") return {};
+  const flat = {};
+  const visit = (node, prefix = "") => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      const msg = node
+        .map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry)))
+        .join(", ");
+      if (prefix) flat[prefix] = msg;
+      return;
+    }
+    if (typeof node === "object") {
+      Object.entries(node).forEach(([key, value]) => {
+        if (key === "medicine" || key === "batch") {
+          visit(value, "");
+        } else {
+          const nextKey = prefix ? `${prefix}.${key}` : key;
+          visit(value, nextKey);
+        }
+      });
+      return;
+    }
+    if (prefix) flat[prefix] = String(node);
+  };
+  visit(payload, "");
+  return flat;
 };
 
-function matchUomName(uomName) {
-  const name = (uomName || "").toLowerCase();
-  for (const key in uomKeywords) {
-    if (uomKeywords[key].some((kw) => name.includes(kw))) return key;
+const PACKAGING_FORMS = {
+  tablets: { form: /TABLET|CAPSULE/i, base: /TAB/i },
+  syrup: { form: /SYRUP|SUSPENSION/i, base: /ML/i },
+  injection: { form: /INJECTION|VIAL/i, base: /VIAL/i },
+  ointment: { form: /OINTMENT|CREAM|GEL/i, base: /GM|GRAM/i },
+};
+
+const detectPackagingType = (formName = "", baseUom = "") => {
+  const f = (formName || "").toUpperCase();
+  const b = (baseUom || "").toUpperCase();
+  for (const [key, cfg] of Object.entries(PACKAGING_FORMS)) {
+    if ((cfg.form && cfg.form.test(f)) || (cfg.base && cfg.base.test(b))) {
+      return key;
+    }
   }
   return null;
-}
+};
 
-/* ---------- token refresh + wrapper (kept but with logging) ---------- */
+const numberVal = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+const computeUnitsPerPack = (packagingType, medicine) => {
+  switch (packagingType) {
+    case "tablets": {
+      const tablets = numberVal(medicine.tablets_per_strip);
+      if (!tablets) return null;
+      const strips = numberVal(medicine.strips_per_box) || 1;
+      return tablets * strips;
+    }
+    case "syrup": {
+      const mlPerBottle = numberVal(medicine.ml_per_bottle);
+      if (!mlPerBottle) return null;
+      const bottles = numberVal(medicine.bottles_per_box) || 1;
+      return mlPerBottle * bottles;
+    }
+    case "injection": {
+      const vials = numberVal(medicine.vials_per_box);
+      return vials || null;
+    }
+    case "ointment": {
+      const grams = numberVal(medicine.grams_per_tube);
+      if (!grams) return null;
+      const tubes = numberVal(medicine.tubes_per_box) || 1;
+      return grams * tubes;
+    }
+    default:
+      return null;
+  }
+};
+
 async function tryRefreshToken() {
   try {
-    const refresh = localStorage.getItem("refresh");
+    const refresh = getRefreshToken();
     if (!refresh) return false;
-    const r = await fetch(`${API_BASE}/api/v1/auth/token/refresh/`, {
+    const res = await fetch(`${API_BASE}/api/v1/auth/token/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
     });
-    if (!r.ok) return false;
-    const body = await r.json();
-    if (body.access) localStorage.setItem("access", body.access);
-    if (body.refresh) localStorage.setItem("refresh", body.refresh);
-    return true;
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => null);
+    if (!data) return false;
+    storeTokens({ access: data.access, refresh: data.refresh || refresh });
+    return Boolean(data.access || data.refresh);
   } catch {
     return false;
   }
 }
 
 async function fetchWithAuthRetry(url, options = {}) {
-  // Prefer authFetch (your existing wrapper) — but log and fallback to direct fetch if needed
   try {
-    let response = await authFetch(url, options);
+    const response = await authFetch(url, options);
     if (response.status !== 401) return response;
     const refreshed = await tryRefreshToken();
     if (!refreshed) return response;
     return await authFetch(url, options);
   } catch (err) {
-    console.warn("authFetch failed, falling back to direct fetch:", err);
-    // fallback: try direct fetch with access token if present
-    const access = localStorage.getItem("access");
+    console.warn("authFetch failed, falling back to fetch", err);
     const headers = { ...(options.headers || {}) };
-    if (access) headers["Authorization"] = `Bearer ${access}`;
-    try {
-      return await fetch(url, { ...options, headers });
-    } catch (e) {
-      throw e;
-    }
+    const token = getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch(url, { ...options, headers });
   }
 }
 
-/* ---------- component ---------- */
-export default function AddMedicine() {
+export default function AddMedicine({
+  open = true,
+  asDrawer = false,
+  mode = "add",
+  initialData = null,
+  onClose,
+  onSaved,
+  locationIdOverride,
+} = {}) {
   const nav = useNavigate();
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState({});
-  const [fieldErrors, setFieldErrors] = useState(null);
-  const [serverError, setServerError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [medicine, setMedicine] = useState(() => createInitialMedicine());
+  const [batch, setBatch] = useState(() => createInitialBatch());
   const [categories, setCategories] = useState([]);
   const [forms, setForms] = useState([]);
   const [uoms, setUoms] = useState([]);
   const [rackLocations, setRackLocations] = useState([]);
   const [loadingMasters, setLoadingMasters] = useState(true);
+  const [errors, setErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [currentStock, setCurrentStock] = useState("");
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustError, setAdjustError] = useState("");
+  const [adjustSuccess, setAdjustSuccess] = useState("");
+  const [adjustLoading, setAdjustLoading] = useState(false);
+  const resolvedLocationId = useMemo(
+    () => Number(locationIdOverride ?? DEFAULT_LOCATION_ID),
+    [locationIdOverride]
+  );
+  const isDrawer = Boolean(asDrawer);
+  const isEdit = mode === "edit";
+  const renderFieldError = (field) => {
+    const message = fieldErrors[field] || errors[field];
+    if (!message) return null;
+    return <div className="err">{message}</div>;
+  };
+
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      nav(-1);
+    }
+  }, [nav, onClose]);
+
+  const handleSuccess = useCallback(
+    (body, message) => {
+      if (onSaved) {
+        onSaved(body);
+      }
+      dispatchInventoryRefresh();
+      if (isDrawer) {
+        handleClose();
+      } else {
+        nav("/inventory/medicines", {
+          state: { flash: message },
+          replace: true,
+        });
+      }
+    },
+    [handleClose, isDrawer, nav, onSaved]
+  );
+
+  const resetForm = useCallback(() => {
+    setMedicine(createInitialMedicine());
+    setBatch(createInitialBatch());
+    setErrors({});
+    setFieldErrors({});
+    setServerError("");
+    setAdjustQty("");
+    setAdjustError("");
+    setAdjustSuccess("");
+    setCurrentStock("");
+  }, []);
+
+  const applyInitialData = useCallback((detail) => {
+    if (!detail) return;
+    const med = detail.medicine || {};
+    const batchInfo = detail.batch || {};
+    setCurrentStock(
+      detail.inventory?.stock_on_hand_base ??
+        batchInfo.current_stock_base ??
+        ""
+    );
+    setMedicine({
+      ...createInitialMedicine(),
+      id: med.id ?? null,
+      name: med.name || "",
+      generic_name: med.generic_name || "",
+      category: med.category?.id ? String(med.category.id) : "",
+      form: med.form?.id ? String(med.form.id) : "",
+      strength: med.strength || "",
+      base_uom: med.base_uom?.id ? String(med.base_uom.id) : "",
+      selling_uom: med.selling_uom?.id ? String(med.selling_uom.id) : "",
+      rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
+      description: med.description || "",
+      gst_percent: med.gst_percent || "",
+      tablets_per_strip: med.tablets_per_strip ?? "",
+      strips_per_box: med.strips_per_box ?? "",
+      units_per_pack: med.units_per_pack ?? "",
+      mrp: med.mrp ?? "",
+    });
+    setBatch({
+      ...createInitialBatch(),
+      id: batchInfo.id ?? null,
+      batch_number: batchInfo.batch_number || "",
+      quantity: batchInfo.quantity ? Number(batchInfo.quantity) : "",
+      quantity_uom: batchInfo.quantity_uom?.id ? String(batchInfo.quantity_uom.id) : "",
+      purchase_price: batchInfo.purchase_price ?? "",
+      mfg_date: batchInfo.mfg_date || "",
+      expiry_date: batchInfo.expiry_date || "",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDrawer) return;
+    if (!open) {
+      resetForm();
+      return;
+    }
+    if (isEdit && initialData) {
+      applyInitialData(initialData);
+    } else if (!isEdit) {
+      resetForm();
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit, open, resetForm]);
+
+  useEffect(() => {
+    if (!isDrawer && isEdit && initialData) {
+      applyInitialData(initialData);
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit]);
+
+  useEffect(() => {
+    if (initialData?.inventory?.stock_on_hand_base != null) {
+      setCurrentStock(initialData.inventory.stock_on_hand_base);
+    }
+  }, [initialData]);
+
+  const refreshCurrentStock = useCallback(async () => {
+    if (!batch.id) return;
+    try {
+      const params = new URLSearchParams();
+      const loc = resolvedLocationId || DEFAULT_LOCATION_ID;
+      if (loc) params.set("location_id", String(loc));
+      const url = params.toString()
+        ? `${MEDICINE_DETAIL_API(batch.id)}?${params.toString()}`
+        : MEDICINE_DETAIL_API(batch.id);
+      const res = await fetchWithAuthRetry(url);
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (data?.inventory?.stock_on_hand_base != null) {
+        setCurrentStock(data.inventory.stock_on_hand_base);
+      }
+    } catch {
+      // ignore
+    }
+  }, [batch.id, resolvedLocationId]);
 
   useEffect(() => {
     async function loadMasters() {
+      setLoadingMasters(true);
       try {
-        const [c, f, u, r] = await Promise.all([
+        const [catRes, formRes, uomRes, rackRes] = await Promise.all([
           authFetch(CATEGORY_API),
           authFetch(FORMS_API),
           authFetch(UOMS_API),
           authFetch(RACKS_API),
         ]);
-        const cjson = await c.json().catch(() => null);
-        const fjson = await f.json().catch(() => null);
-        const ujson = await u.json().catch(() => null);
-        const rjson = await r.json().catch(() => null);
-
-        setCategories(cjson?.results || []);
-        setForms(fjson?.results || []);
-        setUoms(ujson?.results || []);
-        setRackLocations(rjson?.results || []);
-      } catch (e) {
-        console.error("Master load error", e);
+        const [catJson, formJson, uomJson, rackJson] = await Promise.all([
+          catRes.json().catch(() => null),
+          formRes.json().catch(() => null),
+          uomRes.json().catch(() => null),
+          rackRes.json().catch(() => null),
+        ]);
+        setCategories(catJson?.results || []);
+        setForms(formJson?.results || []);
+        setUoms(uomJson?.results || []);
+        setRackLocations(rackJson?.results || []);
+      } catch (err) {
+        console.error("Failed to load master data", err);
+        setServerError("Unable to load master data. Please refresh.");
       } finally {
         setLoadingMasters(false);
       }
@@ -191,305 +376,421 @@ export default function AddMedicine() {
     loadMasters();
   }, []);
 
-  const getUomById = (id) => uoms.find((u) => String(u.id) === String(id)) || null;
-  const getUomName = (id) => (getUomById(id)?.name || "");
+  const selectedFormName = useMemo(() => {
+    const form = forms.find((f) => String(f.id) === String(medicine.form));
+    return form?.name || "";
+  }, [forms, medicine.form]);
 
-  const change = (e) => {
+  const selectedBaseUomLabel = useMemo(() => {
+    const entry = uoms.find(
+      (u) => String(u.id) === String(medicine.base_uom) || String(u.code) === String(medicine.base_uom)
+    );
+    return entry?.code || entry?.name || "";
+  }, [uoms, medicine.base_uom]);
+
+  const packagingType = useMemo(
+    () => detectPackagingType(selectedFormName, selectedBaseUomLabel),
+    [selectedFormName, selectedBaseUomLabel]
+  );
+
+  const autoUnitsPerPack = useMemo(
+    () =>
+      computeUnitsPerPack(packagingType, medicine),
+    [
+      packagingType,
+      medicine.tablets_per_strip,
+      medicine.strips_per_box,
+      medicine.ml_per_bottle,
+      medicine.bottles_per_box,
+      medicine.vials_per_box,
+      medicine.grams_per_tube,
+      medicine.tubes_per_box,
+    ]
+  );
+
+  const totalBaseUnits = useMemo(() => {
+    const qty = Number(batch.quantity);
+    const units = autoUnitsPerPack ?? numberVal(medicine.units_per_pack);
+    if (!qty || !units) return null;
+    return qty * units;
+  }, [batch.quantity, autoUnitsPerPack, medicine.units_per_pack]);
+
+  const handleMedicineChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setMedicine((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ---------- units per pack calculator (unchanged, robust) ---------- */
-  const computeUnitsPerPack = (f = form) => {
-    const baseUom = getUomById(f.base_uom);
-    const sellUom = getUomById(f.selling_uom || f.quantity_uom);
-    if (!baseUom) return null;
+  const handleBatchChange = (e) => {
+    const { name, value } = e.target;
+    setBatch((prev) => ({ ...prev, [name]: value }));
+  };
 
-    const n = (v) => {
-      if (v === "" || v === null || v === undefined) return null;
-      const num = Number(v);
-      return Number.isFinite(num) ? num : null;
+  const lastSellingRef = useRef(null);
+  useEffect(() => {
+    if (!medicine.selling_uom) return;
+    if (lastSellingRef.current === medicine.selling_uom) return;
+    lastSellingRef.current = medicine.selling_uom;
+    setBatch((prev) => ({
+      ...prev,
+      quantity_uom:
+        prev.quantity_uom && prev.quantity_uom !== "" ? prev.quantity_uom : medicine.selling_uom,
+    }));
+  }, [medicine.selling_uom]);
+
+  const validate = () => {
+    const localErrors = {};
+    if (!medicine.name.trim()) localErrors.name = "Required";
+    if (!medicine.category) localErrors.category = "Required";
+    if (!medicine.form) localErrors.form = "Required";
+    if (!medicine.base_uom) localErrors.base_uom = "Required";
+    if (!medicine.selling_uom) localErrors.selling_uom = "Required";
+    if (!medicine.rack_location) localErrors.rack_location = "Required";
+    if (!medicine.mrp) localErrors.mrp = "Required";
+    if (!batch.batch_number.trim()) localErrors.batch_number = "Required";
+    if (!batch.quantity) localErrors.quantity = "Required";
+    if (!batch.quantity_uom) localErrors.quantity_uom = "Required";
+    if (!batch.purchase_price) localErrors.purchase_price = "Required";
+    if (!batch.expiry_date) localErrors.expiry_date = "Required";
+    if (packagingType === "tablets") {
+      if (!medicine.tablets_per_strip) localErrors.tablets_per_strip = "Required";
+      if (!medicine.strips_per_box) localErrors.strips_per_box = "Required";
+    } else if (packagingType === "syrup") {
+      if (!medicine.ml_per_bottle) localErrors.ml_per_bottle = "Required";
+      if (!medicine.bottles_per_box) localErrors.bottles_per_box = "Required";
+    } else if (packagingType === "injection") {
+      if (!medicine.vials_per_box) localErrors.vials_per_box = "Required";
+    } else if (packagingType === "ointment") {
+      if (!medicine.grams_per_tube) localErrors.grams_per_tube = "Required";
+      if (!medicine.tubes_per_box) localErrors.tubes_per_box = "Required";
+    } else if (!medicine.units_per_pack) {
+      localErrors.units_per_pack = "Units per pack is required for this form.";
+    }
+    return localErrors;
+  };
+
+  const renderPackagingFields = () => {
+    const numberInput = (name, label) => (
+      <div className="field">
+        <label>{label}</label>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          name={name}
+          value={medicine[name] || ""}
+          onChange={handleMedicineChange}
+        />
+        {renderFieldError(name)}
+      </div>
+    );
+
+    const packagingAuto = Boolean(packagingType);
+    const unitsValue = packagingAuto
+      ? autoUnitsPerPack != null
+        ? Number(autoUnitsPerPack)
+        : ""
+      : medicine.units_per_pack;
+    const unitsField = (
+      <div className="field">
+        <label>
+          Units per Pack{" "}
+          {packagingAuto ? "(auto)" : "(enter manually)"}
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          name="units_per_pack"
+          value={unitsValue}
+          onChange={handleMedicineChange}
+          disabled={packagingAuto}
+        />
+        {packagingAuto ? (
+          <div className="hint">
+            Based on packaging inputs. Fill those fields to see the computed value.
+          </div>
+        ) : (
+          <div className="hint">Enter base units per selling pack.</div>
+        )}
+        {renderFieldError("units_per_pack")}
+      </div>
+    );
+
+    let fields = unitsField;
+    switch (packagingType) {
+      case "tablets":
+        fields = (
+          <>
+            {numberInput("tablets_per_strip", "Tablets per Strip")}
+            {numberInput("strips_per_box", "Strips per Box")}
+            {unitsField}
+          </>
+        );
+        break;
+      case "syrup":
+        fields = (
+          <>
+            {numberInput("ml_per_bottle", "ML per Bottle")}
+            {numberInput("bottles_per_box", "Bottles per Box")}
+            {unitsField}
+          </>
+        );
+        break;
+      case "injection":
+        fields = (
+          <>
+            {numberInput("vials_per_box", "Vials per Box")}
+            {numberInput("ml_per_vial", "ML per Vial (optional)")}
+            {unitsField}
+          </>
+        );
+        break;
+      case "ointment":
+        fields = (
+          <>
+            {numberInput("grams_per_tube", "Grams per Tube")}
+            {numberInput("tubes_per_box", "Tubes per Box")}
+            {unitsField}
+          </>
+        );
+        break;
+      default:
+        fields = unitsField;
+    }
+    const previewUnits =
+      autoUnitsPerPack != null
+        ? Number(autoUnitsPerPack)
+        : numberVal(medicine.units_per_pack);
+    return (
+      <>
+        {fields}
+        {previewUnits ? (
+          <div className="hint">
+            Units per pack: {previewUnits} {selectedBaseUomLabel || "base units"}
+          </div>
+        ) : null}
+      </>
+    );
+  };
+
+  const buildPayload = () => {
+    const location = Number(resolvedLocationId) || DEFAULT_LOCATION_ID;
+    const unitsPerPack =
+      autoUnitsPerPack != null
+        ? Number(autoUnitsPerPack)
+        : numberOrUndefined(medicine.units_per_pack);
+
+    const medPayload = {
+      ...(medicine.id ? { id: medicine.id } : {}),
+      name: medicine.name.trim(),
+      generic_name: medicine.generic_name.trim() || undefined,
+      category: Number(medicine.category),
+      form: Number(medicine.form),
+      strength: medicine.strength.trim() || undefined,
+      base_uom: Number(medicine.base_uom),
+      selling_uom: Number(medicine.selling_uom || batch.quantity_uom),
+      rack_location: Number(medicine.rack_location),
+      description: medicine.description.trim(),
+      gst_percent: decimalStringOrUndefined(medicine.gst_percent) ?? "0",
+      tablets_per_strip: numberOrUndefined(medicine.tablets_per_strip),
+      strips_per_box: numberOrUndefined(medicine.strips_per_box),
+      ml_per_bottle: numberOrUndefined(medicine.ml_per_bottle),
+      bottles_per_box: numberOrUndefined(medicine.bottles_per_box),
+      vials_per_box: numberOrUndefined(medicine.vials_per_box),
+      ml_per_vial: numberOrUndefined(medicine.ml_per_vial),
+      grams_per_tube: numberOrUndefined(medicine.grams_per_tube),
+      tubes_per_box: numberOrUndefined(medicine.tubes_per_box),
+      units_per_pack: unitsPerPack,
+      mrp: decimalStringOrUndefined(medicine.mrp),
     };
 
-    const baseName = (baseUom?.name || "").toLowerCase();
-    const sellName = (sellUom?.name || "").toLowerCase();
-
-    let units = null;
-
-    if (baseName.includes("tablet")) {
-      const tps = n(f.tablets_per_strip);
-      const spb = n(f.strips_per_box);
-      if (sellName.includes("box")) units = tps != null && spb != null ? tps * spb : n(f.units_per_box);
-      else if (sellName.includes("strip")) units = tps;
-      else units = n(f.units_per_pack);
-    } else if (baseName.includes("capsule")) {
-      const cps = n(f.capsules_per_strip);
-      const spb = n(f.strips_per_box);
-      if (sellName.includes("box")) units = cps != null && spb != null ? cps * spb : cps;
-      else if (sellName.includes("strip")) units = cps;
-      else units = n(f.units_per_pack);
-    } else if (baseName.includes("ml")) {
-      const mlb = n(f.ml_per_bottle);
-      const mlv = n(f.ml_per_vial);
-      const mla = n(f.ml_per_ampoule);
-      const mld = n(f.ml_per_dropper);
-      if (sellName.includes("bottle")) units = mlb;
-      else if (sellName.includes("vial")) units = mlv;
-      else if (sellName.includes("ampoule")) units = mla;
-      else if (sellName.includes("dropper")) units = mld;
-      else units = n(f.units_per_pack);
-    } else {
-      units = n(f.units_per_pack);
-    }
-
-    return units;
+    const resolvedQuantityUom = batch.quantity_uom || medicine.selling_uom;
+    const batchPayload = {
+      ...(batch.id ? { id: batch.id } : {}),
+      batch_number: batch.batch_number.trim(),
+      mfg_date: batch.mfg_date || undefined,
+      expiry_date: batch.expiry_date,
+      quantity: Number(batch.quantity),
+      quantity_uom: resolvedQuantityUom ? Number(resolvedQuantityUom) : undefined,
+      purchase_price: decimalStringOrUndefined(batch.purchase_price),
+    };
+    return {
+      location_id: location,
+      medicine: medPayload,
+      batch: batchPayload,
+    };
   };
 
-  useEffect(() => {
-    const computed = computeUnitsPerPack(form);
-    if (computed != null) setForm((p) => ({ ...p, units_per_pack: computed }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    form.base_uom,
-    form.selling_uom,
-    form.quantity_uom,
-    form.tablets_per_strip,
-    form.strips_per_box,
-    form.capsules_per_strip,
-    form.units_per_box,
-    form.ml_per_bottle,
-    form.ml_per_vial,
-    form.ml_per_ampoule,
-    form.ml_per_dropper,
-  ]);
-
-  /* ---------- basic UI validations ---------- */
-  const validate = () => {
-    const e = {};
-    if (!form.medicine_name) e.medicine_name = "Required";
-    if (!form.category) e.category = "Required";
-    if (!form.medicine_form) e.medicine_form = "Required";
-    if (!form.base_uom) e.base_uom = "Required";
-    if (!form.quantity) e.quantity = "Required";
-    if (!form.quantity_uom) e.quantity_uom = "Required";
-    if (!form.purchase_price) e.purchase_price = "Required";
-    if (!form.mrp) e.mrp = "Required";
-    if (!form.batch_number) e.batch_number = "Required";
-    if (!form.expiry_date) e.expiry_date = "Required";
-    if (form.reorder_level === "" || form.reorder_level === null) e.reorder_level = "Required";
-    if (form.units_per_pack === "" || form.units_per_pack === null) e.units_per_pack = "Required";
-    return e;
-  };
-
-  /* ---------- submit handler (improved) ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFieldErrors(null);
     setServerError("");
-
-    // compute units synchronously for payload
-    const computedUnits = computeUnitsPerPack(form);
-    const unitsPerPackFinal = computedUnits != null ? computedUnits : (form.units_per_pack ? Number(form.units_per_pack) : null);
-
-    // small helper
-    const toNum = (v) => {
-      if (v === "" || v === null || v === undefined) return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    };
-
+    setFieldErrors({});
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors);
+      return;
+    }
     setErrors({});
-    const eObj = validate();
-    setErrors(eObj);
-    if (Object.keys(eObj).length) return;
 
+    const payload = buildPayload();
     setSubmitting(true);
-
-    // selected uoms
-    const selectedBase = getUomById(form.base_uom);
-    const selectedSell = getUomById(form.selling_uom || form.quantity_uom);
-
-    // dynamic uom fields (tablets/capsule/etc.)
-    const dynamicPayload = {};
-    const baseMatch = matchUomName(selectedBase?.name);
-    const sellMatch = matchUomName(selectedSell?.name);
-
-    // collect uom-specific numeric fields if present
-    const numericFields = [
-      "tablets_per_strip",
-      "strips_per_box",
-      "capsules_per_strip",
-      "units_per_box",
-      "ml_per_bottle",
-      "ml_per_vial",
-      "ml_per_ampoule",
-      "ml_per_dropper",
-      "units_per_pack",
-      "g_per_sachet",
-      "g_per_tube",
-      "g_per_jar",
-      "units_per_roll",
-    ];
-    numericFields.forEach((f) => {
-      if (Object.prototype.hasOwnProperty.call(form, f) && form[f] !== "") {
-        dynamicPayload[f] = toNum(form[f]);
-      }
-    });
-
-    // Build payload strictly matching Product model fields to avoid 400
-    const payload = {
-      code: null,
-      name: form.medicine_name,
-      generic_name: form.generic_name || "",
-      dosage_strength: form.strength || "",
-      hsn: form.hsn || "",
-      schedule: form.schedule || "OTC",
-      category: form.category ? Number(form.category) : null,
-      medicine_form: form.medicine_form ? Number(form.medicine_form) : null,
-      base_uom: selectedBase ? Number(selectedBase.id) : null,
-      selling_uom: selectedSell ? Number(selectedSell.id) : null,
-      base_unit: getUomName(form.base_uom) || "",
-      pack_unit: getUomName(form.selling_uom || form.quantity_uom) || "",
-      pack_size: form.pack_size || "",
-      units_per_pack: unitsPerPackFinal,
-      base_unit_step: 1,
-      gst_percent: form.gst_percent ? Number(form.gst_percent) : 0,
-      reorder_level: form.reorder_level ? Number(form.reorder_level) : 0,
-      mrp: form.mrp ? String(form.mrp) : "0",
-      manufacturer: form.manufacturer || "",
-      description: form.description || "",
-      storage_instructions: "",
-      rack_location: form.rack_location ? Number(form.rack_location) : null,
-      preferred_vendor: null,
-      is_sensitive: false,
-      is_active: true,
-      // include dynamic numeric uom fields if present
-      ...dynamicPayload,
-    };
-
-    // debug logs so you can see in Console that the POST is triggered and payload content
-    console.info("Attempting to POST product to", PRODUCTS_API);
-    console.info("Payload:", payload);
-
     try {
-      const res = await fetchWithAuthRetry(PRODUCTS_API, {
-        method: "POST",
+      const endpoint =
+        isEdit && payload.batch.id
+          ? MEDICINE_DETAIL_API(payload.batch.id)
+          : ADD_MEDICINE_API;
+      const response = await fetchWithAuthRetry(endpoint, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      // log response for debugging — helpful if POST reaches backend but fails validation
-      console.info("Response status:", res.status);
-
-      const body = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        console.warn("Server returned non-OK:", res.status, body);
-        setFieldErrors(body);
-        // show generic message if no body
-        if (!body) setServerError(`Save failed (${res.status})`);
-        setSubmitting(false);
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        setFieldErrors(flattenErrors(body));
+        if (body?.detail) {
+          setServerError(body.detail);
+        } else {
+          setServerError(`Save failed (${response.status})`);
+        }
         return;
       }
-
-      // success -> navigate back to list
-      nav("/inventory/medicines");
+      handleSuccess(
+        body,
+        `Medicine ${body?.medicine?.name || ""} ${isEdit ? "updated" : "added"} successfully.`
+      );
     } catch (err) {
-      console.error("Network / fetch error:", err);
-      setServerError("Network error — check console for details");
+      console.error("Add medicine failed", err);
+      setServerError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const renderFieldError = (name) => {
-    if (!fieldErrors) return null;
-    if (fieldErrors[name]) return <div className="err">{Array.isArray(fieldErrors[name]) ? fieldErrors[name].join(", ") : fieldErrors[name]}</div>;
+  const handleStockAdjustment = async () => {
+    setAdjustError("");
+    setAdjustSuccess("");
+    if (!adjustQty || Number(adjustQty) === 0) {
+      setAdjustError("Enter a non-zero quantity.");
+      return;
+    }
+    if (!batch.id) {
+      setAdjustError("Batch id missing.");
+      return;
+    }
+    setAdjustLoading(true);
+    try {
+      const payload = {
+        location_id: resolvedLocationId || DEFAULT_LOCATION_ID,
+        batch_lot_id: batch.id,
+        qty_change_base: adjustQty,
+        reason: "ADJUSTMENT",
+      };
+      const res = await fetchWithAuthRetry(MOVEMENT_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || `Adjustment failed (${res.status})`);
+      }
+      setAdjustSuccess("Stock updated successfully.");
+      setAdjustQty("");
+      await refreshCurrentStock();
+      dispatchInventoryRefresh();
+    } catch (err) {
+      setAdjustError(err.message || "Failed to update stock.");
+    } finally {
+      setAdjustLoading(false);
+    }
+  };
+
+  if (isDrawer && !open) {
     return null;
-  };
+  }
 
-  /* render UOM-specific inputs using robust match */
-  const renderUOMSpecificFields = () => {
-    const baseUom = getUomById(form.base_uom);
-    if (!baseUom?.name) return null;
-    const match = matchUomName(baseUom.name);
-    if (!match) return null;
-    const fields = uomFieldMap[match] || [];
-    return fields.map(({ field, label, type }) => (
-      <div className="field" key={field}>
-        <label>{label}</label>
-        <input name={field} type={type} value={form[field] || ""} onChange={change} />
-        {renderFieldError(field)}
-      </div>
-    ));
-  };
+  const header = (
+    <div className="inv-form-header">
+      <button className="btn-secondary" type="button" onClick={handleClose}>
+        {isDrawer ? "Close" : "Back"}
+      </button>
+      <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>
+      <p>Create the product master and its opening batch in one step</p>
+    </div>
+  );
 
-  return (
-    <div className="inv-form-wrap">
-      <div className="inv-form-header">
-        <button className="btn-secondary" style={{ marginBottom: "10px" }} onClick={() => nav(-1)}>← Back</button>
-        <h2>Add New Medicine</h2>
-        <p>Enter the medicine details</p>
-      </div>
-      <div className="inv-form-card">
-        {serverError && <div className="inv-error-banner">{serverError}</div>}
-        {fieldErrors && <div className="inv-error-banner" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(fieldErrors, null, 2)}</div>}
+  const formContent = (
+    <div className="inv-form-card">
+      {serverError && <div className="inv-error-banner">{serverError}</div>}
+      {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data…</div>}
 
-        <div style={{ gridColumn: "1/3", marginBottom: "10px" }}>
-          <h3 className="section-title">Medicine Information</h3>
-          <div className="section-line"></div>
-        </div>
-
-        <form className="grid2" onSubmit={handleSubmit}>
-          {/* Medicine Info Fields */}
+      <form className="grid2" onSubmit={handleSubmit}>
           <div className="field">
             <label>Medicine Name *</label>
-            <input name="medicine_name" value={form.medicine_name} onChange={change} className={errors.medicine_name ? "error" : ""} />
-            {errors.medicine_name && <div className="err">{errors.medicine_name}</div>}
+            <input
+              name="name"
+              value={medicine.name}
+              onChange={handleMedicineChange}
+              className={errors.name ? "error" : ""}
+            />
             {renderFieldError("name")}
           </div>
 
           <div className="field">
             <label>Generic Name</label>
-            <input name="generic_name" value={form.generic_name} onChange={change} />
+            <input name="generic_name" value={medicine.generic_name} onChange={handleMedicineChange} />
             {renderFieldError("generic_name")}
           </div>
 
           <div className="field">
             <label>Category *</label>
-            {loadingMasters ? <div>Loading...</div> : (
-              <select name="category" value={form.category} onChange={change} className={errors.category ? "error" : ""}>
-                <option value="">Select</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            )}
-            {errors.category && <div className="err">{errors.category}</div>}
+            <select
+              name="category"
+              value={medicine.category}
+              onChange={handleMedicineChange}
+              className={errors.category ? "error" : ""}
+            >
+              <option value="">Select</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
             {renderFieldError("category")}
           </div>
 
-          <div className="field">
+  <div className="field">
             <label>Medicine Form *</label>
-            <select name="medicine_form" value={form.medicine_form} onChange={change} className={errors.medicine_form ? "error" : ""}>
+            <select name="form" value={medicine.form} onChange={handleMedicineChange} className={errors.form ? "error" : ""}>
               <option value="">Select</option>
-              {forms.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              {forms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
             </select>
-            {errors.medicine_form && <div className="err">{errors.medicine_form}</div>}
-            {renderFieldError("medicine_form")}
+            {renderFieldError("form")}
           </div>
 
           <div className="field">
             <label>Strength</label>
-            <input name="strength" value={form.strength} onChange={change} />
-            {renderFieldError("dosage_strength")}
+            <input name="strength" value={medicine.strength} onChange={handleMedicineChange} />
+            {renderFieldError("strength")}
           </div>
 
           <div className="field">
             <label>Rack Location *</label>
-            <select name="rack_location" value={form.rack_location} onChange={change}>
-              <option value="">Select Rack</option>
+            <select
+              name="rack_location"
+              value={medicine.rack_location}
+              onChange={handleMedicineChange}
+              className={errors.rack_location ? "error" : ""}
+            >
+              <option value="">Select</option>
               {rackLocations.map((rack) => (
                 <option key={rack.id} value={rack.id}>
-                  {rack.name} ({rack.description})
+                  {rack.name}
                 </option>
               ))}
             </select>
@@ -497,118 +798,228 @@ export default function AddMedicine() {
           </div>
 
           <div className="field">
-            <label>Description</label>
-            <textarea name="description" value={form.description} onChange={change} />
-            {renderFieldError("description")}
-          </div>
-
-          <div className="field">
             <label>Base UOM *</label>
-            <select name="base_uom" value={form.base_uom} onChange={change} className={errors.base_uom ? "error" : ""}>
+            <select
+              name="base_uom"
+              value={medicine.base_uom}
+              onChange={handleMedicineChange}
+              className={errors.base_uom ? "error" : ""}
+            >
               <option value="">Select</option>
-              {uoms.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {uoms.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
             </select>
-            {errors.base_uom && <div className="err">{errors.base_uom}</div>}
             {renderFieldError("base_uom")}
           </div>
 
-          {/* UOM-specific fields */}
-          {renderUOMSpecificFields()}
-
-          {/* Batch & Pricing Section */}
-          <div style={{ gridColumn: "1/3", marginTop: "20px", marginBottom: "10px" }}>
-            <h3 className="section-title">Batch & Pricing</h3>
-            <div className="section-line"></div>
-          </div>
-
-          {/* Batch & Pricing Fields */}
           <div className="field">
-            <label>Batch Number *</label>
-            <input name="batch_number" value={form.batch_number} onChange={change} className={errors.batch_number ? "error" : ""} />
-            {errors.batch_number && <div className="err">{errors.batch_number}</div>}
-            {renderFieldError("batch_number")}
-          </div>
-
-          <div className="field">
-            <label>Quantity *</label>
-            <input type="number" name="quantity" value={form.quantity} onChange={change} className={errors.quantity ? "error" : ""} />
-            {errors.quantity && <div className="err">{errors.quantity}</div>}
-            {renderFieldError("quantity")}
-          </div>
-
-          <div className="field">
-            <label>Quantity UOM *</label>
-            <select name="quantity_uom" value={form.quantity_uom} onChange={change} className={errors.quantity_uom ? "error" : ""}>
+            <label>Selling UOM *</label>
+            <select
+              name="selling_uom"
+              value={medicine.selling_uom}
+              onChange={handleMedicineChange}
+              className={errors.selling_uom ? "error" : ""}
+            >
               <option value="">Select</option>
-              {uoms.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-            {errors.quantity_uom && <div className="err">{errors.quantity_uom}</div>}
-            {renderFieldError("pack_unit")}
-          </div>
-
-          <div className="field">
-            <label>Selling UOM</label>
-            <select name="selling_uom" value={form.selling_uom} onChange={change}>
-              <option value="">Select</option>
-              {uoms.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {uoms.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
             </select>
             {renderFieldError("selling_uom")}
           </div>
 
           <div className="field">
+            <label>GST %</label>
+            <input name="gst_percent" value={medicine.gst_percent} onChange={handleMedicineChange} />
+            {renderFieldError("gst_percent")}
+          </div>
+
+          <div className="field" style={{ gridColumn: "1 / 3" }}>
+            <label>Description</label>
+            <textarea name="description" value={medicine.description} onChange={handleMedicineChange} />
+            {renderFieldError("description")}
+          </div>
+
+          <div style={{ gridColumn: "1/3", marginTop: 10 }}>
+            <h3 className="section-title">Packaging</h3>
+            <div className="section-line" />
+          </div>
+
+          {renderPackagingFields()}
+
+          <div className="field">
+            <label>MRP *</label>
+            <input
+              name="mrp"
+              type="number"
+              min="0"
+              step="0.01"
+              value={medicine.mrp}
+              onChange={handleMedicineChange}
+              className={errors.mrp ? "error" : ""}
+            />
+            {renderFieldError("mrp")}
+          </div>
+
+          <div style={{ gridColumn: "1/3", marginTop: 20 }}>
+            <h3 className="section-title">Batch & Pricing</h3>
+            <div className="section-line" />
+          </div>
+
+          <div className="field">
+            <label>Batch Number *</label>
+            <input
+              name="batch_number"
+              value={batch.batch_number}
+              onChange={handleBatchChange}
+              className={errors.batch_number ? "error" : ""}
+            />
+            {renderFieldError("batch_number")}
+          </div>
+
+          <div className="field">
+            <label>Quantity *</label>
+            <input
+              name="quantity"
+              type="number"
+              min="0"
+              value={batch.quantity}
+              onChange={handleBatchChange}
+              className={errors.quantity ? "error" : ""}
+              readOnly={isEdit}
+              disabled={isEdit}
+            />
+            {renderFieldError("quantity")}
+            {totalBaseUnits != null && (
+              <div className="hint">
+                ≈ {totalBaseUnits} base units ({batch.quantity || 0} packs ×{" "}
+                {autoUnitsPerPack != null
+                  ? autoUnitsPerPack
+                  : medicine.units_per_pack || "?"}
+                )
+              </div>
+            )}
+          </div>
+
+          <div className="field">
+            <label>Quantity UOM *</label>
+            <select
+              name="quantity_uom"
+              value={batch.quantity_uom}
+              onChange={handleBatchChange}
+              className={errors.quantity_uom ? "error" : ""}
+            >
+              <option value="">Select</option>
+              {uoms.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+            {renderFieldError("quantity_uom")}
+          </div>
+
+          <div className="field">
             <label>Purchase Price *</label>
-            <input type="number" name="purchase_price" value={form.purchase_price} onChange={change} className={errors.purchase_price ? "error" : ""} />
-            {errors.purchase_price && <div className="err">{errors.purchase_price}</div>}
+            <input
+              name="purchase_price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={batch.purchase_price}
+              onChange={handleBatchChange}
+              className={errors.purchase_price ? "error" : ""}
+            />
             {renderFieldError("purchase_price")}
           </div>
 
           <div className="field">
-            <label>MRP *</label>
-            <input type="number" name="mrp" value={form.mrp} onChange={change} className={errors.mrp ? "error" : ""} />
-            {errors.mrp && <div className="err">{errors.mrp}</div>}
-            {renderFieldError("mrp")}
-          </div>
-
-          <div className="field">
-            <label>Units per Pack (auto)</label>
-            <input type="number" name="units_per_pack" value={form.units_per_pack || ""} onChange={change} />
-            {renderFieldError("units_per_pack")}
-          </div>
-
-          <div className="field">
-            <label>MFG Date</label>
-            <input type="date" name="mfg_date" value={form.mfg_date} onChange={change} />
+            <label>Manufacture Date</label>
+            <input name="mfg_date" type="date" value={batch.mfg_date} onChange={handleBatchChange} />
             {renderFieldError("mfg_date")}
           </div>
 
           <div className="field">
             <label>Expiry Date *</label>
-            <input type="date" name="expiry_date" value={form.expiry_date} onChange={change} className={errors.expiry_date ? "error" : ""} />
-            {errors.expiry_date && <div className="err">{errors.expiry_date}</div>}
+            <input
+              name="expiry_date"
+              type="date"
+              value={batch.expiry_date}
+              onChange={handleBatchChange}
+              className={errors.expiry_date ? "error" : ""}
+            />
             {renderFieldError("expiry_date")}
           </div>
 
+        <div style={{ gridColumn: "1 / 3", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={(evt) => {
+              evt.preventDefault();
+              handleClose();
+            }}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn-primary" disabled={submitting}>
+            {submitting ? "Saving..." : "Save Medicine"}
+          </button>
+        </div>
+      </form>
+      {isEdit && (
+        <div className="inv-form-card" style={{ marginTop: 20 }}>
+          <h3 className="section-title">Stock Adjustment</h3>
+          <div className="section-line" />
+          <p className="small-muted">
+            Current stock (base units): <strong>{currentStock ?? "0"}</strong>
+          </p>
           <div className="field">
-            <label>GST %</label>
-            <input name="gst_percent" value={form.gst_percent} onChange={change} />
-            {renderFieldError("gst_percent")}
+            <label>Adjust by (base units)</label>
+            <input
+              type="number"
+              step="any"
+              value={adjustQty}
+              onChange={(e) => setAdjustQty(e.target.value)}
+              placeholder="e.g., 100 or -50"
+            />
           </div>
+          {adjustError && <div className="err">{adjustError}</div>}
+          {adjustSuccess && <div className="hint" style={{ color: "#047857" }}>{adjustSuccess}</div>}
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleStockAdjustment}
+            disabled={adjustLoading}
+            style={{ marginTop: 12 }}
+          >
+            {adjustLoading ? "Updating..." : "Update Stock"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
-          <div className="field">
-            <label>HSN Code</label>
-            <input name="hsn" value={form.hsn} onChange={change} />
-            {renderFieldError("hsn")}
-          </div>
-
-          <div style={{ gridColumn: "1/3" }}>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button type="button" className="btn-secondary" onClick={() => nav("/inventory/medicines")}>Cancel</button>
-             <button type="button" className="btn-primary" onClick={handleSubmit} disabled={submitting}>
-</button>
-            </div>
-          </div>
-        </form>
+  if (isDrawer) {
+    return (
+      <div className="drawer-backdrop">
+        <div className="drawer-panel">
+          {header}
+          {formContent}
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="inv-form-wrap">
+      {header}
+      {formContent}
     </div>
   );
 }
