@@ -53,7 +53,6 @@ import ProductCatalog from "./components/Masters/products/ProductCatalog.jsx";
 import AddProduct from "./components/Masters/products/addproducts.jsx";
 import ViewProduct from "./components/Masters/products/ViewProduct.jsx";
 import EditProduct from "./components/Masters/products/EditProduct.jsx";
-import PaymentMethods from "./components/Masters/Payment_Methods/Payment_Methods.jsx";
 import PaymentTerms from "./components/Masters/payment_terms/payment_terms.jsx";
 import RackLocations from "./components/Masters/rack_locations/rack_locations.jsx";
 
@@ -118,7 +117,7 @@ function AppLayout() {
       <Sidebar />
       <div className="flex flex-col flex-grow ml-0 lg:ml-[240px]">
         <Topbar />
-        <main className="flex-grow p-6">
+        <main className="flex-grow pt-1 p-6 mt-[96px] mb-[60px]">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -159,7 +158,6 @@ function AppLayout() {
 
 
 
-            <Route path="/masters/payment-methods" element={<PaymentMethods />} />
             <Route path="/masters/payment-terms" element={<PaymentTerms />} />
             <Route path="/masters/rack-locations" element={<RackLocations />} />
 

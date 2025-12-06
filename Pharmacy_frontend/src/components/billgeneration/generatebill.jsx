@@ -10,6 +10,16 @@ const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
 const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/`);
 const INVOICES_URL = apiUrl("sales/invoices/");
 
+const HARDCODED_PAYMENT_METHODS = [
+  { id: "cash", name: "Cash", type: "CASH" },
+  { id: "upi", name: "UPI", type: "UPI" },
+  { id: "card_credit", name: "Card - Credit", type: "CARD_CREDIT" },
+  { id: "card_debit", name: "Card - Debit", type: "CARD_DEBIT" },
+  { id: "net_banking", name: "Net Banking", type: "NET_BANKING" },
+  { id: "on_credit", name: "On Credit", type: "CREDIT" },
+  { id: "other", name: "Other", type: "OTHER" },
+];
+
 const numberOrZero = (value, digits = null) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return 0;
@@ -58,6 +68,7 @@ export default function GenerateBill() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState("");
+  const [otherPaymentMethod, setOtherPaymentMethod] = useState("");
   const [amountPaying, setAmountPaying] = useState("");
   const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -77,18 +88,7 @@ export default function GenerateBill() {
   }, []);
 
   useEffect(() => {
-    async function loadPaymentMethods() {
-      try {
-        const res = await authFetch(PAYMENT_METHODS_URL);
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.results || [];
-        setPaymentMethods(list);
-      } catch (err) {
-        console.error(err);
-        setPaymentMethods([]);
-      }
-    }
-    loadPaymentMethods();
+    setPaymentMethods(HARDCODED_PAYMENT_METHODS);
   }, []);
 
   useEffect(() => {
@@ -330,6 +330,10 @@ export default function GenerateBill() {
     }
     if (!selectedMethod) {
       alert("Select a payment method.");
+      return;
+    }
+    if (selectedMethod === "other" && !otherPaymentMethod.trim()) {
+      alert("Please specify the payment method for 'Other'.");
       return;
     }
     const amountPaid = parseFloat(amountPaying);
@@ -600,6 +604,18 @@ export default function GenerateBill() {
               ))}
             </select>
           </label>
+
+          {selectedMethod === "other" && (
+            <label className="summary-field">
+              Specify Payment Method *
+              <input
+                type="text"
+                placeholder="Enter payment method"
+                value={otherPaymentMethod}
+                onChange={(e) => setOtherPaymentMethod(e.target.value)}
+              />
+            </label>
+          )}
 
           <label className="summary-field">
             Amount Paying

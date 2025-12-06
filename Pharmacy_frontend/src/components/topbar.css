@@ -6,11 +6,21 @@
   padding: 10px 14px;
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-  margin: 0 0 18px;
   width: 100%;
   max-width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  margin-left: 0;
+  z-index: 50;
+}
+
+@media (min-width: 1024px) {
+  .app-topbar {
+    margin-left: 240px;
+    width: calc(100% - 240px);
+  }
 }
 
 .app-topbar__search {

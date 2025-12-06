@@ -10,7 +10,7 @@ import { authFetch } from "../../api/http";
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const SettingsDashboard = () => {
-  const [activeSection, setActiveSection] = useState(null);
+  const [activeSection, setActiveSection] = useState("Business Details");
   const [loading, setLoading] = useState(false);
   const [businessExists, setBusinessExists] = useState(false);
 

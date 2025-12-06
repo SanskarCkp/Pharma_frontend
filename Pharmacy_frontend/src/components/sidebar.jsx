@@ -1,39 +1,15 @@
 // src/components/sidebar.jsx
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import {
   LayoutDashboard,
-  Settings,
-  Package,
-  ChevronDown,
-  ChevronRight,
-  Smartphone,
   Boxes,
-  ShieldAlert,
-  FileSignature,
-  RefreshCcw,
-  Receipt,
-  Box,
-  Pill,
   Layers,
-  ShoppingBag,
-  BookText,
-  Undo2,
-  ArrowLeftRight,
   FileText,
-  ReceiptText,
-  ClipboardCheck,
-  ClipboardList,
-  UserCog,
   Store,
   UserCircle,
-  ShieldCheck,
-  MapPin,
   ShoppingCart,
-  FlaskRound,
-  CreditCard,
-  FolderTree,
   Hourglass,
   BarChart2,
   LogOut,
@@ -45,16 +21,17 @@ import { logout as clearAuthTokens } from "../api/auth";
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const otherMenuItems = [
-    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
-    { path: "/inventory/medicines/", label: "Inventory Management", icon: <Boxes size={18} /> },
-    { path: "/billgeneration/billlist", label: "Billing", icon: <FileText size={18} /> },
-    { path: "/reports/sales", label: "Reports", icon: <BarChart2 size={18} /> },
-    { path: "/masters/vendors", label: "Suppliers", icon: <Store size={18} /> },
-    { path: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
-    { path: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
-    { path: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
+    { path: "/dashboard", activeMatch: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { path: "/inventory/medicines/", activeMatch: "/inventory", label: "Inventory", icon: <Boxes size={18} /> },
+    { path: "/billgeneration/billlist", activeMatch: "/billgeneration", label: "Billing", icon: <FileText size={18} /> },
+    { path: "/reports/sales", activeMatch: "/reports", label: "Reports", icon: <BarChart2 size={18} /> },
+    { path: "/masters/vendors", activeMatch: "/masters/vendors", label: "Suppliers", icon: <Store size={18} /> },
+    { path: "/masters/customers", activeMatch: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
+    { path: "/expiryalrets", activeMatch: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
+    { path: "/settings", activeMatch: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
 
     
     // { path: "/retention-policies", label: "Retention Policies", icon: <ShoppingCart size={18} /> },
@@ -114,8 +91,21 @@ const Sidebar = () => {
         {/* Masters */}
         <NavLink
           to="/masters"
-          end
-          className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+          className={() => {
+            // Exclude vendors and customers as they have their own menu items
+            const isVendorOrCustomer = location.pathname.startsWith("/masters/vendors") ||
+                                       location.pathname.startsWith("/masters/customers");
+
+            if (isVendorOrCustomer) {
+              return "sidebar-link";
+            }
+
+            const masterMatches = ["/masters", "/medicinecategories", "/medicineforms", "/unitofmeasurement"];
+            const active = masterMatches.some(
+              (m) => location.pathname === m || location.pathname.startsWith(`${m}/`)
+            );
+            return `sidebar-link ${active ? "active" : ""}`;
+          }}
         >
           <span className="sidebar-icon"><Layers size={18} /></span>
           <span className="sidebar-label">Masters</span>
@@ -126,7 +116,10 @@ const Sidebar = () => {
           <NavLink
             key={idx}
             to={item.path}
-            className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+            className={() => {
+              const active = location.pathname.startsWith(item.activeMatch);
+              return `sidebar-link ${active ? "active" : ""}`;
+            }}
           >
             <span className="sidebar-icon">{item.icon}</span>
             <span className="sidebar-label">{item.label}</span>

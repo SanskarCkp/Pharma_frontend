@@ -264,27 +264,28 @@ export default function MedicineInventory() {
 
   return (
     <div className="inv-wrap">
-      <div className="inv-header">
-        <div>
-          <h2>Inventory Management</h2>
-          <p>Manage your medicine inventory and stock levels</p>
+      <div className="inv-container">
+        <div className="inv-header">
+          <div>
+            <h2>Inventory Management</h2>
+            <p>Manage your medicine inventory and stock levels</p>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+            <button
+              className="inv-add"
+              style={{ background: '#06b6d4', marginLeft: 0 }}
+              onClick={() => setQuickAddOpen(true)}
+              disabled={loading || deleting}
+            >
+              Quick Add
+            </button>
+            <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
+              + Add Medicine
+            </button>
+          </div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-          <button
-            className="inv-add"
-            style={{ background: '#06b6d4', marginLeft: 0 }}
-            onClick={() => setQuickAddOpen(true)}
-            disabled={loading || deleting}
-          >
-            Quick Add
-          </button>
-          <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
-            + Add Medicine
-          </button>
-        </div>
-      </div>
 
-      <div className="inv-card">
+        <div className="inv-card">
         {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
 
         <div className="inv-filters">
@@ -482,12 +483,13 @@ export default function MedicineInventory() {
         </div>
       </div>
 
-      {/* Quick Add Modal */}
-      <QuickAddMedicine
-        open={quickAddOpen}
-        onClose={() => setQuickAddOpen(false)}
-        onSaved={handleQuickAddSaved}
-      />
+        {/* Quick Add Modal */}
+        <QuickAddMedicine
+          open={quickAddOpen}
+          onClose={() => setQuickAddOpen(false)}
+          onSaved={handleQuickAddSaved}
+        />
+      </div>
     </div>
   );
 }

@@ -139,19 +139,21 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-main">
-      <div className="flex items-center justify-between mb-5">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-semibold mb-1">Dashboard</h2>
-          <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Welcome back! Here's what's happening today.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleRefresh}>
-          Refresh
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-primary" onClick={handleRefresh}>
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="summary-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px', width: '100%' }}>
         {cards.map((card, index) => (
-          <div key={index} className="summary-card shadow bg-white p-4 rounded-xl border border-gray-100">
+          <div key={index} className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100">
             <div className="font-medium text-gray-600">{card.title}</div>
             <div className="text-2xl font-bold mt-1">{card.value}</div>
             <div className="text-sm mt-1" style={{ color: card.color }}>
