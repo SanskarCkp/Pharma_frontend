@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "./addretention.css";
+import styles from "./addretention.module.css";
 
 const AddRetention = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const navigate = useNavigate();
   const { id } = useParams(); // numeric id in edit mode
   const [isEdit, setIsEdit] = useState(false);
@@ -71,12 +72,12 @@ const AddRetention = () => {
   };
 
   return (
-    <div className="customers-container">
-      <h1 className="customers-title">{isEdit ? "Edit Retention Policy" : "Add Retention Policy"}</h1>
+    <div className={styles["customers-container"]}>
+      <h1 className={styles["customers-title"]}>{isEdit ? "Edit Retention Policy" : "Add Retention Policy"}</h1>
 
-      <form className="customers-form" onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
+      <form className={styles["customers-form"]} onSubmit={handleSubmit}>
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Module</label>
             <input
               type="text"
@@ -89,7 +90,7 @@ const AddRetention = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>Keep Years</label>
             <input
               type="number"
@@ -102,8 +103,8 @@ const AddRetention = () => {
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group checkbox-group" style={{ alignItems: "flex-start", marginTop: 20 }}>
+        <div className={styles["form-row"]}>
+          <div className={cx(styles["form-group"], styles["checkbox-group"])} style={{ alignItems: "flex-start", marginTop: 20 }}>
             <label>
               <input
                 type="checkbox"
@@ -116,12 +117,12 @@ const AddRetention = () => {
           </div>
         </div>
 
-        <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={() => navigate("/masters/retention-policies")}>
+        <div className={styles["form-actions"]}>
+          <button type="button" className={styles["cancel-btn"]} onClick={() => navigate("/masters/retention-policies")}>
             Cancel
           </button>
 
-          <button type="submit" className="submit-btn">
+          <button type="submit" className={styles["submit-btn"]}>
             {isEdit ? "Update" : "Save"}
           </button>
         </div>

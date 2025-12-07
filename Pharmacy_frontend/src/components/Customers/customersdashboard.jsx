@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./customersdashboard.css";
+import styles from "./customersdashboard.module.css";
 import { Eye, Trash2 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+// Normalize API base to ensure /api/v1 suffix exists
+const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
 
 const CustomersDashboard = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const [customers, setCustomers] = useState([]);
   const [stats, setStats] = useState({
     total_customers: 0,
@@ -95,16 +98,16 @@ const CustomersDashboard = () => {
   };
 
   return (
-    <div className="customers-container">
+    <div className={styles["customers-container"]}>
       {/* ------------------- HEADER WITH DROPDOWN ------------------- */}
-      <div className="dashboard-header mb-4">
-        <div className="header-left">
-          <h1 className="customers-title">Customer Management</h1>
-          <h2 className="customer-heading">Manage customer information and history</h2>
+      <div className={`${styles["dashboard-header"]} mb-4`}>
+        <div className={styles["header-left"]}>
+          <h1 className={styles["customers-title"]}>Customer Management</h1>
+          <h2 className={styles["customer-heading"]}>Manage customer information and history</h2>
         </div>
-        <div className="header-right">
+        <div className={styles["header-right"]}>
           <select
-            className="kpi-dropdown-header"
+            className={styles["kpi-dropdown-header"]}
             value={kpiFilter}
             onChange={handleKpiFilter}
           >
@@ -117,29 +120,29 @@ const CustomersDashboard = () => {
       </div>
 
       {/* ------------------- KPI CARD SECTION ------------------- */}
-      <div className="kpi-directory-container bg-white shadow rounded-xl p-5 mb-6">
-        {loadingStats && <span className="small-loading">Loading KPIs…</span>}
+      <div className="bg-white shadow rounded-xl p-5 mb-6">
+        {loadingStats && <span className={styles["small-loading"]}>Loading KPIs...</span>}
 
-        <div className="grid grid-cols-3 gap-4 mb-4 kpi-cards-wrap">
-          <div className="kpi-card small">
+        <div className={`grid grid-cols-3 gap-4 mb-4 ${styles["kpi-cards-wrap"]}`}>
+          <div className={`${styles["kpi-card"]} ${styles.small}`}>
             <h3>Total Customers</h3>
             <p>{stats.total_customers}</p>
           </div>
 
-          <div className="kpi-card small">
+          <div className={`${styles["kpi-card"]} ${styles.small}`}>
             <h3>Avg Purchase Value</h3>
-            <p>₹ {stats.avg_purchase_value}</p>
+            <p>Rs {stats.avg_purchase_value}</p>
           </div>
 
-          <div className="kpi-card small">
+          <div className={`${styles["kpi-card"]} ${styles.small}`}>
             <h3>Active Customers</h3>
             <p>{stats.active_customers}</p>
           </div>
         </div>
 
         {/* ------------------- CUSTOMER TABLE ------------------- */}
-        <div className="customers-list">
-          <div className="customer-directory-header mb-4">
+        <div className={styles["customers-list"]}>
+          <div className={`${styles["customer-directory-header"]} mb-4`}>
             <h3>Customer Directory</h3>
             {/* <button className="add-btn" onClick={() => navigate("/masters/customers/add")}>
               + Add Customer
@@ -149,7 +152,7 @@ const CustomersDashboard = () => {
           {loading ? (
             <p>Loading customers...</p>
           ) : (
-            <table className="customers-table">
+            <table className={styles["customers-table"]}>
               <thead>
                 <tr>
                  <th>Customer ID</th>
@@ -169,7 +172,7 @@ const CustomersDashboard = () => {
         {/* Customer Code */}
         <td>{c.code || "-"}</td>
                       <td
-                        className="customer-name-link"
+                        className={styles["customer-name-link"]}
                         onClick={() => navigate(`/masters/customers/${c.id}`)}
                       >
                         {c.name}
@@ -180,12 +183,12 @@ const CustomersDashboard = () => {
                       <td>{c.city || "-"}</td>
                       <td>
                         {c.is_active ? (
-                          <span className="status-active">Active</span>
+                          <span className={styles["status-active"]}>Active</span>
                         ) : (
-                          <span className="status-inactive">Inactive</span>
+                          <span className={styles["status-inactive"]}>Inactive</span>
                         )}
                       </td>
-                      <td className="actions-cell">
+                      <td className={styles["actions-cell"]}>
                         <Eye
                           size={18}
                           className="action-icon view-icon"
@@ -201,7 +204,7 @@ const CustomersDashboard = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="no-data">
+                    <td colSpan="8" className={styles["no-data"]}>
                       No customers found.
                     </td>
                   </tr>

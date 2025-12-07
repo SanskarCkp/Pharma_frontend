@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authFetch } from "../../api/http";
-import "./vendorsdashboard.css";
-import { Store, PhoneCall, Mail, Eye, Trash2, Plus } from "lucide-react";
+import styles from "./vendorsdashboard.module.css";
+import { Store, PhoneCall, Mail, Trash2, Plus } from "lucide-react";
 
 
 const VendorsDashboard = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -108,21 +109,21 @@ const VendorsDashboard = () => {
   };
 
   return (
-    <div className="customers-container vendors-page">
-      <div className="header-row">
+    <div className={cx(styles["customers-container"], styles["vendors-page"])}>
+      <div className={styles["header-row"]}>
         <div>
-          <h1 className="customers-title">Supplier Management</h1>
-          <p className="customers-heading">Manage Suppliers and Purchase Orders</p>
+          <h1 className={styles["customers-title"]}>Supplier Management</h1>
+          <p className={styles["customers-heading"]}>Manage Suppliers and Purchase Orders</p>
         </div>
-        <button className="add-supplier-btn" onClick={() => navigate("/suppliers/add")}>
+        <button className={styles["add-supplier-btn"]} onClick={() => navigate("/suppliers/add")}>
           <Plus size={16} /> Add Supplier
         </button>
       </div>
 
-      <div className="search-row">
+      <div className={styles["search-row"]}>
         <input
           type="text"
-          className="search-input"
+          className={styles["search-input"]}
           placeholder="Search vendor name / contact person / phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -130,13 +131,13 @@ const VendorsDashboard = () => {
       </div>
 
       {loading ? (
-        <p className="loading-text">Loading vendors...</p>
+        <p className={styles["loading-text"]}>Loading vendors...</p>
       ) : filtered.length === 0 ? (
-        <div className="no-vendors-box">
+        <div className={styles["no-vendors-box"]}>
           <p>No vendors found.</p>
         </div>
       ) : (
-        <div className="cards-grid">
+        <div className={styles["cards-grid"]}>
           {filtered.map((vendor) => {
             const id = vendor.id;
             const name =
@@ -148,61 +149,57 @@ const VendorsDashboard = () => {
             const email = vendor.vendor_email ?? vendor.email ?? "-";
 
             return (
-              <div key={id} className="vendor-card">
-                <div className="card-top" onClick={() => openVendor(id)}>
+              <div key={id} className={styles["vendor-card"]}>
+                <div className={styles["card-top"]} onClick={() => openVendor(id)}>
                   <div>
-                    <div className="card-title">{name}</div>
+                    <div className={styles["card-title"]}>{name}</div>
                     <div className="contact-person-text">
                       Contact: {contactPerson}
                     </div>
                   </div>
-                  <div className="card-icon">
+                  <div className={styles["card-icon"]}>
                     <Store size={20} />
                   </div>
                 </div>
 
-                <div className="card-body" onClick={() => openVendor(id)}>
-                  <div className="contact-row">
+                <div className={styles["card-body"]} onClick={() => openVendor(id)}>
+                  <div className={styles["contact-row"]}>
                     <PhoneCall size={14} /> <span>{phone}</span>
                   </div>
-                  <div className="contact-row">
+                  <div className={styles["contact-row"]}>
                     <Mail size={14} /> <span>{email}</span>
                   </div>
 
-                  <div className="metrics-row">
-                    <div className="metric">
-                      <div className="metric-value">
+                  <div className={styles["metrics-row"]}>
+                    <div className={styles.metric}>
+                      <div className={styles["metric-value"]}>
                         {vendor.products_count}
                       </div>
-                      <div className="metric-label">Products</div>
+                      <div className={styles["metric-label"]}>Products</div>
                     </div>
-                    <div className="metric">
-                      <div className="metric-value">
+                    <div className={styles.metric}>
+                      <div className={styles["metric-value"]}>
                         {vendor.orders_count}
                       </div>
-                      <div className="metric-label">Orders</div>
+                      <div className={styles["metric-label"]}>Orders</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="card-footer">
+                <div className={styles["card-footer"]}>
                   <div
-                    className={`status-badge ${
-                      vendor.is_active ? "active" : "inactive"
-                    }`}
+                    className={cx(
+                      styles["status-badge"],
+                      vendor.is_active ? styles.active : styles.inactive
+                    )}
                   >
                     {vendor.is_active ? "Active" : "Inactive"}
                   </div>
 
-                  <div className="action-icons">
-                    <Eye
-                      className="icon"
-                      size={16}
-                      onClick={(e) => goEdit(e, id)}
-                    />
+                  <div className={styles["action-icons"]}>
                     <Trash2
-                      className="icon delete"
-                      size={16}
+                      className={cx(styles.icon, styles.delete)}
+                      size={30}
                       onClick={(e) => handleDelete(e, id)}
                     />
                   </div>

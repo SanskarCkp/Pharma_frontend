@@ -40,15 +40,12 @@ const Sidebar = () => {
     { path: "/billgeneration/billlist", activeMatch: "/billgeneration", label: "Billing", icon: <FileText size={18} /> },
     { path: "/reports/sales", activeMatch: "/reports", label: "Reports", icon: <BarChart2 size={18} /> },
     { path: "/suppliers", activeMatch: "/suppliers", label: "Suppliers", icon: <Store size={18} /> },
-    { path: "/masters/customers", activeMatch: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
+    { path: "/customers", activeMatch: "/customers", label: "Customers", icon: <UserCircle size={18} /> },
     { path: "/expiryalrets", activeMatch: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
     { path: "/settings", activeMatch: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
 
     
     // { path: "/retention-policies", label: "Retention Policies", icon: <ShoppingCart size={18} /> },
-    // { path: "/rackrules", label: "Rack Rules", icon: <Layers size={18} /> },
-    // { path: "/batchlots", label: "Batch Lots", icon: <Box size={18} /> },
-    // { path: "/purchases", label: "Purchases", icon: <ShoppingBag size={18} /> },
     // { path: "/consentledger", label: "Consent Ledger", icon: <BookText size={18} /> },
     // { path: "/vendorreturns", label: "Vendor Returns", icon: <Undo2 size={18} /> },
     // { path: "/transferlines", label: "Transfer Lines", icon: <ArrowLeftRight size={18} /> },

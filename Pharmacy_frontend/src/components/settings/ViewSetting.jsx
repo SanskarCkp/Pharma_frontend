@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "./addsettings.css";
+import styles from "./addsettings.module.css";
 import { authFetch } from "../../api/http";
 
 const ViewSetting = () => {
@@ -26,32 +26,32 @@ const ViewSetting = () => {
   }, [key]);
 
   return (
-    <div className="customers-container">
-      <h1 className="customers-title">View Setting</h1>
+    <div className={styles["customers-container"]}>
+      <h1 className={styles["customers-title"]}>View Setting</h1>
 
-      <div className="customers-form">
+      <div className={styles["customers-form"]}>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Key</label>
             <input type="text" value={formData.key} readOnly />
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>Value</label>
             <input type="text" value={formData.value} readOnly />
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Description</label>
             <textarea value={formData.description} readOnly />
           </div>
         </div>
 
-        <div className="form-actions">
-          <button className="cancel-btn" onClick={() => navigate("/settings")}>
+        <div className={styles["form-actions"]}>
+          <button className={styles["cancel-btn"]} onClick={() => navigate("/settings")}>
             Back
           </button>
         </div>

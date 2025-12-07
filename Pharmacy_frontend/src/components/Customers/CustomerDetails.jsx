@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Phone, Mail, MapPin, UserCheck } from "lucide-react";
 import "./customerdetails.css";
-import { authFetch } from "../../../api/http";
+import { authFetch } from "../../api/http";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
 
 const CustomerDetails = () => {
   const { id } = useParams();

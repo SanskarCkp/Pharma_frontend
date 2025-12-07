@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "./addsettings.css";
+import styles from "./addsettings.module.css";
 
 const EditSetting = () => {
   const navigate = useNavigate();
@@ -52,12 +52,12 @@ const EditSetting = () => {
   };
 
   return (
-    <div className="customers-container">
-      <h1 className="customers-title">Edit Setting</h1>
+    <div className={styles["customers-container"]}>
+      <h1 className={styles["customers-title"]}>Edit Setting</h1>
 
-      <form className="customers-form" onSubmit={handleUpdate}>
-        <div className="form-row">
-          <div className="form-group">
+      <form className={styles["customers-form"]} onSubmit={handleUpdate}>
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Key</label>
             <input
               type="text"
@@ -67,7 +67,7 @@ const EditSetting = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>Value</label>
             <input
               type="text"
@@ -79,8 +79,8 @@ const EditSetting = () => {
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Description</label>
             <textarea
               name="description"
@@ -90,11 +90,11 @@ const EditSetting = () => {
           </div>
         </div>
 
-        <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={() => navigate("/settings")}>
+        <div className={styles["form-actions"]}>
+          <button type="button" className={styles["cancel-btn"]} onClick={() => navigate("/settings")}>
             Cancel
           </button>
-          <button type="submit" className="submit-btn">
+          <button type="submit" className={styles["submit-btn"]}>
             Update
           </button>
         </div>

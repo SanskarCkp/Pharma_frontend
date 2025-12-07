@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "./addsettings.css";
+import styles from "./addsettings.module.css";
 
 const AddSetting = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const navigate = useNavigate();
   const { key } = useParams();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -62,15 +63,15 @@ const AddSetting = () => {
   };
 
   return (
-    <div className="customers-container">
-      <h1 className="customers-title">
+    <div className={styles["customers-container"]}>
+      <h1 className={styles["customers-title"]}>
         {isEditMode ? "Edit Setting" : "Add Setting"}
       </h1>
 
-      <form className="customers-form" onSubmit={handleSubmit}>
+      <form className={styles["customers-form"]} onSubmit={handleSubmit}>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Key</label>
             <input
               type="text"
@@ -83,7 +84,7 @@ const AddSetting = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>Value</label>
             <input
               type="text"
@@ -96,8 +97,8 @@ const AddSetting = () => {
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Description</label>
             <textarea
               name="description"
@@ -108,11 +109,11 @@ const AddSetting = () => {
           </div>
         </div>
 
-        <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={() => navigate("/settings")}>
+        <div className={styles["form-actions"]}>
+          <button type="button" className={styles["cancel-btn"]} onClick={() => navigate("/settings")}>
             Cancel
           </button>
-          <button type="submit" className="submit-btn">
+          <button type="submit" className={styles["submit-btn"]}>
             {isEditMode ? "Update" : "Save"}
           </button>
         </div>
