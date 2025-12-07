@@ -5,6 +5,7 @@ import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
 import QuickAddMedicine from "./QuickAddMedicine";
+import { useAlert } from "../ui/alert-provider";
 
 const LS_KEY = "medicines";
 const PAGE_SIZE = 250;
@@ -18,6 +19,7 @@ const API_MEDICINE_DETAIL = (id) => apiUrl(`inventory/medicines/${id}/`);
 
 export default function MedicineInventory() {
   const nav = useNavigate();
+  const { showAlert } = useAlert();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -215,7 +217,7 @@ export default function MedicineInventory() {
   const goToDetail = (row) => {
     const batchId = resolveBatchId(row);
     if (!batchId) {
-      alert("Unable to open details for this record.");
+      showAlert("Unable to open details for this record.", "Error");
       return;
     }
     nav(`/inventory/medicines/${batchId}`);
@@ -224,7 +226,7 @@ export default function MedicineInventory() {
   const handleEdit = (row) => {
     const batchId = resolveBatchId(row);
     if (!batchId) {
-      alert("Unable to determine batch for editing.");
+      showAlert("Unable to determine batch for editing.", "Error");
       return;
     }
     nav(`/inventory/medicines/${batchId}/edit`);
@@ -243,15 +245,15 @@ export default function MedicineInventory() {
       const params = new URLSearchParams();
       if (DEFAULT_LOCATION_ID) params.set("location_id", String(DEFAULT_LOCATION_ID));
       const pid = row.product_id || row.batch_lot__product_id || row.medicine_id;
-      if (!pid) return alert("Product id not available for this row");
+      if (!pid) return showAlert("Product id not available for this row", "Error");
       params.set("product_id", String(pid));
       const res = await authFetch(`${API_STOCK_SUMMARY}?${params}`);
       if (!res.ok) throw new Error(`Failed (${res.status})`);
       const data = await res.json();
-      alert("Stock summary:\n\n" + JSON.stringify(data, null, 2));
+      showAlert("Stock summary:\n\n" + JSON.stringify(data, null, 2), "Stock Summary");
     } catch (err) {
       console.error(err);
-      alert("Failed to load stock summary");
+      showAlert("Failed to load stock summary", "Error");
     }
   };
 
@@ -341,7 +343,7 @@ export default function MedicineInventory() {
           </select>
 
           <div className="inv-actions">
-            <button className="inv-btn ghost" onClick={() => alert("Import feature not yet implemented")}>
+            <button className="inv-btn ghost" onClick={() => showAlert("Import feature not yet implemented", "Info")}>
               Import
             </button>
             <button

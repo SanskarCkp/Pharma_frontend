@@ -1,15 +1,17 @@
 // src/components/settings/SettingsDashboard.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Home, AlertCircle, CreditCard, Database, Bell } from "lucide-react";
-import "./settingsdashboard.css";
-import TaxBillingConfiguration from "./TaxBillingConfiguration";
-import Notifications from "./Notifications";
-import BackupRestore from "./BackupRestore";
+import styles from "./settingsdashboard.module.css";
 import { authFetch } from "../../api/http";
+import { useAlert } from "../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const SettingsDashboard = () => {
+  const { showAlert } = useAlert();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState("Business Details");
   const [loading, setLoading] = useState(false);
   const [businessExists, setBusinessExists] = useState(false);
@@ -94,6 +96,18 @@ const SettingsDashboard = () => {
     }
   };
 
+  // -------------------------------------------------------
+  // SYNC URL WITH ACTIVE SECTION
+  // -------------------------------------------------------
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) {
+      setActiveSection(section);
+    } else {
+      setActiveSection("Business Details");
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     fetchBusinessDetails();
     fetchAlertSettings();
@@ -120,10 +134,10 @@ const SettingsDashboard = () => {
       });
 
       if (response.ok) {
-        alert("Business details saved!");
+        showAlert("Business details saved!", "Success");
         setBusinessExists(true);
       } else {
-        alert("Failed to save business details");
+        showAlert("Failed to save business details", "Error");
       }
     } finally {
       setLoading(false);
@@ -155,14 +169,14 @@ const SettingsDashboard = () => {
       });
 
       if (response.ok) {
-        alert("Alert thresholds saved!");
+        showAlert("Alert thresholds saved!", "Success");
         fetchAlertSettings();
       } else {
-        alert("Failed to save alert settings");
+        showAlert("Failed to save alert settings", "Error");
       }
     } catch (err) {
       console.error(err);
-      alert("Error saving alert settings");
+      showAlert("Error saving alert settings", "Error");
     } finally {
       setLoading(false);
     }
@@ -172,16 +186,19 @@ const SettingsDashboard = () => {
   // UI
   // -------------------------------------------------------
   return (
-    <div className="settings-container">
-      <h1 className="settings-title">Settings</h1>
-      <h2 className="settings-heading">Manage application configuration</h2>
+    <div className={styles["settings-container"]}>
+      <h1 className={styles["settings-title"]}>Settings</h1>
+      <h2 className={styles["settings-heading"]}>Manage application configuration</h2>
 
-      <div className="settings-tab-container">
+      <div className={styles["settings-tab-container"]}>
         {settingsSections.map((section) => (
           <div
             key={section.name}
-            className={`settings-tab ${activeSection === section.name ? "active" : ""}`}
-            onClick={() => setActiveSection(section.name)}
+            className={`${styles["settings-tab"]} ${activeSection === section.name ? styles.active : ""}`}
+            onClick={() => {
+              setActiveSection(section.name);
+              navigate(`?section=${encodeURIComponent(section.name)}`);
+            }}
           >
             {section.icon}
             <span>{section.name}</span>
@@ -194,12 +211,11 @@ const SettingsDashboard = () => {
         {/* BUSINESS DETAILS UI */}
         {/* --------------------------------------------- */}
         {activeSection === "Business Details" && (
-          <div className="business-section">
-            <h2><Home size={28} /> Business Information</h2>
+          <div className={styles["business-section"]}>
 
-            <div className="business-form">
+            <div className={styles["business-form"]}>
               {Object.entries(formData).map(([key, value]) => (
-                <div className="form-row" key={key}>
+                <div className={styles["form-row"]} key={key}>
                   <label>{key.replace(/_/g, " ").toUpperCase()}</label>
 
                   {key === "address" ? (
@@ -212,7 +228,7 @@ const SettingsDashboard = () => {
                 </div>
               ))}
 
-              <button className="save-btn" onClick={handleSave} disabled={loading}>
+              <button className={styles["save-btn"]} onClick={handleSave} disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </button>
             </div>
@@ -223,14 +239,13 @@ const SettingsDashboard = () => {
         {/* ALERT THRESHOLDS UI */}
         {/* --------------------------------------------- */}
         {activeSection === "Alert Thresholds" && (
-          <div className="alert-section">
-            <h2><AlertCircle size={28} /> Alert Configuration</h2>
+          <div className={styles["alert-section"]}>
 
-            <div className="alert-card">
+            <div className={styles["alert-card"]}>
               <h3>Inventory Alerts</h3>
 
-              <div className="alert-row-horizontal">
-                <div className="alert-field">
+              <div className={styles["alert-row-horizontal"]}>
+                <div className={styles["alert-field"]}>
                   <label>Low Stock Threshold</label>
                   <input
                     type="number"
@@ -240,7 +255,7 @@ const SettingsDashboard = () => {
                   />
                 </div>
 
-                <div className="alert-field">
+                <div className={styles["alert-field"]}>
                   <label>Out of Stock Alert</label>
                   <select
                     name="out_of_stock_alert"
@@ -254,8 +269,8 @@ const SettingsDashboard = () => {
               </div>
 
               <h3>Expiry Alerts</h3>
-              <div className="alert-row-horizontal">
-                <div className="alert-field">
+              <div className={styles["alert-row-horizontal"]}>
+                <div className={styles["alert-field"]}>
                   <label>Critical Expiry Days</label>
                   <input
                     type="number"
@@ -265,7 +280,7 @@ const SettingsDashboard = () => {
                   />
                 </div>
 
-                <div className="alert-field">
+                <div className={styles["alert-field"]}>
                   <label>Warning Expiry Days</label>
                   <input
                     type="number"
@@ -276,8 +291,8 @@ const SettingsDashboard = () => {
                 </div>
               </div>
 
-              <div className="alert-row-horizontal">
-                <div className="alert-field">
+              <div className={styles["alert-row-horizontal"]}>
+                <div className={styles["alert-field"]}>
                   <label>Auto Remove Expired</label>
                   <select
                     name="auto_remove_expired"
@@ -291,7 +306,7 @@ const SettingsDashboard = () => {
                 </div>
 
                 {/* empty placeholder to keep 2-column layout and same width */}
-                <div className="alert-field alert-field-empty" />
+                <div className={`${styles["alert-field"]} ${styles["alert-field-empty"]}`} />
               </div>
 
 
@@ -325,16 +340,39 @@ const SettingsDashboard = () => {
                 </div>
               </div> */}
 
-              <button className="save-btn" onClick={handleAlertSave} disabled={loading}>
+              <button className={styles["save-btn"]} onClick={handleAlertSave} disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
         )}
 
-        {activeSection === "Tax & Billing" && <TaxBillingConfiguration />}
-        {activeSection === "Backup & Restore" && <BackupRestore />}
-        {activeSection === "Notifications" && <Notifications />}
+        {/* --------------------------------------------- */}
+        {/* COMING SOON SECTIONS */}
+        {/* --------------------------------------------- */}
+        {activeSection === "Tax & Billing" && (
+          <div className={styles["coming-soon-section"]}>
+            <CreditCard size={64} className={styles["coming-soon-icon"]} />
+            <h2>Tax & Billing</h2>
+            <p>Feature Coming Soon</p>
+          </div>
+        )}
+
+        {activeSection === "Backup & Restore" && (
+          <div className={styles["coming-soon-section"]}>
+            <Database size={64} className={styles["coming-soon-icon"]} />
+            <h2>Backup & Restore</h2>
+            <p>Feature Coming Soon</p>
+          </div>
+        )}
+
+        {activeSection === "Notifications" && (
+          <div className={styles["coming-soon-section"]}>
+            <Bell size={64} className={styles["coming-soon-icon"]} />
+            <h2>Notifications</h2>
+            <p>Feature Coming Soon</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./retentiondashboard.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const RetentionDashboard = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
   const [policies, setPolicies] = useState([]);
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   const fetchPolicies = async () => {
     try {
@@ -28,10 +30,10 @@ const RetentionDashboard = () => {
         method: "DELETE",
       });
       if (res.ok) fetchPolicies();
-      else alert("Delete failed");
+      else showAlert("Delete failed", "Error");
     } catch (err) {
       console.error(err);
-      alert("Delete failed");
+      showAlert("Delete failed", "Error");
     }
   };
 

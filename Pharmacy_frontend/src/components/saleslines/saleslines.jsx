@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./saleslines.css";
+import { useAlert } from "../ui/alert-provider";
 
 const Saleslines = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [salesLines, setSalesLines] = useState([]);
 
@@ -64,8 +66,8 @@ const Saleslines = () => {
 
     setSalesLines([...salesLines, newLine]);
 
-    alert(
-      `✅ Sales Line Created!\n\n` +
+    showAlert(
+      `Sales Line Created!\n\n` +
         `ID: ${newLine.id}\n` +
         `Invoice ID: ${newLine.saleInvoiceId}\n` +
         `Product ID: ${newLine.productId}\n` +
@@ -74,7 +76,8 @@ const Saleslines = () => {
         `Rate per Base: ₹${newLine.ratePerBase}\n` +
         `Tax: ${newLine.taxPercent}% (₹${newLine.taxAmount})\n` +
         `Total: ₹${newLine.lineTotal}\n` +
-        `Prescription Required: ${newLine.requiresPrescription ? "Yes" : "No"}`
+        `Prescription Required: ${newLine.requiresPrescription ? "Yes" : "No"}`,
+      "Success"
     );
 
     // Reset form

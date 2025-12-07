@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createUserOnBackend, updateUserOnBackend } from "../../api/users";
 import "./users.css";
+import { useAlert } from "../ui/alert-provider";
 
 const formatDateTime = (value) => {
   if (!value) return "";
@@ -18,6 +19,7 @@ export default function UserCreate({
   onUpdated,
   nextUserId,
 }) {
+  const { showAlert } = useAlert();
   const isEdit = mode === "edit";
   const [formData, setFormData] = useState({
     userId: user?.userId || nextUserId || "USR001",
@@ -57,11 +59,11 @@ export default function UserCreate({
 
     if (!isEdit) {
       if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match!");
+        showAlert("Passwords do not match!", "Validation Error");
         return;
       }
     } else if (formData.password && formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+      showAlert("Passwords do not match!", "Validation Error");
       return;
     }
 
@@ -77,7 +79,7 @@ export default function UserCreate({
     try {
       if (isEdit) {
         await updateUserOnBackend(user?.id || user?.backendId || user?.userId, payload);
-        alert("User updated!");
+        showAlert("User updated successfully!", "Success");
         if (onUpdated) {
           onUpdated({
             ...user,
@@ -88,13 +90,13 @@ export default function UserCreate({
         }
       } else {
         const resp = await createUserOnBackend(payload);
-        alert("User created!");
+        showAlert("User created successfully!", "Success");
         if (onCreated) onCreated(resp);
       }
       if (onClose) onClose();
     } catch (err) {
       console.error("Create/Update user failed:", err);
-      alert("Failed to save user on server. Please try again.");
+      showAlert("Failed to save user on server. Please try again.", "Error");
     }
   }
 

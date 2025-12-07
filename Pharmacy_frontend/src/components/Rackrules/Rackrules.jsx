@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./Rackrules.css";
+import { useAlert } from "../ui/alert-provider";
 
 const Rackrules = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [rackRules, setRackRules] = useState([]);
 
@@ -28,10 +30,11 @@ const Rackrules = () => {
     const newRack = { ...formData };
     setRackRules([...rackRules, newRack]);
 
-    alert(
-      `✅ Rack Rule Created!\nID: ${newRack.id}\nManufacturer: ${newRack.manufacturerName}\nRack Code: ${newRack.rackCode}\nStatus: ${
+    showAlert(
+      `Rack Rule Created!\nID: ${newRack.id}\nManufacturer: ${newRack.manufacturerName}\nRack Code: ${newRack.rackCode}\nStatus: ${
         newRack.isActive ? "Active" : "Inactive"
-      }`
+      }`,
+      "Success"
     );
 
     // Increment ID and reset form

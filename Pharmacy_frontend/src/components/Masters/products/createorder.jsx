@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import "./createorder.css";
 import { authFetch } from "../../../api/http";
 import { getDefaultLocationId } from "../../../config/location";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
@@ -12,6 +13,7 @@ const CreateOrder = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const vendor = location.state?.vendor;
+  const { showAlert } = useAlert();
 
   const [vendorData, setVendorData] = useState(null);
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
@@ -117,11 +119,11 @@ const CreateOrder = () => {
   const handleAddProduct = () => setShowAddProduct(true);
 
   const handleAddManualProduct = async () => {
-    if (!manualProductName.trim()) return alert("Enter product name");
-    if (!manualQty || Number(manualQty) <= 0) return alert("Enter valid qty");
-    if (!manualCategory) return alert("Select category");
-    if (!manualUOM) return alert("Select UOM");
-    if (!vendorData?.id) return alert("Vendor not loaded");
+    if (!manualProductName.trim()) return showAlert("Enter product name", "Error");
+    if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid qty", "Error");
+    if (!manualCategory) return showAlert("Select category", "Error");
+    if (!manualUOM) return showAlert("Select UOM", "Error");
+    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
 
     const productPayload = {
       code: generateProductCode(manualProductName.trim()),
@@ -156,7 +158,7 @@ const CreateOrder = () => {
       if (!productRes.ok) {
         const err = await productRes.json();
         console.log("❌ Product Create Failed:", err);
-        alert("Product save failed");
+        showAlert("Product save failed", "Error");
         return;
       }
 
@@ -183,7 +185,7 @@ const CreateOrder = () => {
       setShowAddProduct(false);
     } catch (err) {
       console.error("Manual product error:", err);
-      alert("Error creating product");
+      showAlert("Error creating product", "Error");
     }
   };
 
@@ -201,10 +203,10 @@ const CreateOrder = () => {
     setItems((prev) => prev.filter((it) => it.uid !== uid));
 
   const handleCreateOrder = async () => {
-    if (!vendorData?.id) return alert("Vendor not loaded");
+    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
 
     const orderRows = items.filter((r) => Number(r.quantity) > 0);
-    if (orderRows.length === 0) return alert("Add at least one product");
+    if (orderRows.length === 0) return showAlert("Add at least one product", "Error");
 
     const lines = orderRows.map((r) => ({
       product: r.id,

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { authFetch } from "../../api/http";
 import { formatDateDDMMYYYY } from "../../utils/dateFormat";
+import { useAlert } from "../ui/alert-provider";
 import "./vendordetails.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -10,6 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const VendorDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -142,7 +144,7 @@ const VendorDetails = () => {
       if (!res.ok) throw new Error("Import failed");
 
       const data = await res.json();
-      alert(`Imported ${data.lines_created} lines successfully!`);
+      showAlert(`Imported ${data.lines_created} lines successfully!`, "Import Success");
 
       const ordersRes = await authFetch(
         `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
@@ -155,7 +157,7 @@ const VendorDetails = () => {
       setActiveTab("purchase");
     } catch (err) {
       console.error(err);
-      alert("Failed to import PDF. Check console for details.");
+      showAlert("Failed to import PDF. Check console for details.", "Error");
     } finally {
       setImporting(false);
     }

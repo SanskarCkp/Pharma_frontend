@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { authFetch } from "../../api/http"; // Use this if you handle auth (token) in your project
+import { useAlert } from "../ui/alert-provider";
 import "./addvendors.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL; // e.g. http://127.0.0.1:8000/api/v1
@@ -9,6 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL; // e.g. http://127.0.0.1:8000
 const EditVendor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(true);
   const [paymentTermsList, setPaymentTermsList] = useState([]);
@@ -73,7 +75,7 @@ const EditVendor = () => {
         });
       } catch (error) {
         console.error("Error loading vendor", error);
-        alert("Failed to load vendor information.");
+        showAlert("Failed to load vendor information.", "Error");
       } finally {
         setLoading(false);
       }
@@ -100,15 +102,15 @@ const EditVendor = () => {
         body: JSON.stringify(formData),
       });
       if (res.ok) {
-        alert("Vendor Updated Successfully!");
+        showAlert("Vendor Updated Successfully!", "Success");
         navigate("/suppliers");
       } else {
         const errData = await res.json();
-        alert("Failed to Update Vendor! " + JSON.stringify(errData));
+        showAlert("Failed to Update Vendor! " + JSON.stringify(errData), "Error");
       }
     } catch (err) {
       console.error("Error updating vendor:", err);
-      alert("Error updating vendor. See console for details.");
+      showAlert("Error updating vendor. See console for details.", "Error");
     }
   };
 

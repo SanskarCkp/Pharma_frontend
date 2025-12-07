@@ -4,6 +4,7 @@ import { Eye, Trash2, ArrowLeft } from "lucide-react";
 import "./purchaseorders.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -11,6 +12,7 @@ const PurchaseOrders = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const vendor = location.state?.vendor || null;
+  const { showAlert } = useAlert();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,15 +94,15 @@ const PurchaseOrders = () => {
 
       if (res.ok) {
         setOrders((prev) => prev.filter((order) => order.id !== id));
-        alert("Purchase order deleted successfully!");
+        showAlert("Purchase order deleted successfully!", "Success");
       } else {
         const errData = await res.json();
         console.error("Delete failed:", errData);
-        alert("Failed to delete purchase order.");
+        showAlert("Failed to delete purchase order.", "Error");
       }
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Error deleting purchase order.");
+      showAlert("Error deleting purchase order.", "Error");
     }
   };
 

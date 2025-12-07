@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./customersdashboard.module.css";
 import { Eye, Trash2 } from "lucide-react";
+import { useAlert } from "../ui/alert-provider";
 
 // Normalize API base to ensure /api/v1 suffix exists
 const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
@@ -9,6 +10,7 @@ const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
 
 const CustomersDashboard = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
+  const { showAlert } = useAlert();
   const [customers, setCustomers] = useState([]);
   const [stats, setStats] = useState({
     total_customers: 0,
@@ -86,14 +88,14 @@ const CustomersDashboard = () => {
     try {
       const res = await fetch(`${API_BASE}/customers/${id}/`, { method: "DELETE" });
       if (res.ok) {
-        alert("Customer deleted!");
+        showAlert("Customer deleted!", "Success");
         fetchCustomers();
         fetchStats(kpiFilter);
       } else {
-        alert("Delete failed!");
+        showAlert("Delete failed!", "Error");
       }
     } catch (err) {
-      alert("Error deleting customer.");
+      showAlert("Error deleting customer.", "Error");
     }
   };
 

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { authFetch } from "../../api/http"; // make sure authFetch is imported
+import { useAlert } from "../ui/alert-provider";
 import "./addvendors.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const AddVendor = () => {
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   const [paymentTermsList, setPaymentTermsList] = useState([]);
 
@@ -64,15 +66,15 @@ const AddVendor = () => {
       });
 
       if (res.ok) {
-        alert("Vendor Added Successfully!");
+        showAlert("Vendor Added Successfully!", "Success");
         navigate("/suppliers");
       } else {
         const errData = await res.json();
-        alert("Failed to Save Vendor! " + JSON.stringify(errData));
+        showAlert("Failed to Save Vendor! " + JSON.stringify(errData), "Error");
       }
     } catch (err) {
       console.error("Error saving vendor", err);
-      alert("Failed to Save Vendor! Check console for details.");
+      showAlert("Failed to Save Vendor! Check console for details.", "Error");
     }
   };
 

@@ -5,12 +5,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import "./addproducts.css"; // reuse same CSS as AddProduct
 import { authFetch } from "../../../api/http";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const EditProduct = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -55,10 +57,10 @@ const EditProduct = () => {
       });
 
       if (res.ok) {
-        alert("Product Updated Successfully!");
+        showAlert("Product Updated Successfully!", "Success");
         navigate("/masters/products");
       } else {
-        alert("Failed to update product!");
+        showAlert("Failed to update product!", "Error");
       }
     } catch (error) {
       console.error("Error updating product:", error);

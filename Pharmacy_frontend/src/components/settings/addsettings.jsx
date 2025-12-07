@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./addsettings.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const AddSetting = () => {
+  const { showAlert } = useAlert();
   const cx = (...classes) => classes.filter(Boolean).join(" ");
   const navigate = useNavigate();
   const { key } = useParams();
@@ -51,14 +53,14 @@ const AddSetting = () => {
       });
 
       if (res.ok) {
-        alert(isEditMode ? "Setting Updated!" : "Setting Added!");
+        showAlert(isEditMode ? "Setting Updated!" : "Setting Added!", "Success");
         navigate("/settings");   // redirect to settings dashboard
       } else {
-        alert("Save failed");
+        showAlert("Save failed", "Error");
       }
     } catch (error) {
       console.error(error);
-      alert("Save failed");
+      showAlert("Save failed", "Error");
     }
   };
 

@@ -12,6 +12,7 @@
 .page-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin: 0 0 2rem 0;
   position: sticky;
@@ -37,7 +38,8 @@
 .page-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  margin-left: auto;
 }
 
 .summary-grid {

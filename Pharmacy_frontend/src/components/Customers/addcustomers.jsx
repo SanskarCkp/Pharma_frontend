@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./addcustomers.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
 const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
@@ -9,6 +10,7 @@ const AddCustomer = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -87,11 +89,11 @@ const AddCustomer = () => {
       if (!res.ok) {
         const errData = await res.json();
         console.error("Backend error:", errData);
-        alert("Error saving customer: " + JSON.stringify(errData));
+        showAlert("Error saving customer: " + JSON.stringify(errData), "Error");
         return;
       }
 
-      alert(id ? "Customer Updated Successfully!" : "Customer Added Successfully!");
+      showAlert(id ? "Customer Updated Successfully!" : "Customer Added Successfully!", "Success");
       navigate("/masters/customers");
     } catch (error) {
       console.error("Error saving customer:", error);

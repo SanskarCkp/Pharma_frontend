@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./addsettings.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const EditSetting = () => {
+  const { showAlert } = useAlert();
   const navigate = useNavigate();
   const { key } = useParams();
 
@@ -40,14 +42,14 @@ const EditSetting = () => {
       });
 
       if (res.ok) {
-        alert("Setting Updated!");
+        showAlert("Setting Updated!", "Success");
         navigate("/settings");
       } else {
-        alert("Update Failed");
+        showAlert("Update Failed", "Error");
       }
     } catch (error) {
       console.error(error);
-      alert("Update Failed");
+      showAlert("Update Failed", "Error");
     }
   };
 

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./addretention.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const AddRetention = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
   const navigate = useNavigate();
   const { id } = useParams(); // numeric id in edit mode
   const [isEdit, setIsEdit] = useState(false);
+  const { showAlert } = useAlert();
   const [form, setForm] = useState({
     module: "",
     keep_years: 1,
@@ -58,16 +60,16 @@ const AddRetention = () => {
       });
 
       if (res.ok) {
-        alert(isEdit ? "Policy updated!" : "Policy added!");
+        showAlert(isEdit ? "Policy updated!" : "Policy added!", "Success");
         navigate("/masters/retention-policies");
       } else {
         const txt = await res.text();
         console.error("Save failed:", txt);
-        alert("Save failed");
+        showAlert("Save failed", "Error");
       }
     } catch (err) {
       console.error(err);
-      alert("Save failed");
+      showAlert("Save failed", "Error");
     }
   };
 

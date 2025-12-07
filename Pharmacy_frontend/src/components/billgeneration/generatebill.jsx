@@ -4,6 +4,7 @@ import "./billgeneration.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
+import { useAlert } from "../ui/alert-provider";
 
 const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
 const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
@@ -55,6 +56,7 @@ const deriveUnitsPerPack = (med = {}) => {
 export default function GenerateBill() {
   const navigate = useNavigate();
   const locationId = getDefaultLocationId();
+  const { showAlert } = useAlert();
 
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "" });
   const [products, setProducts] = useState([]);
@@ -201,7 +203,7 @@ export default function GenerateBill() {
       setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Unable to load medicine details. Please try again.");
+      showAlert(err.message || "Unable to load medicine details. Please try again.", "Error");
     } finally {
       setLoadingDetail(false);
     }
@@ -230,7 +232,7 @@ export default function GenerateBill() {
   const addProductWithUOM = () => {
     if (!selectedProduct || !selectedOption) return;
     if (!maxQtyForSelected || maxQtyForSelected <= 0) {
-      alert("No stock available for this unit.");
+      showAlert("No stock available for this unit.", "Stock Alert");
       return;
     }
     const qty = Math.max(1, Math.min(qtyInput || 1, maxQtyForSelected));
@@ -321,30 +323,30 @@ export default function GenerateBill() {
   const submitInvoice = async () => {
     if (submitting) return;
     if (!customer.name || !customer.phone || !customer.city) {
-      alert("Customer name, phone, and city are required.");
+      showAlert("Customer name, phone, and city are required.", "Validation Error");
       return;
     }
     if (!cart.length) {
-      alert("Cart is empty. Please add medicines.");
+      showAlert("Cart is empty. Please add medicines.", "Validation Error");
       return;
     }
     if (!selectedMethod) {
-      alert("Select a payment method.");
+      showAlert("Select a payment method.", "Validation Error");
       return;
     }
     if (selectedMethod === "other" && !otherPaymentMethod.trim()) {
-      alert("Please specify the payment method for 'Other'.");
+      showAlert("Please specify the payment method for 'Other'.", "Validation Error");
       return;
     }
     const amountPaid = parseFloat(amountPaying);
     if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
-      alert("Enter a valid payment amount.");
+      showAlert("Enter a valid payment amount.", "Validation Error");
       return;
     }
 
     const missingBatch = cart.find((item) => !item.batch_id);
     if (missingBatch) {
-      alert("One or more items are missing batch information. Remove them and try again.");
+      showAlert("One or more items are missing batch information. Remove them and try again.", "Validation Error");
       return;
     }
 
@@ -391,7 +393,7 @@ export default function GenerateBill() {
       navigate(`/billgeneration/invoice/${data.id}`);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Unable to submit invoice");
+      showAlert(err.message || "Unable to submit invoice", "Error");
     } finally {
       setSubmitting(false);
     }

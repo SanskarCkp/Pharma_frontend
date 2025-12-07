@@ -8,6 +8,7 @@ import {
   updateUserOnBackend,
 } from "../../api/users";
 import UserCreate from "./UserCreate";
+import { useAlert } from "../ui/alert-provider";
 
 const STORAGE_KEY = "app_users";
 
@@ -31,6 +32,7 @@ const formatDateTime = (value) => {
 };
 
 export default function UserList() {
+  const { showAlert } = useAlert();
   const [users, setUsers] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -103,7 +105,7 @@ export default function UserList() {
       updateLocalUsers(updated);
     } catch (err) {
       console.error("Failed to update status", err);
-      alert("Failed to update status on server.");
+      showAlert("Failed to update status on server.", "Error");
     }
   }
 
@@ -118,7 +120,7 @@ export default function UserList() {
       updateLocalUsers(remaining);
     } catch (err) {
       console.error("Failed to delete user", err);
-      alert("Failed to delete user on server.");
+      showAlert("Failed to delete user on server.", "Error");
     }
   }
 

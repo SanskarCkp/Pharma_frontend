@@ -1,22 +1,27 @@
 /* ========= Base Page Layout ========= */
 .expiryalerts-page {
+  width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
+  min-height: calc(100vh - 70px - 60px - 48px);
+  padding: 25px 45px;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  padding: 24px;
-  background: #f8fafc;
-  min-height: 100vh;
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 2rem;
   font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 4px;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
   letter-spacing: -0.5px;
 }
 
 .page-subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 0.95rem;
+  color: #6b7280;
   margin-bottom: 24px;
   font-weight: 400;
 }
@@ -57,18 +62,7 @@
   font-weight: 700;
   margin: 0;
   line-height: 1;
-}
-
-.kpi-card.critical h2 {
-  color: #dc2626;
-}
-
-.kpi-card.warning h2 {
-  color: #f59e0b;
-}
-
-.kpi-card.safe h2 {
-  color: #10b981;
+  color: #222;
 }
 
 /* ========= Tabs ========= */
@@ -79,49 +73,49 @@
   margin-bottom: 20px;
 }
 
+.tabs > div {
+  display: flex;
+  gap: 12px;
+}
+
 .tab {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  background: #ececec;
+  border: none;
   border-radius: 8px;
-  padding: 10px 18px;
-  margin-right: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: #64748b;
+  color: #333;
   transition: all 0.2s ease;
 }
 
-.tab:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #334155;
+.tab:hover:not(.active) {
+  background: #ddd;
 }
 
 .tab.active {
-  background: #0f172a;
-  color: #ffffff;
-  border-color: #0f172a;
+  background: #13b57d;
+  color: white;
   font-weight: 600;
 }
 
 /* ========= Export Button ========= */
 .export-btn {
-  background: #0f172a;
+  padding: 8px 14px;
+  background: #13b57d;
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .export-btn:hover {
-  background: #1e293b;
+  background: #0f9666;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
 }
 
 /* ========= Table ========= */
@@ -172,19 +166,6 @@
   border-bottom: none;
 }
 
-.expiry-table td.safe {
-  color: #10b981;
-  font-weight: 600;
-}
-.expiry-table td.warning {
-  color: #f59e0b;
-  font-weight: 600;
-}
-.expiry-table td.critical {
-  color: #dc2626;
-  font-weight: 600;
-}
-
 /* ========= Status Badge ========= */
 .status-badge {
   display: inline-block;
@@ -200,135 +181,17 @@
   color: #dc2626;
   border: 1px solid #fecaca;
 }
+
 .status-badge.warning {
   background: #fffbeb;
   color: #f59e0b;
   border: 1px solid #fde68a;
 }
+
 .status-badge.safe {
   background: #f0fdf4;
   color: #10b981;
   border: 1px solid #bbf7d0;
-}
-
-/* ========= Buttons ========= */
-.return-btn {
-  background: #dc2626;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.return-btn:hover {
-  background: #b91c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
-}
-
-/* ========= Alert Banner ========= */
-.alert-banner {
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  margin-bottom: 16px;
-  font-weight: 500;
-  border: 1px solid;
-}
-
-.alert-banner.critical {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.alert-banner.warning {
-  background: #fffbeb;
-  color: #f59e0b;
-  border-color: #fde68a;
-}
-
-.alert-banner.safe {
-  background: #f0fdf4;
-  color: #10b981;
-  border-color: #bbf7d0;
-}
-
-/* ========= Modal ========= */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.modal {
-  background: #ffffff;
-  padding: 24px;
-  border-radius: 12px;
-  width: 400px;
-  text-align: center;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.modal h3 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #0f172a;
-}
-
-.modal p {
-  font-size: 14px;
-  color: #64748b;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.cancel-btn,
-.confirm-btn {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-}
-
-.cancel-btn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-}
-
-.confirm-btn {
-  background: #0f172a;
-  color: #ffffff;
-}
-
-.confirm-btn:hover {
-  background: #1e293b;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
 }
 
 /* ========= Loading State ========= */

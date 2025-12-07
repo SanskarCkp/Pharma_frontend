@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./purchases.css";
+import { useAlert } from "../ui/alert-provider";
 
 const Purchases = () => {
+  const { showAlert } = useAlert();
   const [purchases, setPurchases] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -35,7 +37,7 @@ const Purchases = () => {
     };
 
     setPurchases((prev) => [...prev, newPurchase]);
-    alert(`✅ Purchase Created Successfully!`);
+    showAlert("Purchase Created Successfully!", "Success");
 
     setFormData({
       vendorId: "",

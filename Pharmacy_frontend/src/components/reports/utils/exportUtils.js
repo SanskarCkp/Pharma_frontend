@@ -16,8 +16,9 @@ export function getMonthsFromLabel(label) {
  * Export report to XLSX file
  * @param {string} reportType - e.g., "SALES_REGISTER", "STOCK_LEDGER"
  * @param {object} params - Additional parameters to send
+ * @param {function} onError - Optional callback for error handling (message, title)
  */
-export async function exportReport(reportType, params = {}) {
+export async function exportReport(reportType, params = {}, onError = null) {
   try {
     const formData = new FormData();
     formData.append("report_type", reportType);
@@ -37,7 +38,13 @@ export async function exportReport(reportType, params = {}) {
     a.click();
     URL.revokeObjectURL(url);
   } catch (err) {
-    alert(err.message || "Export failed");
+    const message = err.message || "Export failed";
+    if (onError && typeof onError === 'function') {
+      onError(message, "Export Error");
+    } else {
+      // Fallback to console.error if no callback provided
+      console.error(message);
+    }
     throw err;
   }
 }

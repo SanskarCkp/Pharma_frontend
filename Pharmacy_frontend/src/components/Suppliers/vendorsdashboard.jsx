@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authFetch } from "../../api/http";
+import { useAlert } from "../ui/alert-provider";
 import styles from "./vendorsdashboard.module.css";
 import { Store, PhoneCall, Mail, Trash2, Plus } from "lucide-react";
 
 
 const VendorsDashboard = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
+  const { showAlert } = useAlert();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -100,11 +102,11 @@ const VendorsDashboard = () => {
       if (res.ok) {
         setVendors((prev) => prev.filter((v) => v.id !== id));
       } else {
-        alert("Failed to delete vendor");
+        showAlert("Failed to delete vendor", "Error");
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Delete failed");
+      showAlert("Delete failed", "Error");
     }
   };
 
