@@ -36,7 +36,7 @@ const CreateOrder = () => {
 
   useEffect(() => {
     if (!vendor) {
-      navigate("/masters/vendors");
+      navigate("/suppliers");
       return;
     }
 

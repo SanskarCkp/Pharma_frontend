@@ -108,3 +108,10 @@
   font-size: 12px;
   color: #6b7280;
 }
+
+/* Hide topbar on mobile screens (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .app-topbar {
+    display: none;
+  }
+}

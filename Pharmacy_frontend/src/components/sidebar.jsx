@@ -1,5 +1,5 @@
 // src/components/sidebar.jsx
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import {
@@ -13,6 +13,8 @@ import {
   Hourglass,
   BarChart2,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -22,13 +24,22 @@ import { logout as clearAuthTokens } from "../api/auth";
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   const otherMenuItems = [
     { path: "/dashboard", activeMatch: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { path: "/inventory/medicines/", activeMatch: "/inventory", label: "Inventory", icon: <Boxes size={18} /> },
     { path: "/billgeneration/billlist", activeMatch: "/billgeneration", label: "Billing", icon: <FileText size={18} /> },
     { path: "/reports/sales", activeMatch: "/reports", label: "Reports", icon: <BarChart2 size={18} /> },
-    { path: "/masters/vendors", activeMatch: "/masters/vendors", label: "Suppliers", icon: <Store size={18} /> },
+    { path: "/suppliers", activeMatch: "/suppliers", label: "Suppliers", icon: <Store size={18} /> },
     { path: "/masters/customers", activeMatch: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
     { path: "/expiryalrets", activeMatch: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
     { path: "/settings", activeMatch: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
@@ -71,32 +82,63 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="sidebar-container">
-      {/* Header */}
-      <div className="sidebar-header">
-        <div className="sidebar-logo-wrap">
+    <>
+      {/* Mobile Header with Hamburger and Logo */}
+      <div className="mobile-header">
+        <button
+          className="hamburger-btn"
+          onClick={toggleMobileMenu}
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <div className="mobile-logo-wrap">
           <img
             src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
             alt="logo"
-            className="sidebar-logo"
+            className="mobile-logo"
           />
-          <div className="sidebar-brand-multi">
-            <span className="brand-line1">Keshav Medicals</span>
-            <span className="brand-line2">Management System</span>
-          </div>
+          <span className="mobile-brand">Keshav Medicals</span>
         </div>
       </div>
 
-      <nav className="sidebar-menu">
+      {/* Overlay for mobile */}
+      {isMobileMenuOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={closeMobileMenu}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`sidebar-container ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+        {/* Header */}
+        <div className="sidebar-header">
+          <div className="sidebar-logo-wrap">
+            <img
+              src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
+              alt="logo"
+              className="sidebar-logo"
+            />
+            <div className="sidebar-brand-multi">
+              <span className="brand-line1">Keshav Medicals</span>
+              <span className="brand-line2">Management System</span>
+            </div>
+          </div>
+        </div>
+
+        <nav className="sidebar-menu">
         {/* Masters */}
         <NavLink
           to="/masters"
+          onClick={closeMobileMenu}
           className={() => {
-            // Exclude vendors and customers as they have their own menu items
-            const isVendorOrCustomer = location.pathname.startsWith("/masters/vendors") ||
-                                       location.pathname.startsWith("/masters/customers");
+            // Exclude vendors, customers, and products as they have their own menu items or are sub-pages
+            const isExcluded = location.pathname.startsWith("/suppliers") ||
+                              location.pathname.startsWith("/masters/customers") ||
+                              location.pathname.startsWith("/masters/products");
 
-            if (isVendorOrCustomer) {
+            if (isExcluded) {
               return "sidebar-link";
             }
 
@@ -116,8 +158,15 @@ const Sidebar = () => {
           <NavLink
             key={idx}
             to={item.path}
+            onClick={closeMobileMenu}
             className={() => {
-              const active = location.pathname.startsWith(item.activeMatch);
+              let active = location.pathname.startsWith(item.activeMatch);
+
+              // Special case for Suppliers: also match vendor-related product pages
+              if (item.label === "Suppliers" && location.pathname.startsWith("/masters/products")) {
+                active = true;
+              }
+
               return `sidebar-link ${active ? "active" : ""}`;
             }}
           >
@@ -129,7 +178,10 @@ const Sidebar = () => {
         {/* 🔥 LOGOUT BUTTON */}
         <button
           type="button"
-          onClick={handleLogoutClick}
+          onClick={() => {
+            handleLogoutClick();
+            closeMobileMenu();
+          }}
           className="sidebar-link logout-btn"
           style={{
             marginTop: "20px",
@@ -149,7 +201,8 @@ const Sidebar = () => {
           <span className="sidebar-label">Logout</span>
         </button>
       </nav>
-    </div>
+      </div>
+    </>
   );
 };
 

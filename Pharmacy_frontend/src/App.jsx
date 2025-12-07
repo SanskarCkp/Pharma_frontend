@@ -29,11 +29,11 @@ import MedicineDetailPage from "./components/inventory/MedicineDetailPage.jsx";
 
 // Masters
 
-import Vendorsdashboard from "./components/Masters/Vendors/vendorsdashboard.jsx";
-import VendorDetails from "./components/Masters/Vendors/VendorDetails.jsx";
-import AddVendors from "./components/Masters/Vendors/addvendors.jsx";
-import ViewVendor from "./components/Masters/Vendors/viewvendor.jsx";
-import EditVendor from "./components/Masters/Vendors/editvendor.jsx";
+import Vendorsdashboard from "./components/Suppliers/vendorsdashboard.jsx";
+import VendorDetails from "./components/Suppliers/VendorDetails.jsx";
+import AddVendors from "./components/Suppliers/addvendors.jsx";
+import ViewVendor from "./components/Suppliers/viewvendor.jsx";
+import EditVendor from "./components/Suppliers/editvendor.jsx";
 import AddCustomers from "./components/Masters/Customers/addcustomers.jsx";
 import CustomersDashboard from "./components/Masters/Customers/customersdashboard.jsx";
 import CustomerDetails from "./components/Masters/Customers/CustomerDetails.jsx";
@@ -117,7 +117,7 @@ function AppLayout() {
       <Sidebar />
       <div className="flex flex-col flex-grow ml-0 lg:ml-[240px]">
         <Topbar />
-        <main className="flex-grow pt-1 p-6 mt-[96px] mb-[60px]">
+        <main className="flex-grow pt-1 p-6 mt-[60px] lg:mt-[96px] mb-[60px]">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -131,11 +131,11 @@ function AppLayout() {
             <Route path="/masters" element={<MastersDashboard />} />
             <Route path="/masters/users" element={<UserList />} />
 
-            <Route path="/masters/vendors" element={<Vendorsdashboard />} />
-            <Route path="/masters/vendors/add" element={<AddVendors />} />
-            <Route path="/masters/vendors/view/:id" element={<ViewVendor />} />
-            <Route path="/masters/vendors/edit/:id" element={<EditVendor />} />
-            <Route path="/masters/vendors/viewdetails/:id" element={<VendorDetails />} />
+            <Route path="/suppliers" element={<Vendorsdashboard />} />
+            <Route path="/suppliers/add" element={<AddVendors />} />
+            <Route path="/suppliers/view/:id" element={<ViewVendor />} />
+            <Route path="/suppliers/edit/:id" element={<EditVendor />} />
+            <Route path="/suppliers/viewdetails/:id" element={<VendorDetails />} />
 
             <Route path="/masters/customers" element={<CustomersDashboard />} />
             <Route path="/masters/customers/add" element={<AddCustomers />} />
