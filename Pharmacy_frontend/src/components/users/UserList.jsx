@@ -188,7 +188,7 @@ export default function UserList() {
                             Edit
                           </button>
                           <button type="button" onClick={() => handleToggleStatus(u)}>
-                            {u.isActive ? "Deactivate" : "Activate"}
+                            {u.isActive ? "Disable" : "Activate"}
                           </button>
                           <button
                             type="button"
