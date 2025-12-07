@@ -68,9 +68,8 @@ export default function BillList() {
       className="billgeneration-page"
       style={{
         width: "100%",
-        padding: "0.5rem 2.5rem 2rem 2.5rem",
-        minHeight: "100vh",
-        backgroundColor: "#f9fafb"
+        padding: "25px 45px",
+        backgroundColor: "#ffff"
       }}
     >
       {/* Header Section */}

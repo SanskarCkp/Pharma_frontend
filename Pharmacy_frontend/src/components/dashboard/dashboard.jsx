@@ -141,7 +141,7 @@ const Dashboard = () => {
     <div className="dashboard-main">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h2 className="page-title">Dashboard</h2>
           <p className="page-subtitle">Welcome back! Here's what's happening today.</p>
         </div>
         <div className="page-actions">
