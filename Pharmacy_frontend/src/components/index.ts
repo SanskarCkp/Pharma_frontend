@@ -1,5 +1,4 @@
 export {user} from './user';
-export {batchlots} from './batchlots';
 export {consent} from './consent';
 export {consentledger} from './consentledger';
 export {h1registerentries} from './h1registerentries';

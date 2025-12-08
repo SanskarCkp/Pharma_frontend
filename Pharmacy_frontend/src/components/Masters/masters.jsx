@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pill, Ruler, CreditCard, Calendar, Package, User } from "lucide-react";
+import { Pill, Ruler, Calendar, Package, User } from "lucide-react";
 import { authFetch } from "../../api/http";
+import "./Masters.css";
 
 /**
- * MastersDashboard — realtime totals for:
- *  - Payment Methods
+ * MastersDashboard - realtime totals for:
  *  - Payment Terms
  *  - Rack Locations
  *
@@ -21,25 +21,25 @@ const normalizeBase = (u) =>
 const API_BASE = normalizeBase(rawBase);
 
 const ENDPOINTS = {
+  Users: `${API_BASE}/api/v1/accounts/users/`,
   MedicineCategories: `${API_BASE}/api/v1/catalog/categories/`,
   MedicineForms: `${API_BASE}/api/v1/catalog/forms/`,
   UnitsOfMeasurement: `${API_BASE}/api/v1/catalog/uoms/`,
-  paymentMethods: `${API_BASE}/api/v1/settings/payment-methods/`,
   paymentTerms: `${API_BASE}/api/v1/settings/payment-terms/`,
   rackLocations: `${API_BASE}/api/v1/inventory/rack-locations/`,
 };
 
 export default function MastersDashboard() {
   // states: null = loading, number >=0 = value, -1 = error
-  const [pmTotal, setPmTotal] = useState(null);
+  const [usersTotal, setUsersTotal] = useState(null);
   const [ptTotal, setPtTotal] = useState(null);
   const [rlTotal, setRlTotal] = useState(null);
   const [mcTotal, setmcTotal] = useState(null);
   const [mfTotal, setmfTotal] = useState(null);
   const [umTotal, setumTotal] = useState(null);
-  
 
-  const [pmError, setPmError] = useState(null);
+
+  const [usersError, setUsersError] = useState(null);
   const [ptError, setPtError] = useState(null);
   const [rlError, setRlError] = useState(null);
   const [mcError, setmcError] = useState(null);
@@ -80,10 +80,10 @@ export default function MastersDashboard() {
     };
 
     // run them in parallel
+    fetchCount(ENDPOINTS.Users, setUsersTotal, setUsersError);
     fetchCount(ENDPOINTS.MedicineCategories, setmcTotal, setmcError);
     fetchCount(ENDPOINTS.MedicineForms, setmfTotal, setmfError);
     fetchCount(ENDPOINTS.UnitsOfMeasurement, setumTotal, setumError);
-    fetchCount(ENDPOINTS.paymentMethods, setPmTotal, setPmError);
     fetchCount(ENDPOINTS.paymentTerms, setPtTotal, setPtError);
     fetchCount(ENDPOINTS.rackLocations, setRlTotal, setRlError);
 
@@ -94,10 +94,9 @@ export default function MastersDashboard() {
     {
       path: "/masters/users",
       label: "Users",
-      icon: <User size={28} />,   // larger & clean
+      icon: <User size={28} />,
+      total: usersTotal,
       accent: "blue",
-      noBox: true,               // ⬅ no top-right box
-      noTotal: true,             // ⬅ no "Total Items"
     },
 
     {
@@ -120,13 +119,6 @@ export default function MastersDashboard() {
       icon: <Ruler size={16} />,
       total: umTotal,
       accent: "blue",
-    },
-    {
-      path: "/masters/payment-methods",
-      label: "Payment Methods",
-      icon: <CreditCard size={16} />,
-      total: pmTotal,
-      accent: "teal",
     },
     {
       path: "/masters/payment-terms",
@@ -169,11 +161,13 @@ export default function MastersDashboard() {
   };
 
   return (
-    <div className="w-full p-8">
+    <div className="masters-wrap">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-800">Master Data Management</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage all configurable fields and dropdown options</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Master Data Management</h1>
+          <p className="page-subtitle">Manage all configurable fields and dropdown options</p>
+        </div>
       </div>
 
       {/* Grid */}
@@ -204,10 +198,7 @@ export default function MastersDashboard() {
                 <div className="flex items-center gap-3 text-sm text-gray-500">
                   <span>Total Items:</span>
                   <span className="inline-flex h-7 min-w-[1.6rem] items-center justify-center rounded-full border border-gray-200 px-2 text-xs text-gray-700 bg-white">
-                    {/* For our three dynamic cards, it.total may be null/-1/number */}
-                    {["/masters/payment-methods", "/masters/payment-terms", "/masters/rack-locations"].includes(it.path)
-                      ? renderTotal(it.total)
-                      : (it.total ?? "—")}
+                    {renderTotal(it.total)}
                   </span>
                 </div>
               </div>
@@ -218,14 +209,12 @@ export default function MastersDashboard() {
 
       {/* optional debug errors */}
       <div className="mt-4 text-sm text-rose-600">
-        {pmError && <div>Payment methods load error: {pmError}</div>}
+        {usersError && <div>Users load error: {usersError}</div>}
         {ptError && <div>Payment terms load error: {ptError}</div>}
         {rlError && <div>Rack locations load error: {rlError}</div>}
-
-
-
-
-        
+        {mcError && <div>Medicine categories load error: {mcError}</div>}
+        {mfError && <div>Medicine forms load error: {mfError}</div>}
+        {umError && <div>Units load error: {umError}</div>}
       </div>
     </div>
   );

@@ -1,0 +1,66 @@
+ .customers-container {
+  padding: 24px;
+  font-family: "Inter", sans-serif;
+}
+
+.customers-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.customers-heading {
+  font-size: 13px;
+  font-weight: 400;
+  color: #475569;
+  margin-bottom: 18px;
+}
+
+.customers-list {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(2,6,23,0.04);
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.customers-table th,
+.customers-table td {
+  border-bottom: 1px solid #e6eef2;
+  padding: 12px;
+  font-size: 14px;
+  color: #334155;
+  text-align: left;
+}
+
+.customers-table thead th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.no-data {
+  text-align: center;
+  padding: 18px;
+  font-size: 15px;
+  color: #777;
+}
+
+.add-btn {
+  background: #0d9488;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.add-btn:hover {
+  background: #0f766e;
+}

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import "./audit_logs.css";
+import { useAlert } from "../../ui/alert-provider";
 
 // Toggle this to true if you want data to persist between refreshes
 const USE_LOCAL_STORAGE = false;
 const LS_KEY = "dummy_audit_logs";
 
 const AuditLogs = () => {
+  const { showAlert } = useAlert();
   const [logs, setLogs] = useState([]);
   const [formData, setFormData] = useState({
     id: "",
@@ -110,11 +112,11 @@ const AuditLogs = () => {
     if (editingId) {
       const next = logs.map((l) => (l.id === editingId ? obj : l));
       saveIfNeeded(next);
-      alert("✅ Audit log updated!");
+      showAlert("Audit log updated successfully!", "Success");
     } else {
       const next = [obj, ...logs];
       saveIfNeeded(next);
-      alert("✅ Audit log created!");
+      showAlert("Audit log created successfully!", "Success");
     }
     resetForm();
   };
@@ -140,7 +142,7 @@ const AuditLogs = () => {
     if (!window.confirm("Delete this audit log?")) return;
     const next = logs.filter((l) => l.id !== id);
     saveIfNeeded(next);
-    alert("🗑️ Audit log deleted!");
+    showAlert("Audit log deleted successfully!", "Success");
   };
 
   return (

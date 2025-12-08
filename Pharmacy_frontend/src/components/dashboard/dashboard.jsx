@@ -139,19 +139,21 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-main">
-      <div className="flex items-center justify-between mb-5">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-semibold mb-1">Dashboard</h2>
-          <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
+          <h2 className="page-title">Dashboard</h2>
+          <p className="page-subtitle">Welcome back! Here's what's happening today.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleRefresh}>
-          Refresh
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-primary" onClick={handleRefresh}>
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px', width: '100%' }}>
         {cards.map((card, index) => (
-          <div key={index} className="summary-card shadow bg-white p-4 rounded-xl border border-gray-100">
+          <div key={index} className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100">
             <div className="font-medium text-gray-600">{card.title}</div>
             <div className="text-2xl font-bold mt-1">{card.value}</div>
             <div className="text-sm mt-1" style={{ color: card.color }}>
@@ -217,23 +219,8 @@ const Dashboard = () => {
               <div className="flex justify-between">
                 <span className="font-medium">{item.product_name}</span>
                 <span className="text-sm text-gray-600">
-                  {Number(item.stock_base || 0)} / {Number(item.reorder_level || 0)}
+                  {Number(item.stock_base || 0)} units available
                 </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div
-                  className="h-2 rounded-full"
-                  style={{
-                    width:
-                      Number(item.reorder_level || 0) > 0
-                        ? `${Math.min(
-                            100,
-                            (Number(item.stock_base || 0) / Number(item.reorder_level || 1)) * 100
-                          )}%`
-                        : "15%",
-                    background: "#E67E22",
-                  }}
-                />
               </div>
             </div>
           ))}

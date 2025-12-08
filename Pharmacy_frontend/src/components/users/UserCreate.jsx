@@ -1,25 +1,52 @@
 // src/components/users/UserCreate.jsx
-import React, { useState, useEffect } from "react";
-import { createUserOnBackend } from "../../api/users";
+import React, { useEffect, useMemo, useState } from "react";
+import { createUserOnBackend, updateUserOnBackend } from "../../api/users";
 import "./users.css";
+import { useAlert } from "../ui/alert-provider";
 
-export default function UserCreate({ onClose, onCreated, nextUserId }) {
+const formatDateTime = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString();
+};
+
+export default function UserCreate({
+  mode = "create",
+  user = null,
+  onClose,
+  onCreated,
+  onUpdated,
+  nextUserId,
+}) {
+  const { showAlert } = useAlert();
+  const isEdit = mode === "edit";
   const [formData, setFormData] = useState({
-    userId: nextUserId || "USR001",
-    fullName: "",
-    email: "",
+    userId: user?.userId || nextUserId || "USR001",
+    fullName: user?.fullName || "",
+    email: user?.email || "",
     password: "",
     confirmPassword: "",
-    isActive: true,
+    isActive: user?.isActive ?? true,
+    createdAt: user?.createdAt || new Date().toISOString(),
   });
 
-  // if nextUserId changes (e.g., after reload), update field
   useEffect(() => {
+    if (isEdit) return;
+    setFormData((prev) => ({ ...prev, userId: nextUserId || "USR001" }));
+  }, [isEdit, nextUserId]);
+
+  useEffect(() => {
+    if (!user) return;
     setFormData((prev) => ({
       ...prev,
-      userId: nextUserId || "USR001",
+      userId: user.userId || prev.userId,
+      fullName: user.fullName || "",
+      email: user.email || "",
+      isActive: user.isActive ?? true,
+      createdAt: user.createdAt || prev.createdAt,
     }));
-  }, [nextUserId]);
+  }, [user]);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -30,14 +57,25 @@ export default function UserCreate({ onClose, onCreated, nextUserId }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
+<<<<<<< HEAD
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match!");
+=======
+    if (!isEdit) {
+      if (formData.password !== formData.confirmPassword) {
+        showAlert("Passwords do not match!", "Validation Error");
+        return;
+      }
+    } else if (formData.password && formData.password !== formData.confirmPassword) {
+      showAlert("Passwords do not match!", "Validation Error");
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
       return;
     }
 
     const payload = {
       email: formData.email,
       full_name: formData.fullName,
+<<<<<<< HEAD
       password: formData.password,
       is_active: formData.isActive,
     };
@@ -52,13 +90,56 @@ export default function UserCreate({ onClose, onCreated, nextUserId }) {
     }
   }
 
+=======
+      is_active: formData.isActive,
+    };
+    if (!isEdit || formData.password) {
+      payload.password = formData.password;
+    }
+
+    try {
+      if (isEdit) {
+        await updateUserOnBackend(user?.id || user?.backendId || user?.userId, payload);
+        showAlert("User updated successfully!", "Success");
+        if (onUpdated) {
+          onUpdated({
+            ...user,
+            fullName: payload.full_name,
+            email: payload.email,
+            isActive: payload.is_active,
+          });
+        }
+      } else {
+        const resp = await createUserOnBackend(payload);
+        showAlert("User created successfully!", "Success");
+        if (onCreated) onCreated(resp);
+      }
+      if (onClose) onClose();
+    } catch (err) {
+      console.error("Create/Update user failed:", err);
+      showAlert("Failed to save user on server. Please try again.", "Error");
+    }
+  }
+
+  const createdAtValue = useMemo(
+    () => formatDateTime(formData.createdAt || new Date().toISOString()),
+    [formData.createdAt]
+  );
+
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
   return (
     <div className="user-modal-overlay">
       <div className="user-modal">
         <div className="user-modal-header">
+<<<<<<< HEAD
           <h3>Add New User</h3>
           <button className="user-modal-close" onClick={onClose}>
             ×
+=======
+          <h3>{isEdit ? "Edit User" : "Add New User"}</h3>
+          <button className="user-modal-close" onClick={onClose}>
+            X
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
           </button>
         </div>
 
@@ -96,7 +177,11 @@ export default function UserCreate({ onClose, onCreated, nextUserId }) {
               name="password"
               value={formData.password}
               onChange={handleChange}
+<<<<<<< HEAD
               required
+=======
+              required={!isEdit}
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
             />
           </div>
 
@@ -107,10 +192,22 @@ export default function UserCreate({ onClose, onCreated, nextUserId }) {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+<<<<<<< HEAD
               required
             />
           </div>
 
+=======
+              required={!isEdit}
+            />
+          </div>
+
+          <div className="formGroup">
+            <label>Created At:</label>
+            <input type="text" value={createdAtValue} readOnly />
+          </div>
+
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
           <div className="formGroup checkboxGroup">
             <label>
               <input
@@ -131,7 +228,11 @@ export default function UserCreate({ onClose, onCreated, nextUserId }) {
               Cancel
             </button>
             <button type="submit" className="user-btn-submit">
+<<<<<<< HEAD
               Create User
+=======
+              {isEdit ? "Update User" : "Create User"}
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
             </button>
           </div>
         </form>

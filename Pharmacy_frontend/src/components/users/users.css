@@ -33,8 +33,26 @@
   border: 1px solid #ccc;
 }
 
-.checkboxGroup input {
-  margin-right: 8px;
+.checkboxGroup label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  margin-right: 10px;
 }
 
 .submitBtn {
@@ -63,6 +81,10 @@
   color: #222;
 }
 
+.userList {
+  overflow-x: auto;
+}
+
 .userList table {
   width: 100%;
   border-collapse: collapse;
@@ -70,14 +92,25 @@
 
 .userList th,
 .userList td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: center;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .userList th {
-  background-color: #f4f4f4;
-  font-weight: bold;
+  background: #f2fbf7;
+  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+}
+
+.userList td {
+  color: #374151;
+  font-size: 14px;
+}
+
+.userList tbody tr:hover {
+  background: #f9fafb;
 }
 
 .noRecords {
@@ -157,12 +190,14 @@
 }
 
 .users-page {
-  padding: 32px 40px;
+  padding: 24px;
+  background: #f6f7f9;
+  min-height: 100vh;
 }
 
 /* New wrapper: centers header and card together */
 .users-shell {
-  max-width: 950px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -181,12 +216,12 @@
 }
 
 .users-back-btn {
-    border: 1px solid var(--border);
+    border: 1px solid #e5e7eb;
     background: #fff;
     padding: 8px 12px;
     border-radius: 10px;
     cursor: pointer;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .users-title-block {
@@ -196,34 +231,83 @@
 
 .users-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .users-subtitle {
-  margin: 2px 0 0;
-  font-size: 13px;
+  margin: 4px 0 0;
+  font-size: 14px;
   color: #6b7280;
 }
 
 /* Green Add button */
 .users-add-btn {
     margin-left: auto;
-    background: var(--primary);
+    background: #10b981;
     color: #fff;
     border: none;
     padding: 10px 14px;
     border-radius: 10px;
     cursor: pointer;
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.users-add-btn:hover {
+    background: #0ea471;
 }
 
 /* Card now just fills shell width */
 .users-card {
   width: 100%;
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #e5e7eb;
-  padding: 16px 20px 12px;
+  padding: 8px;
+}
+
+.users-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 12px;
+  color: #111827;
+}
+
+.users-empty-row {
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.users-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.users-actions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: #10b981;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.users-actions button:hover {
+  background: #0ea471;
+}
+
+.users-actions button.danger {
+  background: #ef4444;
+  color: white;
+}
+
+.users-actions button.danger:hover {
+  background: #dc2626;
 }

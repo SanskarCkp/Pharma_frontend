@@ -8,8 +8,12 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
     "axios": "^1.13.1",
     "chart.js": "^4.5.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "flow": "^0.2.3",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
@@ -20,7 +24,9 @@
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.9.5",
     "recharts": "^3.4.1",
-    "tailwindcss": "^3.0.0"
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^3.0.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@babel/preset-flow": "^7.27.1",

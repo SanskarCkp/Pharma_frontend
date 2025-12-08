@@ -1,0 +1,362 @@
+/* =======================
+   Settings Dashboard Page
+======================= */
+.settings-container {
+  width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
+  min-height: calc(100vh - 70px - 60px - 48px);
+  padding: 25px 45px;
+}
+
+.settings-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.settings-heading {
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: #6b7280;
+  margin: 0.5rem 0 20px 0;
+}
+
+/* =======================
+   Settings Tab Container
+======================= */
+.settings-tab-container {
+  display: flex;
+  background: #f3f4f6;
+  padding: 12px;
+  border-radius: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 4px;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.settings-tab:hover {
+  background: #e0f2f1;
+  color: #0d9488;
+}
+
+.settings-tab.active {
+  background: #0d9488;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* =======================
+   Business Details Section
+======================= */
+.business-section {
+  margin-top: 40px;
+  background: #fff;
+  padding: 30px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: rgba(0, 0, 0, 0.04) 0px 2px 6px;
+  position: relative;
+}
+
+.business-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.business-section p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* =======================
+   Form Layout (2 per row)
+======================= */
+.business-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(300px, 1fr));
+  gap: 20px 40px;
+  position: relative;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.form-row label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.form-row input,
+.form-row textarea,
+.form-row select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+  background-color: #f9fafb;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.form-row textarea {
+  resize: none;
+  height: 80px;
+}
+
+.form-row input:focus,
+.form-row textarea:focus,
+.form-row select:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+  background-color: #ffffff;
+}
+
+/* =======================
+   Save Button
+======================= */
+.save-btn {
+  background: #0d9488;
+  color: white;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  align-self: flex-end;
+  justify-self: end;
+  grid-column: 2 / 3;
+}
+
+.save-btn:hover {
+  background: #0f766e;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =======================
+   Alert Thresholds Section
+======================= */
+.alert-section {
+  margin-top: 40px;
+}
+
+.alert-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alert-card {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 6px;
+  border: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.alert-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.alert-row-horizontal {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.alert-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.alert-field input,
+.alert-field select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+  background-color: #f9fafb;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.alert-field input:focus,
+.alert-field select:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+  background-color: #ffffff;
+}
+
+.alert-field-empty {
+  visibility: hidden;
+}
+
+.alert-card .save-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* =======================
+   Coming Soon Section
+======================= */
+.coming-soon-section {
+  margin-top: 40px;
+  background: #fff;
+  padding: 80px 40px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: rgba(0, 0, 0, 0.04) 0px 2px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.coming-soon-icon {
+  color: #9ca3af;
+  opacity: 0.5;
+}
+
+.coming-soon-section h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.coming-soon-section p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .business-form,
+  .alert-row-horizontal {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .save-btn {
+    grid-column: 1 / 2;
+    justify-self: end;
+  }
+}
+<<<<<<< HEAD:Pharmacy_frontend/src/components/settings/settingsdashboard.css
+
+
+.settings-tab-container {
+  display: flex;
+  background: #f3f4f6; /* Light gray background for the big card */
+  padding: 12px;
+  border-radius: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  box-shadow: rgba(0,0,0,0.05) 0px 2px 4px;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.settings-tab:hover {
+  background: #e0f2f1;
+  color: #0d9488;
+}
+
+.settings-tab.active {
+  background: #0d9488;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+
+.alert-row-horizontal {
+  display: flex;
+  gap: 16px;
+}
+
+.alert-field {
+  flex: 1;
+}
+
+/* make the empty placeholder not visible but keep width */
+.alert-field-empty {
+  visibility: hidden;
+}
+=======
+>>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01:Pharmacy_frontend/src/components/settings/settingsdashboard.module.css

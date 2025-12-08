@@ -86,3 +86,23 @@ export async function deleteUserFromBackend(userId) {
     }
   });
 }
+
+export async function updateUserOnBackend(userId, payload) {
+  if (!userId) throw new Error("Missing user id");
+
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("Not authenticated (no access token found).");
+  }
+
+  const url = apiUrl(`accounts/users/${userId}/`);
+  return await doFetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}

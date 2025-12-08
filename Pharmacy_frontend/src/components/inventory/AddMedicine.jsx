@@ -1,65 +1,260 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
+import { getDefaultLocationId } from "../../config/location";
 
 const rawBase = import.meta.env.VITE_API_URL || "";
 const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
 const API_BASE = normalizeBase(rawBase);
 
-const CATEGORY_API = `${API_BASE}/api/v1/catalog/categories/`;
-const FORMS_API = `${API_BASE}/api/v1/catalog/forms/`;
-const UOMS_API = `${API_BASE}/api/v1/catalog/uoms/`;
 const RACKS_API = `${API_BASE}/api/v1/inventory/rack-locations/`;
 const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
+const MEDICINE_DETAIL_API = (id) => `${API_BASE}/api/v1/inventory/medicines/${id}/`;
 
-const DEFAULT_LOCATION_ID = Number(import.meta.env.VITE_DEFAULT_LOCATION_ID || import.meta.env.VITE_LOCATION_ID || 1);
+// Predefined categories with packaging structure
+const MEDICINE_CATEGORIES = [
+  {
+    id: 'tablet',
+    name: 'Tablet',
+    unit: 'Tablets',
+    packagingFields: [
+      { key: 'tablets_per_strip', label: 'Tablets per Strip', placeholder: 'e.g., 10, 15', alwaysShow: true },
+      { key: 'strips_per_box', label: 'Strips per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'capsule',
+    name: 'Capsule',
+    unit: 'Capsules',
+    packagingFields: [
+      { key: 'capsules_per_strip', label: 'Capsules per Strip', placeholder: 'e.g., 10, 15', alwaysShow: true },
+      { key: 'strips_per_box', label: 'Strips per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'syrup',
+    name: 'Syrup/Suspension',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 100, 200', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 12, 24', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'injection',
+    name: 'Injection/Vial',
+    unit: 'Vials',
+    packagingFields: [
+      { key: 'ml_per_vial', label: 'ML per Vial', placeholder: 'e.g., 2, 5, 10', alwaysShow: true },
+      { key: 'vials_per_box', label: 'Vials per Box', placeholder: 'e.g., 10, 20, 50', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'ointment',
+    name: 'Ointment/Cream',
+    unit: 'Grams',
+    packagingFields: [
+      { key: 'grams_per_tube', label: 'Grams per Tube', placeholder: 'e.g., 15, 30, 50', alwaysShow: true },
+      { key: 'tubes_per_box', label: 'Tubes per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'drops',
+    name: 'Drops (Eye/Ear/Nasal)',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 5, 10, 15', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 1, 6, 12', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'inhaler',
+    name: 'Inhaler',
+    unit: 'Units',
+    packagingFields: [
+      { key: 'doses_per_inhaler', label: 'Doses per Inhaler', placeholder: 'e.g., 100, 200', alwaysShow: true },
+      { key: 'inhalers_per_box', label: 'Inhalers per Box', placeholder: 'e.g., 1, 2', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'powder',
+    name: 'Powder/Sachet',
+    unit: 'Sachets',
+    packagingFields: [
+      { key: 'grams_per_sachet', label: 'Grams per Sachet', placeholder: 'e.g., 5, 10, 15', alwaysShow: true },
+      { key: 'sachets_per_box', label: 'Sachets per Box', placeholder: 'e.g., 10, 20, 30', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'gel',
+    name: 'Gel',
+    unit: 'Grams',
+    packagingFields: [
+      { key: 'grams_per_tube', label: 'Grams per Tube', placeholder: 'e.g., 20, 30, 50', alwaysShow: true },
+      { key: 'tubes_per_box', label: 'Tubes per Box', placeholder: 'e.g., 1, 10', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'spray',
+    name: 'Spray',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 50, 100', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 1, 6', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'lotion',
+    name: 'Lotion/Solution',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 100, 200, 500', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 1, 12', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'shampoo',
+    name: 'Shampoo',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 100, 200, 500', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 1, 12', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'soap',
+    name: 'Soap/Bar',
+    unit: 'Grams',
+    packagingFields: [
+      { key: 'grams_per_bar', label: 'Grams per Bar', placeholder: 'e.g., 75, 100, 125', alwaysShow: true },
+      { key: 'bars_per_box', label: 'Bars per Box', placeholder: 'e.g., 1, 3, 6', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'bandage',
+    name: 'Bandage/Dressing',
+    unit: 'Pieces',
+    packagingFields: [
+      { key: 'pieces_per_pack', label: 'Pieces per Pack', placeholder: 'e.g., 1, 5, 10', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'mask',
+    name: 'Mask (Surgical/N95)',
+    unit: 'Pieces',
+    packagingFields: [
+      { key: 'pieces_per_pack', label: 'Pieces per Pack', placeholder: 'e.g., 1, 5, 10', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 10, 20, 50', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'gloves',
+    name: 'Gloves',
+    unit: 'Pairs',
+    packagingFields: [
+      { key: 'pairs_per_pack', label: 'Pairs per Pack', placeholder: 'e.g., 1, 50, 100', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 1, 10', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'cotton',
+    name: 'Cotton/Gauze',
+    unit: 'Grams',
+    packagingFields: [
+      { key: 'grams_per_pack', label: 'Grams per Pack', placeholder: 'e.g., 100, 200, 500', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'sanitizer',
+    name: 'Hand Sanitizer',
+    unit: 'ML',
+    packagingFields: [
+      { key: 'ml_per_bottle', label: 'ML per Bottle', placeholder: 'e.g., 50, 100, 500', alwaysShow: true },
+      { key: 'bottles_per_box', label: 'Bottles per Box', placeholder: 'e.g., 1, 12, 24', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'thermometer',
+    name: 'Thermometer',
+    unit: 'Pieces',
+    packagingFields: [
+      { key: 'pieces_per_pack', label: 'Pieces per Pack', placeholder: 'e.g., 1', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 10, 20', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'supplement',
+    name: 'Supplement/Vitamin',
+    unit: 'Units',
+    packagingFields: [
+      { key: 'tablets_per_strip', label: 'Tablets per Strip', placeholder: 'e.g., 10, 15, 30', alwaysShow: true },
+      { key: 'strips_per_box', label: 'Strips per Box', placeholder: 'e.g., 1, 3, 10', showOnlyForBox: true }
+    ]
+  },
+  {
+    id: 'other',
+    name: 'Other/Miscellaneous',
+    unit: 'Units',
+    packagingFields: [
+      { key: 'units_per_pack', label: 'Units per Pack', placeholder: 'e.g., 1, 10', alwaysShow: true },
+      { key: 'packs_per_box', label: 'Packs per Box', placeholder: 'e.g., 1, 10', showOnlyForBox: true }
+    ]
+  }
+];
 
-const initialMedicine = {
+const DEFAULT_LOCATION_ID = getDefaultLocationId();
+
+const dispatchInventoryRefresh = () => {
+  try {
+    window.dispatchEvent(new CustomEvent("inventory:refresh"));
+  } catch {}
+};
+
+const createInitialMedicine = () => ({
+  id: null,
   name: "",
-  generic_name: "",
   category: "",
-  form: "",
   strength: "",
-  base_uom: "",
-  selling_uom: "",
   rack_location: "",
-  description: "",
   gst_percent: "",
-  reorder_level: "",
+  cost_price: "",
+  mrp: "",
+  // Packaging fields for different categories
   tablets_per_strip: "",
   strips_per_box: "",
   ml_per_bottle: "",
   bottles_per_box: "",
-  vials_per_box: "",
   ml_per_vial: "",
+  vials_per_box: "",
+  capsules_per_strip: "",
   grams_per_tube: "",
   tubes_per_box: "",
+  doses_per_inhaler: "",
+  inhalers_per_box: "",
+  grams_per_sachet: "",
+  sachets_per_box: "",
+  grams_per_bar: "",
+  bars_per_box: "",
+  pieces_per_pack: "",
+  packs_per_box: "",
+  pairs_per_pack: "",
+  grams_per_pack: "",
   units_per_pack: "",
-  mrp: "",
-};
+  loose_units: "", // For loose tablets/capsules
+});
 
-const initialBatch = {
+const createInitialBatch = () => ({
+  id: null,
   batch_number: "",
   quantity: "",
-  quantity_uom: "",
-  purchase_price: "",
+  stock_unit: "", // box or loose
   mfg_date: "",
   expiry_date: "",
-};
-
-const numberOrUndefined = (value) => {
-  if (value === "" || value === null || value === undefined) return undefined;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : undefined;
-};
-
-const decimalStringOrUndefined = (value) => {
-  if (value === "" || value === null || value === undefined) return undefined;
-  if (typeof value === "number") return value.toString();
-  return value;
-};
+});
 
 const flattenErrors = (payload) => {
   if (!payload || typeof payload !== "object") return {};
@@ -88,53 +283,6 @@ const flattenErrors = (payload) => {
   };
   visit(payload, "");
   return flat;
-};
-
-const PACKAGING_MATCHERS = [
-  { key: "tablets", test: (n) => /TABLET|CAPSULE/i.test(n) },
-  { key: "syrup", test: (n) => /SYRUP|SUSPENSION/i.test(n) },
-  { key: "injection", test: (n) => /INJECTION|VIAL/i.test(n) },
-  { key: "ointment", test: (n) => /OINTMENT|CREAM|GEL/i.test(n) },
-];
-
-const detectPackagingType = (formName = "") => {
-  const upper = (formName || "").toUpperCase();
-  const match = PACKAGING_MATCHERS.find((cfg) => cfg.test(upper));
-  return match?.key || null;
-};
-
-const numberVal = (value) => {
-  const num = Number(value);
-  return Number.isFinite(num) && num > 0 ? num : null;
-};
-
-const computeUnitsPerPack = (packagingType, medicine) => {
-  switch (packagingType) {
-    case "tablets": {
-      const tablets = numberVal(medicine.tablets_per_strip);
-      if (!tablets) return null;
-      const strips = numberVal(medicine.strips_per_box) || 1;
-      return tablets * strips;
-    }
-    case "syrup": {
-      const mlPerBottle = numberVal(medicine.ml_per_bottle);
-      if (!mlPerBottle) return null;
-      const bottles = numberVal(medicine.bottles_per_box) || 1;
-      return mlPerBottle * bottles;
-    }
-    case "injection": {
-      const vials = numberVal(medicine.vials_per_box);
-      return vials || null;
-    }
-    case "ointment": {
-      const grams = numberVal(medicine.grams_per_tube);
-      if (!grams) return null;
-      const tubes = numberVal(medicine.tubes_per_box) || 1;
-      return grams * tubes;
-    }
-    default:
-      return null;
-  }
 };
 
 async function tryRefreshToken() {
@@ -172,47 +320,143 @@ async function fetchWithAuthRetry(url, options = {}) {
   }
 }
 
-export default function AddMedicine() {
+export default function AddMedicine({
+  open = true,
+  asDrawer = false,
+  mode = "add",
+  initialData = null,
+  onClose,
+  onSaved,
+  locationIdOverride,
+} = {}) {
   const nav = useNavigate();
-  const [locationId, setLocationId] = useState(
-    Number.isFinite(DEFAULT_LOCATION_ID) ? String(DEFAULT_LOCATION_ID) : ""
-  );
-  const [medicine, setMedicine] = useState(initialMedicine);
-  const [batch, setBatch] = useState(initialBatch);
-  const [categories, setCategories] = useState([]);
-  const [forms, setForms] = useState([]);
-  const [uoms, setUoms] = useState([]);
+  const [medicine, setMedicine] = useState(() => createInitialMedicine());
+  const [batch, setBatch] = useState(() => createInitialBatch());
   const [rackLocations, setRackLocations] = useState([]);
   const [loadingMasters, setLoadingMasters] = useState(true);
   const [errors, setErrors] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const resolvedLocationId = locationIdOverride ?? DEFAULT_LOCATION_ID;
+  const isDrawer = Boolean(asDrawer);
+  const isEdit = mode === "edit";
+
   const renderFieldError = (field) => {
     const message = fieldErrors[field] || errors[field];
     if (!message) return null;
     return <div className="err">{message}</div>;
   };
 
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      nav(-1);
+    }
+  }, [nav, onClose]);
+
+  const handleSuccess = useCallback(
+    (body, message) => {
+      if (onSaved) {
+        onSaved(body);
+      }
+      dispatchInventoryRefresh();
+      if (isDrawer) {
+        handleClose();
+      } else {
+        nav("/inventory/medicines", {
+          state: { flash: message },
+          replace: true,
+        });
+      }
+    },
+    [handleClose, isDrawer, nav, onSaved]
+  );
+
+  const resetForm = useCallback(() => {
+    setMedicine(createInitialMedicine());
+    setBatch(createInitialBatch());
+    setErrors({});
+    setFieldErrors({});
+    setServerError("");
+  }, []);
+
+  const applyInitialData = useCallback((detail) => {
+    if (!detail) return;
+    const med = detail.medicine || {};
+    const batchInfo = detail.batch || {};
+
+    setMedicine({
+      ...createInitialMedicine(),
+      id: med.id ?? null,
+      name: med.name || "",
+      category: med.category || "",
+      strength: med.strength || "",
+      rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
+      gst_percent: med.gst_percent || "",
+      cost_price: med.cost_price ?? "",
+      mrp: med.mrp ?? "",
+      tablets_per_strip: med.tablets_per_strip ?? "",
+      strips_per_box: med.strips_per_box ?? "",
+      ml_per_bottle: med.ml_per_bottle ?? "",
+      bottles_per_box: med.bottles_per_box ?? "",
+      ml_per_vial: med.ml_per_vial ?? "",
+      vials_per_box: med.vials_per_box ?? "",
+      capsules_per_strip: med.capsules_per_strip ?? "",
+      grams_per_tube: med.grams_per_tube ?? "",
+      tubes_per_box: med.tubes_per_box ?? "",
+      doses_per_inhaler: med.doses_per_inhaler ?? "",
+      inhalers_per_box: med.inhalers_per_box ?? "",
+      grams_per_sachet: med.grams_per_sachet ?? "",
+      sachets_per_box: med.sachets_per_box ?? "",
+      grams_per_bar: med.grams_per_bar ?? "",
+      bars_per_box: med.bars_per_box ?? "",
+      pieces_per_pack: med.pieces_per_pack ?? "",
+      packs_per_box: med.packs_per_box ?? "",
+      pairs_per_pack: med.pairs_per_pack ?? "",
+      grams_per_pack: med.grams_per_pack ?? "",
+      units_per_pack: med.units_per_pack ?? "",
+      loose_units: med.loose_units ?? "",
+    });
+
+    setBatch({
+      ...createInitialBatch(),
+      id: batchInfo.id ?? null,
+      batch_number: batchInfo.batch_number || "",
+      quantity: batchInfo.quantity ? Number(batchInfo.quantity) : "",
+      stock_unit: batchInfo.stock_unit || "",
+      mfg_date: batchInfo.mfg_date || "",
+      expiry_date: batchInfo.expiry_date || "",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isDrawer) return;
+    if (!open) {
+      resetForm();
+      return;
+    }
+    if (isEdit && initialData) {
+      applyInitialData(initialData);
+    } else if (!isEdit) {
+      resetForm();
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit, open, resetForm]);
+
+  useEffect(() => {
+    if (!isDrawer && isEdit && initialData) {
+      applyInitialData(initialData);
+    }
+  }, [applyInitialData, initialData, isDrawer, isEdit]);
+
   useEffect(() => {
     async function loadMasters() {
       setLoadingMasters(true);
       try {
-        const [catRes, formRes, uomRes, rackRes] = await Promise.all([
-          authFetch(CATEGORY_API),
-          authFetch(FORMS_API),
-          authFetch(UOMS_API),
-          authFetch(RACKS_API),
-        ]);
-        const [catJson, formJson, uomJson, rackJson] = await Promise.all([
-          catRes.json().catch(() => null),
-          formRes.json().catch(() => null),
-          uomRes.json().catch(() => null),
-          rackRes.json().catch(() => null),
-        ]);
-        setCategories(catJson?.results || []);
-        setForms(formJson?.results || []);
-        setUoms(uomJson?.results || []);
+        const rackRes = await authFetch(RACKS_API);
+        const rackJson = await rackRes.json().catch(() => null);
         setRackLocations(rackJson?.results || []);
       } catch (err) {
         console.error("Failed to load master data", err);
@@ -223,38 +467,6 @@ export default function AddMedicine() {
     }
     loadMasters();
   }, []);
-
-  const selectedFormName = useMemo(() => {
-    const form = forms.find((f) => String(f.id) === String(medicine.form));
-    return form?.name || "";
-  }, [forms, medicine.form]);
-
-  const packagingType = useMemo(
-    () => detectPackagingType(selectedFormName),
-    [selectedFormName]
-  );
-
-  const autoUnitsPerPack = useMemo(
-    () =>
-      computeUnitsPerPack(packagingType, medicine),
-    [
-      packagingType,
-      medicine.tablets_per_strip,
-      medicine.strips_per_box,
-      medicine.ml_per_bottle,
-      medicine.bottles_per_box,
-      medicine.vials_per_box,
-      medicine.grams_per_tube,
-      medicine.tubes_per_box,
-    ]
-  );
-
-  const totalBaseUnits = useMemo(() => {
-    const qty = Number(batch.quantity);
-    const units = autoUnitsPerPack ?? numberVal(medicine.units_per_pack);
-    if (!qty || !units) return null;
-    return qty * units;
-  }, [batch.quantity, autoUnitsPerPack, medicine.units_per_pack]);
 
   const handleMedicineChange = (e) => {
     const { name, value } = e.target;
@@ -268,162 +480,80 @@ export default function AddMedicine() {
 
   const validate = () => {
     const localErrors = {};
-    if (!locationId || Number.isNaN(Number(locationId))) localErrors.location_id = "Location is required";
-    if (!medicine.name.trim()) localErrors.name = "Required";
-    if (!medicine.category) localErrors.category = "Required";
-    if (!medicine.form) localErrors.form = "Required";
-    if (!medicine.base_uom) localErrors.base_uom = "Required";
-    if (!medicine.selling_uom) localErrors.selling_uom = "Required";
-    if (!medicine.rack_location) localErrors.rack_location = "Required";
-    if (!medicine.mrp) localErrors.mrp = "Required";
-    if (medicine.reorder_level === "") localErrors.reorder_level = "Required";
-    if (!batch.batch_number.trim()) localErrors.batch_number = "Required";
-    if (!batch.quantity) localErrors.quantity = "Required";
-    if (!batch.quantity_uom) localErrors.quantity_uom = "Required";
-    if (!batch.purchase_price) localErrors.purchase_price = "Required";
-    if (!batch.expiry_date) localErrors.expiry_date = "Required";
-    if (packagingType === "tablets") {
-      if (!medicine.tablets_per_strip) localErrors.tablets_per_strip = "Required";
-      if (!medicine.strips_per_box) localErrors.strips_per_box = "Required";
-    } else if (packagingType === "syrup") {
-      if (!medicine.ml_per_bottle) localErrors.ml_per_bottle = "Required";
-      if (!medicine.bottles_per_box) localErrors.bottles_per_box = "Required";
-    } else if (packagingType === "injection") {
-      if (!medicine.vials_per_box) localErrors.vials_per_box = "Required";
-    } else if (packagingType === "ointment") {
-      if (!medicine.grams_per_tube) localErrors.grams_per_tube = "Required";
-      if (!medicine.tubes_per_box) localErrors.tubes_per_box = "Required";
-    } else if (!medicine.units_per_pack) {
-      localErrors.units_per_pack = "Units per pack is required for this form.";
+    if (!medicine.name.trim()) localErrors.name = "Medicine name is required";
+    if (!medicine.category) localErrors.category = "Category is required";
+    if (!medicine.rack_location) localErrors.rack_location = "Rack location is required";
+    if (!medicine.gst_percent) localErrors.gst_percent = "GST % is required";
+    if (!medicine.cost_price) localErrors.cost_price = "Cost price is required";
+    if (!medicine.mrp) localErrors.mrp = "MRP is required";
+
+    // Validate stock unit type
+    if (!batch.stock_unit) localErrors.stock_unit = "Stock unit type is required";
+
+    // Validate packaging fields based on category
+    const selectedCategory = MEDICINE_CATEGORIES.find(c => c.id === medicine.category);
+    if (selectedCategory) {
+      selectedCategory.packagingFields.forEach(field => {
+        // Only validate "per box" fields if stock unit is "box"
+        if (field.showOnlyForBox && batch.stock_unit !== 'box') {
+          return;
+        }
+        if (!medicine[field.key]) {
+          localErrors[field.key] = `${field.label} is required`;
+        }
+      });
     }
+
+    if (!batch.batch_number.trim()) localErrors.batch_number = "Batch number is required";
+    if (!batch.quantity) localErrors.quantity = "Quantity is required";
+    if (!batch.expiry_date) localErrors.expiry_date = "Expiry date is required";
     return localErrors;
   };
 
-  const renderPackagingFields = () => {
-    const numberInput = (name, label) => (
-      <div className="field">
-        <label>{label}</label>
-        <input
-          type="number"
-          min="0"
-          step="any"
-          name={name}
-          value={medicine[name] || ""}
-          onChange={handleMedicineChange}
-        />
-        {renderFieldError(name)}
-      </div>
-    );
-
-    const packagingAuto = Boolean(packagingType);
-    const unitsValue = packagingAuto
-      ? autoUnitsPerPack != null
-        ? Number(autoUnitsPerPack)
-        : ""
-      : medicine.units_per_pack;
-    const unitsField = (
-      <div className="field">
-        <label>
-          Units per Pack{" "}
-          {packagingAuto ? "(auto)" : "(enter manually)"}
-        </label>
-        <input
-          type="number"
-          min="0"
-          step="any"
-          name="units_per_pack"
-          value={unitsValue}
-          onChange={handleMedicineChange}
-          disabled={packagingAuto}
-        />
-        {packagingAuto ? (
-          <div className="hint">
-            Based on packaging inputs. Fill those fields to see the computed value.
-          </div>
-        ) : (
-          <div className="hint">Enter base units per selling pack.</div>
-        )}
-        {renderFieldError("units_per_pack")}
-      </div>
-    );
-
-    switch (packagingType) {
-      case "tablets":
-        return (
-          <>
-            {numberInput("tablets_per_strip", "Tablets per Strip")}
-            {numberInput("strips_per_box", "Strips per Box")}
-            {unitsField}
-          </>
-        );
-      case "syrup":
-        return (
-          <>
-            {numberInput("ml_per_bottle", "ML per Bottle")}
-            {numberInput("bottles_per_box", "Bottles per Box")}
-            {unitsField}
-          </>
-        );
-      case "injection":
-        return (
-          <>
-            {numberInput("vials_per_box", "Vials per Box")}
-            {numberInput("ml_per_vial", "ML per Vial (optional)")}
-            {unitsField}
-          </>
-        );
-      case "ointment":
-        return (
-          <>
-            {numberInput("grams_per_tube", "Grams per Tube")}
-            {numberInput("tubes_per_box", "Tubes per Box")}
-            {unitsField}
-          </>
-        );
-      default:
-        return unitsField;
-    }
-  };
-
   const buildPayload = () => {
-    const location = Number(locationId);
-    const unitsPerPack =
-      autoUnitsPerPack != null
-        ? Number(autoUnitsPerPack)
-        : numberOrUndefined(medicine.units_per_pack);
+    const location = Number(resolvedLocationId) || DEFAULT_LOCATION_ID;
 
     const medPayload = {
+      ...(medicine.id ? { id: medicine.id } : {}),
       name: medicine.name.trim(),
-      generic_name: medicine.generic_name.trim() || undefined,
-      category: Number(medicine.category),
-      form: Number(medicine.form),
+      category: medicine.category,
       strength: medicine.strength.trim() || undefined,
-      base_uom: Number(medicine.base_uom),
-      selling_uom: Number(medicine.selling_uom || batch.quantity_uom),
       rack_location: Number(medicine.rack_location),
-      description: medicine.description.trim(),
-      gst_percent: decimalStringOrUndefined(medicine.gst_percent) ?? "0",
-      reorder_level: numberOrUndefined(medicine.reorder_level) ?? 0,
-      tablets_per_strip: numberOrUndefined(medicine.tablets_per_strip),
-      strips_per_box: numberOrUndefined(medicine.strips_per_box),
-      ml_per_bottle: numberOrUndefined(medicine.ml_per_bottle),
-      bottles_per_box: numberOrUndefined(medicine.bottles_per_box),
-      vials_per_box: numberOrUndefined(medicine.vials_per_box),
-      ml_per_vial: numberOrUndefined(medicine.ml_per_vial),
-      grams_per_tube: numberOrUndefined(medicine.grams_per_tube),
-      tubes_per_box: numberOrUndefined(medicine.tubes_per_box),
-      units_per_pack: unitsPerPack,
-      mrp: decimalStringOrUndefined(medicine.mrp),
+      gst_percent: medicine.gst_percent || "0",
+      cost_price: medicine.cost_price,
+      mrp: medicine.mrp,
+      tablets_per_strip: medicine.tablets_per_strip ? Number(medicine.tablets_per_strip) : undefined,
+      strips_per_box: medicine.strips_per_box ? Number(medicine.strips_per_box) : undefined,
+      ml_per_bottle: medicine.ml_per_bottle ? Number(medicine.ml_per_bottle) : undefined,
+      bottles_per_box: medicine.bottles_per_box ? Number(medicine.bottles_per_box) : undefined,
+      ml_per_vial: medicine.ml_per_vial ? Number(medicine.ml_per_vial) : undefined,
+      vials_per_box: medicine.vials_per_box ? Number(medicine.vials_per_box) : undefined,
+      capsules_per_strip: medicine.capsules_per_strip ? Number(medicine.capsules_per_strip) : undefined,
+      grams_per_tube: medicine.grams_per_tube ? Number(medicine.grams_per_tube) : undefined,
+      tubes_per_box: medicine.tubes_per_box ? Number(medicine.tubes_per_box) : undefined,
+      doses_per_inhaler: medicine.doses_per_inhaler ? Number(medicine.doses_per_inhaler) : undefined,
+      inhalers_per_box: medicine.inhalers_per_box ? Number(medicine.inhalers_per_box) : undefined,
+      grams_per_sachet: medicine.grams_per_sachet ? Number(medicine.grams_per_sachet) : undefined,
+      sachets_per_box: medicine.sachets_per_box ? Number(medicine.sachets_per_box) : undefined,
+      grams_per_bar: medicine.grams_per_bar ? Number(medicine.grams_per_bar) : undefined,
+      bars_per_box: medicine.bars_per_box ? Number(medicine.bars_per_box) : undefined,
+      pieces_per_pack: medicine.pieces_per_pack ? Number(medicine.pieces_per_pack) : undefined,
+      packs_per_box: medicine.packs_per_box ? Number(medicine.packs_per_box) : undefined,
+      pairs_per_pack: medicine.pairs_per_pack ? Number(medicine.pairs_per_pack) : undefined,
+      grams_per_pack: medicine.grams_per_pack ? Number(medicine.grams_per_pack) : undefined,
+      units_per_pack: medicine.units_per_pack ? Number(medicine.units_per_pack) : undefined,
+      loose_units: medicine.loose_units ? Number(medicine.loose_units) : undefined,
     };
 
     const batchPayload = {
+      ...(batch.id ? { id: batch.id } : {}),
       batch_number: batch.batch_number.trim(),
       mfg_date: batch.mfg_date || undefined,
       expiry_date: batch.expiry_date,
       quantity: Number(batch.quantity),
-      quantity_uom: Number(batch.quantity_uom),
-      purchase_price: decimalStringOrUndefined(batch.purchase_price),
+      stock_unit: batch.stock_unit,
     };
+
     return {
       location_id: location,
       medicine: medPayload,
@@ -445,8 +575,12 @@ export default function AddMedicine() {
     const payload = buildPayload();
     setSubmitting(true);
     try {
-      const response = await fetchWithAuthRetry(ADD_MEDICINE_API, {
-        method: "POST",
+      const endpoint =
+        isEdit && payload.batch.id
+          ? MEDICINE_DETAIL_API(payload.batch.id)
+          : ADD_MEDICINE_API;
+      const response = await fetchWithAuthRetry(endpoint, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -460,10 +594,10 @@ export default function AddMedicine() {
         }
         return;
       }
-      nav("/inventory/medicines", {
-        state: { flash: `Medicine ${body?.medicine?.name || ""} added successfully.` },
-        replace: true,
-      });
+      handleSuccess(
+        body,
+        `Medicine ${body?.medicine?.name || ""} ${isEdit ? "updated" : "added"} successfully.`
+      );
     } catch (err) {
       console.error("Add medicine failed", err);
       setServerError("Network error. Please try again.");
@@ -472,285 +606,342 @@ export default function AddMedicine() {
     }
   };
 
+  if (isDrawer && !open) {
+    return null;
+  }
+
+  const header = (
+    <div className="inv-form-header">
+      <button className="btn-secondary" type="button" onClick={handleClose}>
+        {isDrawer ? "Close" : "Back"}
+      </button>
+      <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>
+      <p>Enter medicine details and initial stock information</p>
+    </div>
+  );
+
+  const formContent = (
+    <div className="inv-form-card">
+      {serverError && <div className="inv-error-banner">{serverError}</div>}
+      {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data...</div>}
+
+      <form className="grid2" onSubmit={handleSubmit}>
+        <div style={{ gridColumn: "1/3", marginBottom: 10 }}>
+          <h3 className="section-title">Medicine Details</h3>
+          <div className="section-line" />
+        </div>
+
+        <div className="field">
+          <label>Medicine Name *</label>
+          <input
+            name="name"
+            value={medicine.name}
+            onChange={handleMedicineChange}
+            placeholder="e.g., Paracetamol, Amoxicillin"
+            className={errors.name ? "error" : ""}
+          />
+          {renderFieldError("name")}
+        </div>
+
+        <div className="field">
+          <label>Category *</label>
+          <select
+            name="category"
+            value={medicine.category}
+            onChange={handleMedicineChange}
+            className={errors.category ? "error" : ""}
+          >
+            <option value="">Select category</option>
+            {MEDICINE_CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {renderFieldError("category")}
+        </div>
+
+        <div className="field">
+          <label>Strength</label>
+          <input
+            name="strength"
+            value={medicine.strength}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 500mg, 250mg/5ml"
+          />
+          {renderFieldError("strength")}
+        </div>
+
+        <div style={{ gridColumn: "1/3", marginTop: 20, marginBottom: 10 }}>
+          <h3 className="section-title">Opening Stock</h3>
+          <div className="section-line" />
+        </div>
+
+        <div className="field">
+          <label>Stock Unit Type *</label>
+          <select
+            name="stock_unit"
+            value={batch.stock_unit}
+            onChange={handleBatchChange}
+            className={errors.stock_unit ? "error" : ""}
+          >
+            <option value="">Select stock unit type</option>
+            <option value="box">Box (Packed)</option>
+            <option value="loose">Loose (Individual Units)</option>
+          </select>
+          {renderFieldError("stock_unit")}
+          {batch.stock_unit && (
+            <div className="hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              {batch.stock_unit === 'box'
+                ? 'Box: Complete packages (e.g., 10 strips/box)'
+                : 'Loose: Individual units (e.g., single tablets, bottles)'}
+            </div>
+          )}
+        </div>
+
+        {medicine.category && MEDICINE_CATEGORIES.find(c => c.id === medicine.category)?.packagingFields
+          .filter(field => field.alwaysShow || (field.showOnlyForBox && batch.stock_unit === 'box'))
+          .map(field => (
+            <div className="field" key={field.key}>
+              <label>{field.label} *</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                name={field.key}
+                value={medicine[field.key] || ""}
+                onChange={handleMedicineChange}
+                placeholder={field.placeholder}
+                className={errors[field.key] ? "error" : ""}
+              />
+              {renderFieldError(field.key)}
+            </div>
+          ))}
+
+        <div className="field">
+          <label>
+            {batch.stock_unit === "box"
+              ? `Total ${
+                  medicine.category === "tablet"
+                    ? "Boxes"
+                    : medicine.category === "syrup"
+                    ? "Boxes"
+                    : medicine.category === "injection"
+                    ? "Boxes"
+                    : medicine.category === "capsule"
+                    ? "Boxes"
+                    : medicine.category === "ointment"
+                    ? "Boxes"
+                    : "Boxes"
+                } *`
+              : `Total ${
+                  medicine.category === "tablet"
+                    ? "Strips"
+                    : medicine.category === "syrup"
+                    ? "Bottles"
+                    : medicine.category === "injection"
+                    ? "Vials"
+                    : medicine.category === "capsule"
+                    ? "Strips"
+                    : medicine.category === "ointment"
+                    ? "Tubes"
+                    : "Units"
+                } *`}
+          </label>
+          <input
+            name="quantity"
+            type="number"
+            min="0"
+            value={batch.quantity}
+            onChange={handleBatchChange}
+            placeholder={
+              batch.stock_unit === 'box'
+                ? 'e.g., 10, 20'
+                : medicine.category === 'tablet' ? 'e.g., 100 (strips)'
+                : medicine.category === 'syrup' ? 'e.g., 50 (bottles)'
+                : medicine.category === 'injection' ? 'e.g., 100 (vials)'
+                : medicine.category === 'capsule' ? 'e.g., 100 (strips)'
+                : medicine.category === 'ointment' ? 'e.g., 50 (tubes)'
+                : 'e.g., 100, 50'
+            }
+            className={errors.quantity ? "error" : ""}
+            readOnly={isEdit}
+            disabled={isEdit}
+          />
+          {renderFieldError("quantity")}
+        </div>
+
+        {(medicine.category === 'tablet' || medicine.category === 'capsule') && (
+          <div className="field">
+            <label>
+              Loose {medicine.category === 'tablet' ? 'Tablets' : 'Capsules'} (Optional)
+            </label>
+            <input
+              name="loose_units"
+              type="number"
+              min="0"
+              step="1"
+              value={medicine.loose_units}
+              onChange={handleMedicineChange}
+              placeholder={
+                medicine.category === 'tablet'
+                  ? 'e.g., 5 (loose tablets not in strips)'
+                  : 'e.g., 3 (loose capsules not in strips)'
+              }
+              className={errors.loose_units ? "error" : ""}
+            />
+            {renderFieldError("loose_units")}
+            <div className="hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Enter individual {medicine.category === 'tablet' ? 'tablets' : 'capsules'} available outside of complete strips
+            </div>
+          </div>
+        )}
+
+        <div style={{ gridColumn: "1/3", marginTop: 15, marginBottom: 10 }}>
+          <h4 className="section-title" style={{ fontSize: '14px', fontWeight: '600' }}>
+            Pricing & Location
+          </h4>
+          <div className="section-line" />
+        </div>
+
+        <div className="field">
+          <label>Rack Location *</label>
+          <select
+            name="rack_location"
+            value={medicine.rack_location}
+            onChange={handleMedicineChange}
+            className={errors.rack_location ? "error" : ""}
+          >
+            <option value="">Select rack location</option>
+            {rackLocations.map((rack) => (
+              <option key={rack.id} value={rack.id}>
+                {rack.name}
+              </option>
+            ))}
+          </select>
+          {renderFieldError("rack_location")}
+        </div>
+
+        <div className="field">
+          <label>GST % *</label>
+          <input
+            name="gst_percent"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value={medicine.gst_percent}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 12, 18, 5"
+            className={errors.gst_percent ? "error" : ""}
+          />
+          {renderFieldError("gst_percent")}
+        </div>
+
+        <div className="field">
+          <label>Cost Price *</label>
+          <input
+            name="cost_price"
+            type="number"
+            min="0"
+            step="0.01"
+            value={medicine.cost_price}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 95.00, 30.50"
+            className={errors.cost_price ? "error" : ""}
+          />
+          {renderFieldError("cost_price")}
+        </div>
+
+        <div className="field">
+          <label>MRP (Selling Price) *</label>
+          <input
+            name="mrp"
+            type="number"
+            min="0"
+            step="0.01"
+            value={medicine.mrp}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 125.50, 45.00"
+            className={errors.mrp ? "error" : ""}
+          />
+          {renderFieldError("mrp")}
+        </div>
+
+        <div style={{ gridColumn: "1/3", marginTop: 20, marginBottom: 10 }}>
+          <h3 className="section-title">Batch Information</h3>
+          <div className="section-line" />
+        </div>
+
+        <div className="field">
+          <label>Batch Number *</label>
+          <input
+            name="batch_number"
+            value={batch.batch_number}
+            onChange={handleBatchChange}
+            placeholder="e.g., BT2024001, LOT456"
+            className={errors.batch_number ? "error" : ""}
+          />
+          {renderFieldError("batch_number")}
+        </div>
+
+        <div className="field">
+          <label>Manufacture Date</label>
+          <input
+            name="mfg_date"
+            type="date"
+            value={batch.mfg_date}
+            onChange={handleBatchChange}
+          />
+          {renderFieldError("mfg_date")}
+        </div>
+
+        <div className="field">
+          <label>Expiry Date *</label>
+          <input
+            name="expiry_date"
+            type="date"
+            value={batch.expiry_date}
+            onChange={handleBatchChange}
+            className={errors.expiry_date ? "error" : ""}
+          />
+          {renderFieldError("expiry_date")}
+        </div>
+
+        <div style={{ gridColumn: "1 / 3", display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={(evt) => {
+              evt.preventDefault();
+              handleClose();
+            }}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn-primary" disabled={submitting}>
+            {submitting ? "Saving..." : isEdit ? "Update Medicine" : "Add Medicine"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  if (isDrawer) {
+    return (
+      <div className="drawer-backdrop">
+        <div className="drawer-panel">
+          {header}
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="inv-form-wrap">
-      <div className="inv-form-header">
-        <button className="btn-secondary" type="button" onClick={() => nav(-1)}>
-          ← Back
-        </button>
-        <h2>Add New Medicine</h2>
-        <p>Create the product master and its opening batch in one step</p>
-      </div>
-
-      <div className="inv-form-card">
-        {serverError && <div className="inv-error-banner">{serverError}</div>}
-        {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data…</div>}
-
-        <form className="grid2" onSubmit={handleSubmit}>
-          <div className="field">
-            <label>Location ID *</label>
-            <input
-              name="location_id"
-              type="number"
-              value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              className={errors.location_id ? "error" : ""}
-            />
-            {renderFieldError("location_id")}
-          </div>
-
-          <div className="field">
-            <label>Medicine Name *</label>
-            <input
-              name="name"
-              value={medicine.name}
-              onChange={handleMedicineChange}
-              className={errors.name ? "error" : ""}
-            />
-            {renderFieldError("name")}
-          </div>
-
-          <div className="field">
-            <label>Generic Name</label>
-            <input name="generic_name" value={medicine.generic_name} onChange={handleMedicineChange} />
-            {renderFieldError("generic_name")}
-          </div>
-
-          <div className="field">
-            <label>Category *</label>
-            <select
-              name="category"
-              value={medicine.category}
-              onChange={handleMedicineChange}
-              className={errors.category ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("category")}
-          </div>
-
-  <div className="field">
-            <label>Medicine Form *</label>
-            <select name="form" value={medicine.form} onChange={handleMedicineChange} className={errors.form ? "error" : ""}>
-              <option value="">Select</option>
-              {forms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("form")}
-          </div>
-
-          <div className="field">
-            <label>Strength</label>
-            <input name="strength" value={medicine.strength} onChange={handleMedicineChange} />
-            {renderFieldError("strength")}
-          </div>
-
-          <div className="field">
-            <label>Rack Location *</label>
-            <select
-              name="rack_location"
-              value={medicine.rack_location}
-              onChange={handleMedicineChange}
-              className={errors.rack_location ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {rackLocations.map((rack) => (
-                <option key={rack.id} value={rack.id}>
-                  {rack.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("rack_location")}
-          </div>
-
-          <div className="field">
-            <label>Base UOM *</label>
-            <select
-              name="base_uom"
-              value={medicine.base_uom}
-              onChange={handleMedicineChange}
-              className={errors.base_uom ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {uoms.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("base_uom")}
-          </div>
-
-          <div className="field">
-            <label>Selling UOM *</label>
-            <select
-              name="selling_uom"
-              value={medicine.selling_uom}
-              onChange={handleMedicineChange}
-              className={errors.selling_uom ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {uoms.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("selling_uom")}
-          </div>
-
-          <div className="field">
-            <label>Reorder Level *</label>
-            <input
-              name="reorder_level"
-              type="number"
-              min="0"
-              value={medicine.reorder_level}
-              onChange={handleMedicineChange}
-              className={errors.reorder_level ? "error" : ""}
-            />
-            {renderFieldError("reorder_level")}
-          </div>
-
-          <div className="field">
-            <label>GST %</label>
-            <input name="gst_percent" value={medicine.gst_percent} onChange={handleMedicineChange} />
-            {renderFieldError("gst_percent")}
-          </div>
-
-          <div className="field" style={{ gridColumn: "1 / 3" }}>
-            <label>Description</label>
-            <textarea name="description" value={medicine.description} onChange={handleMedicineChange} />
-            {renderFieldError("description")}
-          </div>
-
-          <div style={{ gridColumn: "1/3", marginTop: 10 }}>
-            <h3 className="section-title">Packaging</h3>
-            <div className="section-line" />
-          </div>
-
-          {renderPackagingFields()}
-
-          <div className="field">
-            <label>MRP *</label>
-            <input
-              name="mrp"
-              type="number"
-              min="0"
-              step="0.01"
-              value={medicine.mrp}
-              onChange={handleMedicineChange}
-              className={errors.mrp ? "error" : ""}
-            />
-            {renderFieldError("mrp")}
-          </div>
-
-          <div style={{ gridColumn: "1/3", marginTop: 20 }}>
-            <h3 className="section-title">Batch & Pricing</h3>
-            <div className="section-line" />
-          </div>
-
-          <div className="field">
-            <label>Batch Number *</label>
-            <input
-              name="batch_number"
-              value={batch.batch_number}
-              onChange={handleBatchChange}
-              className={errors.batch_number ? "error" : ""}
-            />
-            {renderFieldError("batch_number")}
-          </div>
-
-          <div className="field">
-            <label>Quantity *</label>
-            <input
-              name="quantity"
-              type="number"
-              min="0"
-              value={batch.quantity}
-              onChange={handleBatchChange}
-              className={errors.quantity ? "error" : ""}
-            />
-            {renderFieldError("quantity")}
-            {totalBaseUnits != null && (
-              <div className="hint">
-                ≈ {totalBaseUnits} base units ({batch.quantity || 0} packs ×{" "}
-                {autoUnitsPerPack != null
-                  ? autoUnitsPerPack
-                  : medicine.units_per_pack || "?"}
-                )
-              </div>
-            )}
-          </div>
-
-          <div className="field">
-            <label>Quantity UOM *</label>
-            <select
-              name="quantity_uom"
-              value={batch.quantity_uom}
-              onChange={handleBatchChange}
-              className={errors.quantity_uom ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {uoms.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("quantity_uom")}
-          </div>
-
-          <div className="field">
-            <label>Purchase Price *</label>
-            <input
-              name="purchase_price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={batch.purchase_price}
-              onChange={handleBatchChange}
-              className={errors.purchase_price ? "error" : ""}
-            />
-            {renderFieldError("purchase_price")}
-          </div>
-
-          <div className="field">
-            <label>Manufacture Date</label>
-            <input name="mfg_date" type="date" value={batch.mfg_date} onChange={handleBatchChange} />
-            {renderFieldError("mfg_date")}
-          </div>
-
-          <div className="field">
-            <label>Expiry Date *</label>
-            <input
-              name="expiry_date"
-              type="date"
-              value={batch.expiry_date}
-              onChange={handleBatchChange}
-              className={errors.expiry_date ? "error" : ""}
-            />
-            {renderFieldError("expiry_date")}
-          </div>
-
-          <div style={{ gridColumn: "1 / 3", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" className="btn-secondary" onClick={() => nav("/inventory/medicines")}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Medicine"}
-            </button>
-          </div>
-        </form>
-      </div>
+      {header}
+      {formContent}
     </div>
   );
 }

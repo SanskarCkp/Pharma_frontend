@@ -3,13 +3,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import "./createorder.css";
 import { authFetch } from "../../../api/http";
+import { getDefaultLocationId } from "../../../config/location";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
 const CreateOrder = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const vendor = location.state?.vendor;
+  const { showAlert } = useAlert();
 
   const [vendorData, setVendorData] = useState(null);
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
@@ -34,7 +38,7 @@ const CreateOrder = () => {
 
   useEffect(() => {
     if (!vendor) {
-      navigate("/masters/vendors");
+      navigate("/suppliers");
       return;
     }
 
@@ -116,25 +120,75 @@ const CreateOrder = () => {
 
   const handleAddProduct = () => setShowAddProduct(true);
 
-  const handleAddManualProduct = () => {
-    if (!manualProductName.trim()) return alert("Enter product name");
-    if (!manualQty || Number(manualQty) <= 0) return alert("Enter valid qty");
+  const handleAddManualProduct = async () => {
+    if (!manualProductName.trim()) return showAlert("Enter product name", "Error");
+    if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid qty", "Error");
+    if (!manualCategory) return showAlert("Select category", "Error");
+    if (!manualUOM) return showAlert("Select UOM", "Error");
+    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
 
-    const newItem = {
-      uid: `m_${Date.now()}`,
-      id: null,                         // IMPORTANT → no product id
-      name: manualProductName.trim(),   // used as requested_name
-      quantity: Number(manualQty),
-      expected_unit_cost: 0,
-      category: null,
-      uom: "",
-      isNew: true,
+    const productPayload = {
+      code: generateProductCode(manualProductName.trim()),
+      name: manualProductName.trim(),
+      generic_name: "",
+      dosage_strength: "",
+      hsn: "",
+      schedule: "OTC",
+      pack_size: "",
+      manufacturer: "",
+      mrp: 0,
+      base_unit: manualUOM,
+      pack_unit: String(manualQty),
+      units_per_pack: 1,
+      base_unit_step: 1,
+      gst_percent: 0,
+      description: "",
+      storage_instructions: "",
+      is_sensitive: false,
+      is_active: true,
+      category: Number(manualCategory),
+      preferred_vendor: Number(vendorData.id),
     };
 
-    setItems((prev) => [...prev, newItem]);
-    setManualProductName("");
-    setManualQty(1);
-    setShowAddProduct(false);
+    try {
+      const productRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productPayload),
+      });
+
+      if (!productRes.ok) {
+        const err = await productRes.json();
+        console.log("❌ Product Create Failed:", err);
+        showAlert("Product save failed", "Error");
+        return;
+      }
+
+      const created = await productRes.json();
+      const newItem = {
+        uid: `p_${created.id}`,
+        id: created.id,
+        name: created.name,
+        quantity: Number(manualQty),
+        expected_unit_cost: created.mrp || 0,
+        category:
+          typeof created.category === "object"
+            ? created.category.id
+            : created.category || Number(manualCategory),
+        uom: manualUOM,
+        isNew: false,
+      };
+
+      setItems((prev) => [...prev, newItem]);
+      setManualProductName("");
+      setManualQty(1);
+      setManualCategory("");
+      setManualUOM("");
+      setShowAddProduct(false);
+    } catch (err) {
+      console.error("Manual product error:", err);
+      showAlert("Error creating product", "Error");
+    }
   };
 
   const handleQuantityChange = (uid, value) =>
@@ -157,12 +211,10 @@ const CreateOrder = () => {
   };
 
   const handleCreateOrder = async () => {
-    if (!vendorData?.id) return alert("Vendor not loaded");
+    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
 
-  // REMOVE EMPTY / BROKEN ITEMS
-  const orderRows = items.filter(r =>
-    Number(r.quantity) > 0 && (r.id || r.name)
-  );
+    const orderRows = items.filter((r) => Number(r.quantity) > 0);
+    if (orderRows.length === 0) return showAlert("Add at least one product", "Error");
 
   const lines = orderRows.map((r) => {
     const line = {
@@ -179,24 +231,22 @@ const CreateOrder = () => {
     l => l.product || l.requested_name
   );
 
-  const payload = {
-    vendor: Number(vendorData.id),
-    location: Number(vendorData.default_location || 1),
-    order_date: orderDate,
-    expected_date: expectedDate || null,
-    note: notes || "",
-    lines: cleanedLines,
-  };
+    const payload = {
+      vendor: Number(vendorData.id),
+      location: DEFAULT_LOCATION_ID,
+      order_date: orderDate,
+      expected_date: expectedDate || null,
+      status: "DRAFT",
+      note: notes || "",
+      lines: lines,
+    };
 
     try {
-      const res = await authFetch(
-        `${API_BASE}/api/v1/procurement/purchase-orders/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await authFetch(`${API_BASE}/api/v1/procurement/purchase-orders/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (!res.ok) {
         const err = await res.json();

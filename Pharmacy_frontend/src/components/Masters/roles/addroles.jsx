@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./addroles.css";
+import { useAlert } from "../../ui/alert-provider";
 
 const AddRole = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
     code: "",
@@ -43,10 +45,10 @@ const AddRole = () => {
     });
 
     if (res.ok) {
-      alert(id ? "Role Updated Successfully!" : "Role Added Successfully!");
+      showAlert(id ? "Role Updated Successfully!" : "Role Added Successfully!", "Success");
       navigate("/masters/roles");
     } else {
-      alert("Failed!");
+      showAlert("Failed!", "Error");
     }
   };
 

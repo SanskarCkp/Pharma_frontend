@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from "react";
 import "./users.css";
 import { fetchUsersFromBackend, createUserOnBackend } from "../../api/users";
+import { useAlert } from "../ui/alert-provider";
 
 const STORAGE_KEY = "app_users";
 
 const generateUserId = (counter) => `USR${String(counter).padStart(3, "0")}`;
 
 export default function Users() {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [users, setUsers] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -104,15 +106,15 @@ export default function Users() {
     e.preventDefault();
 
     if (!formData.fullName.trim() || !formData.email.trim()) {
-      alert("Full name and email are required.");
+      showAlert("Full name and email are required.", "Validation Error");
       return;
     }
     if (!formData.password || !formData.confirmPassword) {
-      alert("Please enter password and confirm password.");
+      showAlert("Please enter password and confirm password.", "Validation Error");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match.");
+      showAlert("Passwords do not match.", "Validation Error");
       return;
     }
 
@@ -146,7 +148,7 @@ export default function Users() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUsers));
       } catch {}
 
-      alert(`✅ User Created on server!\nUser ID: ${newUser.userId}\nEmail: ${newUser.email}`);
+      showAlert(`User Created on server!\nUser ID: ${newUser.userId}\nEmail: ${newUser.email}`, "Success");
     } catch (err) {
       // Backend failed — fallback to local storage
       console.warn("Backend create failed, saving locally:", err);
@@ -162,7 +164,7 @@ export default function Users() {
       const message =
         err?.message ||
         (err?.status ? `HTTP ${err.status}` : "Failed to create user on server.");
-      alert(`⚠️ Failed to create user on server — saved locally as fallback.\n\nError: ${message}`);
+      showAlert(`Failed to create user on server — saved locally as fallback.\n\nError: ${message}`, "Warning");
     } finally {
       // reset form and id counter
       const nextCounter = idCounter + 1;
