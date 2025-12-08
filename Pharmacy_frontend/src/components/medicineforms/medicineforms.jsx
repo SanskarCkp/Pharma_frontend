@@ -164,8 +164,8 @@ export default function MedicineForms() {
           ← Back
         </button>
         <div className="mfHeadings">
-          <h2>Medicine Forms</h2>
-          <p>Manage all available medicine forms</p>
+          <h2>HSN Code</h2>
+          <p>Manage all available HSN Code</p>
         </div>
         <button className="mfAdd" onClick={openAdd} disabled={loading || saving}>
           ＋ Add New
@@ -182,7 +182,7 @@ export default function MedicineForms() {
             <thead>
               <tr>
                 <th className="slno-col">SL No</th>
-                <th className="name-col">Name</th>
+                <th className="name-col">Code</th>
                 <th className="desc-col">Description</th>
                 <th className="actions-col">Actions</th>
               </tr>

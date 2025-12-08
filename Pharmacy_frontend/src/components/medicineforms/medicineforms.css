@@ -44,17 +44,13 @@
 
 .mfAdd {
   margin-left: auto;
-  background: var(--primary);
+  background-color: var(--primary-dark);
   color: #fff;
   border: none;
   padding: 10px 14px;
   border-radius: 10px;
   cursor: pointer;
   box-shadow: var(--shadow);
-}
-
-.mfAdd:hover {
-  background: var(--primary-dark);
 }
 
 .mfCard {
@@ -208,7 +204,7 @@
 }
 
 .mfBtn.primary {
-  background: var(--primary);
+  background-color: var(--primary-dark);
   border-color: transparent;
   color: #fff;
 }

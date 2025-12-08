@@ -264,6 +264,22 @@ function AppLayout() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 👇 This runs once whenever the app is loaded (including refresh)
+  useEffect(() => {
+    const path = location.pathname;
+
+    // If we are NOT already on a public route, force redirect to /login
+    if (
+      !path.startsWith("/login") &&
+      !path.startsWith("/reset-password")
+    ) {
+      navigate("/login", { replace: true });
+    }
+    // ⚠️ empty dependency array = only on first mount (page load / refresh)
+  }, []); 
   // No automatic redirect - let PrivateRoute handle authentication
   // PrivateRoute will redirect to /login if user is not authenticated 
 

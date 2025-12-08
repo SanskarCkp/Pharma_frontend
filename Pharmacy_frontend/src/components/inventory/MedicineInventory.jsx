@@ -286,7 +286,7 @@ export default function MedicineInventory() {
               + Add Medicine
             </button>
           </div>
-        </div>
+        </div> 
 
         <div className="inv-card">
         {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
@@ -344,16 +344,12 @@ export default function MedicineInventory() {
           </select>
 
           <div className="inv-actions">
-            <button className="inv-btn ghost" onClick={() => showAlert("Import feature not yet implemented", "Info")}>
-              Import
-            </button>
             <button
               className="inv-btn brown"
               onClick={() => {
                 const csvRows = [
-                  ["Medicine ID", "Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
+                  ["Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
                   ...rows.map((r) => [
-                    r.medicine_id,
                     r.batch_number,
                     r.medicine_name,
                     getCategoryLabel(r),
@@ -402,7 +398,7 @@ export default function MedicineInventory() {
             <table className="inv-table">
               <thead>
                 <tr>
-                  <th>Medicine ID</th>
+                  
                   <th>Batch Number</th>
                   <th>Medicine Name</th>
                   <th>Category</th>
@@ -412,6 +408,7 @@ export default function MedicineInventory() {
                   <th>Expiry</th>
                   <th>Status</th>
                   <th style={{ width: 180, textAlign: "center" }}>Actions</th>
+                  <th>HSN code</th>
                 </tr>
               </thead>
               <tbody>
@@ -427,7 +424,6 @@ export default function MedicineInventory() {
 
                     return (
                       <tr key={rowKey}>
-                        <td>{r.medicine_id ?? r.batch_lot__product__code ?? ""}</td>
                         <td>{r.batch_number ?? r.batch_lot__batch_no ?? ""}</td>
                         <td>{r.medicine_name ?? r.batch_lot__product__name ?? ""}</td>
                         <td>{categoryLabel}</td>

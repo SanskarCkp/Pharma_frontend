@@ -126,7 +126,7 @@ const VendorsDashboard = () => {
         <input
           type="text"
           className={styles["search-input"]}
-          placeholder="Search vendor name / contact person / phone..."
+          placeholder="Search Suppliers name / contact person / phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

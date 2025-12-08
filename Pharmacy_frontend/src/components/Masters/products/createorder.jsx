@@ -92,7 +92,9 @@ const CreateOrder = () => {
         isNew: false,
       }));
 
-      setItems(normalized);
+      // ❗ FILTER OUT INVALID PRODUCTS
+      setItems(normalized.filter(item => item.id && item.name));
+
     } catch (err) {
       console.error("Fetch error:", err);
     }
@@ -202,20 +204,32 @@ const CreateOrder = () => {
   const handleDelete = (uid) =>
     setItems((prev) => prev.filter((it) => it.uid !== uid));
 
+  const toDDMMYYYY = (dateStr) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${d}-${m}-${y}`;
+  };
+
   const handleCreateOrder = async () => {
     if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
 
     const orderRows = items.filter((r) => Number(r.quantity) > 0);
     if (orderRows.length === 0) return showAlert("Add at least one product", "Error");
 
-    const lines = orderRows.map((r) => ({
-      product: r.id,
-      requested_name: "",
+  const lines = orderRows.map((r) => {
+    const line = {
       qty_packs_ordered: Number(r.quantity),
-      expected_unit_cost: r.expected_unit_cost || null,
-      gst_percent_override: null,
-      uom: r.uom || null,
-    }));
+      expected_unit_cost: String(r.expected_unit_cost || 0),
+    };
+    if (r.id) line.product = r.id;
+    else line.requested_name = r.name;
+    return line;
+  });
+
+  // SAFETY FILTER → remove any invalid line
+  const cleanedLines = lines.filter(
+    l => l.product || l.requested_name
+  );
 
     const payload = {
       vendor: Number(vendorData.id),
@@ -236,13 +250,12 @@ const CreateOrder = () => {
 
       if (!res.ok) {
         const err = await res.json();
-        console.log("❌ PO Create Failed:", err);
-        setPopupMessage("Order creation failed!");
-        setShowPopup(true);
+        console.log("❌ PO Create Failed:", err);   // Print full backend error
+        alert(JSON.stringify(err, null, 2));        // Show full error in popup
         return;
       }
 
-      // ✅ Show success popup
+
       setPopupMessage("Order created successfully!");
       setShowPopup(true);
     } catch (err) {
@@ -251,7 +264,7 @@ const CreateOrder = () => {
       setShowPopup(true);
     }
   };
-
+  
   if (!vendorData) return null;
 
   return (

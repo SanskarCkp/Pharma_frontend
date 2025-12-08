@@ -1,5 +1,4 @@
-.inventory {
-}
+
 :root {
   --bg: #f6f7f9;
   --card: #fff;
@@ -51,7 +50,7 @@
 }
 .inv-add {
   margin-left: auto;
-  background: var(--primary);
+  background-color: var(--primary-dark);
   color: #fff;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -395,7 +394,7 @@ button.btn.primary {
   cursor: pointer;
 }
 .btn-primary {
-  background: var(--primary);
+  background-color: var(--primary-dark);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
