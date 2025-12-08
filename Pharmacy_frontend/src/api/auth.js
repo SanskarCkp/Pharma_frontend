@@ -123,12 +123,14 @@ export function logout() { clearTokens(); }
 // LOGIN (supports both API patterns)
 // ----------------------------
 export async function login(username, password) {
-  // Decide login URL dynamically
+  const rootWithoutV1 = API_BASE.replace(/\/api\/v1$/i, "");
   const url = (() => {
-    if (!API_BASE) return "/auth/token/"; // local dev
+    if (!API_BASE) return "/api/auth/login/";
     if (API_BASE.toLowerCase().endsWith("/api/v1"))
-      return `${API_BASE}/auth/token/`;
-    return `${API_BASE}/api/v1/auth/token/`;
+      return `${rootWithoutV1}/api/auth/login/`;
+    if (API_BASE.toLowerCase().endsWith("/api"))
+      return `${API_BASE}/auth/login/`;
+    return `${API_BASE}/api/auth/login/`;
   })();
 
   const deviceId = getOrCreateDeviceId();
