@@ -1,11 +1,9 @@
 // src/App.jsx
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Routes,
   Route,
   Navigate,
-  useNavigate,
-  useLocation,
 } from "react-router-dom";
 
 // Layout
@@ -188,7 +186,7 @@ function AppLayout() {
               path="/unitofmeasurement"
               element={<UnitOfMeasurement />}
             />
-            <Route path="/hsncode" element={<MedicineForms />} />
+            <Route path="/medicineforms" element={<MedicineForms />} />
             <Route
               path="/medicinecategories"
               element={<Medicinecategories />}
@@ -282,6 +280,8 @@ export default function App() {
     }
     // ⚠️ empty dependency array = only on first mount (page load / refresh)
   }, []); 
+  // No automatic redirect - let PrivateRoute handle authentication
+  // PrivateRoute will redirect to /login if user is not authenticated 
 
   return (
     <Routes>

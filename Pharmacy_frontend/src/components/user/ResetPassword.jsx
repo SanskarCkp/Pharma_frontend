@@ -34,19 +34,32 @@ export default function ResetPassword() {
   const startCountdown = () => setSecondsLeft(RESEND_SECONDS);
 
   const handleSendOtp = async () => {
-    setError(""); setInfo("");
-    if (!email || !email.includes("@")) { setError("Please enter a valid email."); return; }
+    setError("");
+    setInfo("");
+
+    if (!email || !email.includes("@")) {
+      setError("Please enter a valid email.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await forgotPassword(email);
-      setInfo(res?.detail || "If an account exists, an OTP was sent.");
+      const res = await forgotPassword(email);   // should POST { email }
+      setInfo(res?.detail || "OTP sent to your email.");
       setStep(2);
       startCountdown();
     } catch (err) {
-      setError(err.message || "Failed to request OTP.");
+      const serverMsg =
+        err?.response?.data?.detail || // backend error from DRF
+        err.message ||
+        "Failed to request OTP.";
+      setError(serverMsg);
       console.error("forgotPassword error:", err);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   const handleVerifyOtp = async () => {
     setError(""); setInfo("");
