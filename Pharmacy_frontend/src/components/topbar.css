@@ -98,6 +98,9 @@
 }
 
 .search-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   font-size: 20px;
   width: 32px;
   height: 32px;

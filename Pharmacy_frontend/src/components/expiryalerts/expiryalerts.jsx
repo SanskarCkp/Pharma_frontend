@@ -91,17 +91,29 @@ export default function ExpiryAlerts() {
     >
       <div className="er-wrap">
         <div className="er-kpis">
-          <div className="er-kpi critical">
+          <div
+            className={`er-kpi critical ${bucket === 'critical' ? 'active' : ''}`}
+            onClick={() => setBucket('critical')}
+            style={{ cursor: 'pointer' }}
+          >
             <p>Critical (≤ {thresholds.critical} days)</p>
             <h3>{summary.critical ?? 0}</h3>
           </div>
-          <div className="er-kpi warning">
+          <div
+            className={`er-kpi warning ${bucket === 'warning' ? 'active' : ''}`}
+            onClick={() => setBucket('warning')}
+            style={{ cursor: 'pointer' }}
+          >
             <p>
               Warning ({thresholds.critical + 1}–{thresholds.warning} days)
             </p>
             <h3>{summary.warning ?? 0}</h3>
           </div>
-          <div className="er-kpi safe">
+          <div
+            className={`er-kpi safe ${bucket === 'safe' ? 'active' : ''}`}
+            onClick={() => setBucket('safe')}
+            style={{ cursor: 'pointer' }}
+          >
             <p>Safe (&gt; {thresholds.warning} days)</p>
             <h3>{summary.safe ?? 0}</h3>
           </div>

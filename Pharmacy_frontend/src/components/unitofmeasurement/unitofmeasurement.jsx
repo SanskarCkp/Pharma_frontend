@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import "./unitofmeasurement.css";
 import { authFetch } from "../../api/http";
 
@@ -213,9 +214,15 @@ export default function UnitOfMeasurement() {
                     <td>{r.uom_type || "-"}</td>
 
                     <td className="mfActions">
-                      <button className="mfIcon" onClick={() => openView(r)}>👁️</button>
-                      <button className="mfIcon" onClick={() => openEdit(r)}>✎</button>
-                      <button className="mfIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
+                      <button className="mfIcon" onClick={() => openView(r)} title="View">
+                        <Eye size={16} />
+                      </button>
+                      <button className="mfIcon" onClick={() => openEdit(r)} title="Edit">
+                        <Pencil size={16} />
+                      </button>
+                      <button className="mfIcon danger" onClick={() => confirmDelete(r)} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))

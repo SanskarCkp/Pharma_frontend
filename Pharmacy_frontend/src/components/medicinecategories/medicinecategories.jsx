@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import "./medicinecategories.css";
 import { authFetch } from "../../api/http";
 
@@ -206,9 +207,15 @@ export default function MedicineCategories() {
                     <td>{r.name}</td>
                     <td className="mcMuted">{r.description || "-"}</td>
                     <td className="mcActions">
-                      <button className="mcIcon" onClick={() => openView(r)}>👁️</button>
-                      <button className="mcIcon" onClick={() => openEdit(r)}>✎</button>
-                      <button className="mcIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
+                      <button className="mcIcon" onClick={() => openView(r)} title="View">
+                        <Eye size={16} />
+                      </button>
+                      <button className="mcIcon" onClick={() => openEdit(r)} title="Edit">
+                        <Pencil size={16} />
+                      </button>
+                      <button className="mcIcon danger" onClick={() => confirmDelete(r)} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))

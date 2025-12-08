@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2, ArrowLeft, Plus } from "lucide-react";
 import "./medicineforms.css";
+import "../inventory/inventory.css";
 import { authFetch } from "../../api/http";
 
 const empty = { id: "", name: "", description: "" };
@@ -159,16 +161,23 @@ export default function MedicineForms() {
 
   return (
     <div className="mfWrap">
-      <div className="mfHeader">
-        <button className="mfBack" onClick={() => nav(-1)} disabled={loading}>
-          ← Back
+      {/* Header Section - Back button */}
+      <div className="mf-header-section">
+        <button className="back-btn" onClick={() => nav(-1)} disabled={loading}>
+          <ArrowLeft size={18} />
+          Back
         </button>
-        <div className="mfHeadings">
+      </div>
+
+      {/* Header */}
+      <div className="mf-header-card">
+        <div>
           <h2>HSN Code</h2>
           <p>Manage all available HSN Code</p>
         </div>
         <button className="mfAdd" onClick={openAdd} disabled={loading || saving}>
-          ＋ Add New
+          <Plus size={18} />
+          Add New
         </button>
       </div>
 
@@ -178,7 +187,8 @@ export default function MedicineForms() {
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
         <div className="mfCard">
-          <table className="mfTable">
+          <div className="inv-table-wrap">
+          <table className="inv-table">
             <thead>
               <tr>
                 <th className="slno-col">SL No</th>
@@ -195,9 +205,15 @@ export default function MedicineForms() {
                     <td>{r.name}</td>
                     <td className="mfMuted">{r.description || "-"}</td>
                     <td className="mfActions">
-                      <button className="mfIcon" onClick={() => openView(r)}>👁️</button>
-                      <button className="mfIcon" onClick={() => openEdit(r)}>✎</button>
-                      <button className="mfIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
+                      <button className="mfIcon" onClick={() => openView(r)} title="View">
+                        <Eye size={16} />
+                      </button>
+                      <button className="mfIcon" onClick={() => openEdit(r)} title="Edit">
+                        <Pencil size={16} />
+                      </button>
+                      <button className="mfIcon danger" onClick={() => confirmDelete(r)} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -210,6 +226,7 @@ export default function MedicineForms() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -223,7 +240,7 @@ export default function MedicineForms() {
             </div>
             <form className="mfForm" onSubmit={handleSubmit}>
               <label className="mfLabel">
-                Name <span className="mfReq">*</span>
+                <span style={{ whiteSpace: "nowrap" }}>Name <span className="mfReq">*</span></span>
                 <input
                   className={`mfInput ${errors.name ? "mfInputError" : ""}`}
                   name="name"

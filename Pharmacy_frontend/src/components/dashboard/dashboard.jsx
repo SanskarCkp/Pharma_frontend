@@ -17,6 +17,7 @@ import { apiUrl } from "../../api/base";
 
 const SUMMARY_URL = apiUrl("dashboard/summary/");
 const MONTHLY_URL = apiUrl("dashboard/monthly/");
+const EXPIRY_ALERTS_URL = apiUrl("inventory/expiry-alerts/");
 const pieColors = ["#2ECC71", "#F1C40F", "#E74C3C"];
 
 const formatCurrency = (value) =>
@@ -35,6 +36,7 @@ const formatMonthLabel = (key) => {
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [monthlySeries, setMonthlySeries] = useState([]);
+  const [expirySummary, setExpirySummary] = useState({ critical: 0, warning: 0, safe: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -45,7 +47,11 @@ const Dashboard = () => {
       setLoading(true);
       setError("");
       try {
-        const [summaryRes, monthlyRes] = await Promise.all([authFetch(SUMMARY_URL), authFetch(MONTHLY_URL)]);
+        const [summaryRes, monthlyRes, expiryRes] = await Promise.all([
+          authFetch(SUMMARY_URL),
+          authFetch(MONTHLY_URL),
+          authFetch(`${EXPIRY_ALERTS_URL}?bucket=all`).catch(() => null),
+        ]);
         if (!summaryRes.ok) throw new Error(`Dashboard summary failed (${summaryRes.status})`);
         if (!monthlyRes.ok) throw new Error(`Monthly chart failed (${monthlyRes.status})`);
         if (ignore) return;
@@ -53,6 +59,12 @@ const Dashboard = () => {
         const monthlyJson = await monthlyRes.json();
         setSummary(summaryJson);
         setMonthlySeries(Array.isArray(monthlyJson) ? monthlyJson : []);
+        
+        // Fetch expiry data if available
+        if (expiryRes && expiryRes.ok) {
+          const expiryJson = await expiryRes.json();
+          setExpirySummary(expiryJson.summary || { critical: 0, warning: 0, safe: 0 });
+        }
       } catch (err) {
         console.error("Dashboard load failed", err);
         if (!ignore) setError(err.message || "Failed to load dashboard");
@@ -75,10 +87,10 @@ const Dashboard = () => {
           color: "#2ECC71",
         },
         {
-          title: "Low Stock Alerts",
-          value: summary?.totals?.low_stock ?? 0,
-          sub: "Needs immediate attention",
-          color: "#F39C12",
+          title: "Expiry Alerts",
+          value: (expirySummary.critical ?? 0) + (expirySummary.warning ?? 0),
+          sub: `${expirySummary.critical ?? 0} Critical | ${expirySummary.warning ?? 0} Warning`,
+          color: "#E74C3C",
         },
         {
           title: "Today's Sales",
@@ -95,10 +107,19 @@ const Dashboard = () => {
       ]
     : [
         { title: "Total Medicines", value: "0", sub: "", color: "#2ECC71" },
-        { title: "Low Stock Alerts", value: "0", sub: "", color: "#F39C12" },
+        { title: "Expiry Alerts", value: "0", sub: "0 Critical | 0 Warning", color: "#E74C3C" },
         { title: "Today's Sales", value: "0", sub: "", color: "#3498DB" },
         { title: "Today's Profit", value: "0", sub: "", color: "#13b57d" },
       ];
+
+  const lowStockCard = summary
+    ? {
+        title: "Low Stock Alerts",
+        value: summary?.totals?.low_stock ?? 0,
+        sub: "Needs immediate attention",
+        color: "#F39C12",
+      }
+    : { title: "Low Stock Alerts", value: "0", sub: "", color: "#F39C12" };
 
   const inventoryStatus = summary?.inventory?.status || { in_stock: 0, low_stock: 0, out_of_stock: 0 };
   const inventoryData = [
@@ -157,8 +178,8 @@ const Dashboard = () => {
             className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100"
             style={{ cursor: "pointer" }}
             onClick={() => {
-              if (card.title.includes("Low Stock")) {
-                window.location.href = "/inventory/medicines?tab=low";
+              if (card.title.includes("Expiry")) {
+                window.location.href = "/expiry-alerts";
               } else if (card.title.includes("Medicines")) {
                 window.location.href = "/inventory/medicines";
               } else if (card.title.includes("Sales")) {
@@ -209,7 +230,21 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 mt-5">
+      <div className="grid grid-cols-2 gap-5 mt-5">
+        <div
+          className="dashboard-stat-card shadow bg-white p-5 rounded-xl border border-gray-100"
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            window.location.href = "/inventory/medicines?tab=low";
+          }}
+        >
+          <div className="font-medium text-gray-600">{lowStockCard.title}</div>
+          <div className="text-2xl font-bold mt-1">{lowStockCard.value}</div>
+          <div className="text-sm mt-1" style={{ color: lowStockCard.color }}>
+            {lowStockCard.sub}
+          </div>
+        </div>
+
         <div className="p-5 bg-white rounded-xl shadow border border-gray-100">
           <h3 className="font-semibold mb-3">Recent Sales</h3>
           {recentSales.length === 0 && <p className="text-gray-500 text-sm">No sales yet.</p>}

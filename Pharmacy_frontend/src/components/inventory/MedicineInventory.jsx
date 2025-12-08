@@ -1,12 +1,22 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Eye, Pencil, Trash2, Search } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
 import QuickAddMedicine from "./QuickAddMedicine";
 import { useAlert } from "../ui/alert-provider";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 
 const LS_KEY = "medicines";
 const PAGE_SIZE = 500; // fetch size
@@ -39,6 +49,8 @@ export default function MedicineInventory() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("batch_number");
   const [sortDir, setSortDir] = useState("asc");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const statusToParam = (value) => {
     if (!value || value === "All") return null;
@@ -177,15 +189,24 @@ export default function MedicineInventory() {
     return "In Stock";
   };
 
-  const handleDelete = async (row) => {
+  const handleDeleteClick = (row) => {
     const batchId = resolveBatchId(row);
     if (!batchId) {
-      alert("Unable to determine batch to delete.");
+      showAlert("Unable to determine batch to delete.", "Error");
       return;
     }
-    if (!window.confirm("Delete this medicine batch? This cannot be undone.")) return;
+    setItemToDelete(row);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    const batchId = resolveBatchId(itemToDelete);
     setDeleting(true);
     setServerError(null);
+    setDeleteDialogOpen(false);
+
     try {
       const res = await authFetch(API_MEDICINE_DETAIL(batchId), {
         method: "DELETE",
@@ -201,12 +222,14 @@ export default function MedicineInventory() {
         localStorage.setItem(LS_KEY, JSON.stringify(next));
       } catch {}
       window.dispatchEvent(new CustomEvent("inventory:refresh"));
+      showAlert("Medicine batch deleted successfully", "Success");
     } catch (err) {
       console.error(err);
       setServerError(err.message || "Delete failed");
-      alert(err.message || "Delete failed");
+      showAlert(err.message || "Delete failed", "Error");
     } finally {
       setDeleting(false);
+      setItemToDelete(null);
     }
   };
 
@@ -307,6 +330,8 @@ export default function MedicineInventory() {
           return getCategoryLabel(row);
         case "stock":
           return getBaseQuantity(row);
+        case "rack":
+          return row.rack || row.rack_name || row.rack_no || "";
         case "price":
           return Number(row.mrp ?? row.batch_lot__product__mrp ?? 0);
         case "expiry":
@@ -336,14 +361,11 @@ export default function MedicineInventory() {
   }, [sortedRows, currentPage]);
 
   const SortIndicator = ({ column }) => {
-    if (sortBy === column) {
-      return sortDir === "asc" ? (
-        <ChevronUp size={14} className="sort-indicator" />
-      ) : (
-        <ChevronDown size={14} className="sort-indicator" />
-      );
-    }
-    return <ChevronsUpDown size={14} className="sort-indicator" />;
+    return (
+      <span className="sort-indicator">
+        {sortBy === column ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+      </span>
+    );
   };
 
   return (
@@ -514,7 +536,9 @@ export default function MedicineInventory() {
                   <th onClick={() => handleSort("stock")} className="sortable">
                     Stock <SortIndicator column="stock" />
                   </th>
-                  <th>Rack</th>
+                  <th onClick={() => handleSort("rack")} className="sortable">
+                    Rack <SortIndicator column="rack" />
+                  </th>
                   <th onClick={() => handleSort("price")} className="sortable">
                     Price (₹) <SortIndicator column="price" />
                   </th>
@@ -572,7 +596,7 @@ export default function MedicineInventory() {
                           <button
                             className="inv-icon danger"
                             title="Delete"
-                            onClick={() => handleDelete(r)}
+                            onClick={() => handleDeleteClick(r)}
                             disabled={deleting}
                           >
                             <Trash2 size={16} />
@@ -620,6 +644,36 @@ export default function MedicineInventory() {
           onClose={() => setQuickAddOpen(false)}
           onSaved={handleQuickAddSaved}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Medicine Batch</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this medicine batch? This action cannot be undone.
+                {itemToDelete && (
+                  <div style={{ marginTop: '12px', fontWeight: '500', color: '#374151' }}>
+                    Batch: {itemToDelete.batch_number ?? itemToDelete.batch_lot__batch_no ?? 'N/A'}
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setItemToDelete(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                style={{ background: '#ef4444' }}
+                onMouseEnter={(e) => e.target.style.background = '#dc2626'}
+                onMouseLeave={(e) => e.target.style.background = '#ef4444'}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

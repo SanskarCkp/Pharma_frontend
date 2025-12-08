@@ -612,14 +612,23 @@ export default function AddMedicine({
   }
 
   const header = (
-    <div className="inv-form-header">
-      <button className="btn-secondary" type="button" onClick={handleClose}>
-        <ArrowLeft size={18} />
-        {isDrawer ? "Close" : "Back"}
-      </button>
-      <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>
-      <p>Enter medicine details and initial stock information</p>
-    </div>
+    <>
+      {/* Header Section - Back button */}
+      <div className="inv-form-header-section">
+        <button className="back-btn" type="button" onClick={handleClose}>
+          <ArrowLeft size={18} />
+          {isDrawer ? "Close" : "Back"}
+        </button>
+      </div>
+
+      {/* Header Card */}
+      <div className="inv-form-header-card">
+        <div>
+          <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>
+          <p>Enter medicine details and initial stock information</p>
+        </div>
+      </div>
+    </>
   );
 
   const formContent = (

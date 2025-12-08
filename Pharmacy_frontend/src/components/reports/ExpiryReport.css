@@ -25,6 +25,12 @@
   border: 1px solid #e5e7eb;
   background: #f8fafc;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.er-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .er-kpi h3 {
@@ -40,18 +46,36 @@
 }
 
 .er-kpi.critical {
-  border-color: rgba(217, 83, 79, 0.3);
-  background: rgba(217, 83, 79, 0.06);
+  border-color: rgba(217, 83, 79, 0.5);
+  background: rgba(217, 83, 79, 0.12);
+}
+
+.er-kpi.critical.active {
+  border-color: rgba(217, 83, 79, 0.7);
+  background: rgba(217, 83, 79, 0.2);
+  box-shadow: 0 6px 18px rgba(217, 83, 79, 0.3);
 }
 
 .er-kpi.warning {
-  border-color: rgba(255, 138, 0, 0.3);
-  background: rgba(255, 138, 0, 0.06);
+  border-color: rgba(255, 138, 0, 0.5);
+  background: rgba(255, 138, 0, 0.12);
+}
+
+.er-kpi.warning.active {
+  border-color: rgba(255, 138, 0, 0.7);
+  background: rgba(255, 138, 0, 0.2);
+  box-shadow: 0 6px 18px rgba(255, 138, 0, 0.3);
 }
 
 .er-kpi.safe {
-  border-color: rgba(19, 181, 125, 0.3);
-  background: rgba(19, 181, 125, 0.06);
+  border-color: rgba(19, 181, 125, 0.5);
+  background: rgba(19, 181, 125, 0.12);
+}
+
+.er-kpi.safe.active {
+  border-color: rgba(19, 181, 125, 0.7);
+  background: rgba(19, 181, 125, 0.2);
+  box-shadow: 0 6px 18px rgba(19, 181, 125, 0.3);
 }
 
 .er-card {

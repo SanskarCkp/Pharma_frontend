@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2, ArrowLeft, Plus } from "lucide-react";
 import "./rack_locations.css";
+import "../../inventory/inventory.css";
 import { authFetch } from "../../../api/http";
 
 const USE_LOCAL_STORAGE = false;
@@ -195,19 +197,27 @@ export default function RackLocations() {
 
   return (
     <div className="pm-wrap">
-      <div className="pm-header">
-        <button className="pm-back" onClick={() => nav(-1)} disabled={loading}>
-          ← Back
+      {/* Header Section - Back button */}
+      <div className="pm-header-section">
+        <button className="back-btn" onClick={() => nav(-1)} disabled={loading}>
+          <ArrowLeft size={18} />
+          Back
         </button>
-        <div className="pm-headings">
+      </div>
+
+      {/* Header */}
+      <div className="pm-header-card">
+        <div>
           <h2>Rack Locations</h2>
+          <p>Manage all rack locations and storage</p>
         </div>
         <button
           className="pm-add"
           onClick={openAdd}
           disabled={loading || saving}
         >
-          ＋ Add New
+          <Plus size={18} />
+          Add New
         </button>
       </div>
 
@@ -219,7 +229,8 @@ export default function RackLocations() {
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
         <div className="pm-card">
-          <table className="pm-table">
+          <div className="inv-table-wrap">
+          <table className="inv-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -248,7 +259,7 @@ export default function RackLocations() {
                         onClick={() => openView(r)}
                         disabled={saving}
                       >
-                        👁
+                        <Eye size={16} />
                       </button>
                       <button
                         className="pm-icon"
@@ -256,7 +267,7 @@ export default function RackLocations() {
                         onClick={() => openEdit(r)}
                         disabled={saving}
                       >
-                        ✎
+                        <Pencil size={16} />
                       </button>
                       <button
                         className="pm-icon danger"
@@ -264,7 +275,7 @@ export default function RackLocations() {
                         onClick={() => handleDelete(r.id)}
                         disabled={saving}
                       >
-                        🗑
+                        <Trash2 size={16} />
                       </button>
                     </td>
                   </tr>
@@ -278,6 +289,7 @@ export default function RackLocations() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -302,7 +314,7 @@ export default function RackLocations() {
             <form className="pm-form" onSubmit={handleSubmit}>
               {/* Name */}
               <label className="pm-label">
-                Name <span className="pm-req">*</span>
+                <span style={{ whiteSpace: "nowrap" }}>Name <span className="pm-req">*</span></span>
                 <input
                   className={`pm-input ${
                     errors.name ? "pm-input-error" : ""
