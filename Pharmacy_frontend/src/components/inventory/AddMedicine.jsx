@@ -389,15 +389,74 @@ export default function AddMedicine({
     const med = detail.medicine || {};
     const batchInfo = detail.batch || {};
 
+    // Extract category - handle both frontend ID string and object format
+    let categoryValue = med.category || "";
+    if (categoryValue && typeof categoryValue === 'object') {
+      // If it's an object with id and name, map the name to frontend category ID
+      const categoryName = categoryValue.name || "";
+      const categoryMapping = {
+        'Tablet': 'tablet',
+        'Capsule': 'capsule',
+        'Syrup/Suspension': 'syrup',
+        'Injection/Vial': 'injection',
+        'Ointment/Cream': 'ointment',
+        'Drops (Eye/Ear/Nasal)': 'drops',
+        'Inhaler': 'inhaler',
+        'Powder/Sachet': 'powder',
+        'Gel': 'gel',
+        'Spray': 'spray',
+        'Lotion/Solution': 'lotion',
+        'Shampoo': 'shampoo',
+        'Soap/Bar': 'soap',
+        'Bandage/Dressing': 'bandage',
+        'Mask (Surgical/N95)': 'mask',
+        'Gloves': 'gloves',
+        'Cotton/Gauze': 'cotton',
+        'Hand Sanitizer': 'sanitizer',
+        'Thermometer': 'thermometer',
+        'Supplement/Vitamin': 'supplement',
+        'Other/Miscellaneous': 'other',
+      };
+      categoryValue = categoryMapping[categoryName] || categoryValue;
+    } else if (!categoryValue || categoryValue === "") {
+      // If category is missing, try category_id (backward compatibility)
+      if (med.category_id && typeof med.category_id === 'object' && med.category_id.name) {
+        const categoryMapping = {
+          'Tablet': 'tablet',
+          'Capsule': 'capsule',
+          'Syrup/Suspension': 'syrup',
+          'Injection/Vial': 'injection',
+          'Ointment/Cream': 'ointment',
+          'Drops (Eye/Ear/Nasal)': 'drops',
+          'Inhaler': 'inhaler',
+          'Powder/Sachet': 'powder',
+          'Gel': 'gel',
+          'Spray': 'spray',
+          'Lotion/Solution': 'lotion',
+          'Shampoo': 'shampoo',
+          'Soap/Bar': 'soap',
+          'Bandage/Dressing': 'bandage',
+          'Mask (Surgical/N95)': 'mask',
+          'Gloves': 'gloves',
+          'Cotton/Gauze': 'cotton',
+          'Hand Sanitizer': 'sanitizer',
+          'Thermometer': 'thermometer',
+          'Supplement/Vitamin': 'supplement',
+          'Other/Miscellaneous': 'other',
+        };
+        categoryValue = categoryMapping[med.category_id.name] || "";
+      }
+    }
+
     setMedicine({
       ...createInitialMedicine(),
       id: med.id ?? null,
       name: med.name || "",
-      category: med.category || "",
+      category: categoryValue,
       strength: med.strength || "",
       rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
       gst_percent: med.gst_percent || "",
-      cost_price: med.cost_price ?? "",
+      cost_price: batchInfo.purchase_price || med.cost_price || "", // Map purchase_price from batch to cost_price
       mrp: med.mrp ?? "",
       tablets_per_strip: med.tablets_per_strip ?? "",
       strips_per_box: med.strips_per_box ?? "",
@@ -427,7 +486,7 @@ export default function AddMedicine({
       id: batchInfo.id ?? null,
       batch_number: batchInfo.batch_number || "",
       quantity: batchInfo.quantity ? Number(batchInfo.quantity) : "",
-      stock_unit: batchInfo.stock_unit || "",
+      stock_unit: batchInfo.stock_unit || "", // Now included in backend response
       mfg_date: batchInfo.mfg_date || "",
       expiry_date: batchInfo.expiry_date || "",
     });

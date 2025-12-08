@@ -9,7 +9,10 @@ const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i
 const API_BASE = normalizeBase(rawBase);
 
 const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
-const MEDICINE_SEARCH_API = `${API_BASE}/api/v1/catalog/products/?q=`;
+const MEDICINE_SEARCH_API = `${API_BASE}/api/v1/inventory/medicines/global?q=`;
+const GLOBAL_MEDICINES_API = `${API_BASE}/api/v1/inventory/medicines/global?q=`;
+const BATCHES_API = `${API_BASE}/api/v1/inventory/batches/`;
+const MEDICINE_DETAIL_API = (batchId) => `${API_BASE}/api/v1/inventory/medicines/${batchId}/`;
 
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
@@ -167,11 +170,14 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
   const [optionsVisible, setOptionsVisible] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [existingBatch, setExistingBatch] = useState(null);
   const [lookingUpName, setLookingUpName] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputWrapperRef = useRef(null);
+  // Packaging fields state for new medicines
+  const [packagingFields, setPackagingFields] = useState({});
 
   const selectedCategory = MEDICINE_CATEGORIES.find((c) => c.id === category);
   const quantityLabel =
@@ -216,6 +222,50 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     }
   }, [open, stockUnit, selectedMedicine, defaultPerBox, boxCount]);
 
+  // Initialize packaging fields with defaults when category changes
+  useEffect(() => {
+    if (!open || selectedMedicine || !category) return;
+    const defaults = {};
+    if (category === "tablet") {
+      defaults.tablets_per_strip = "10";
+      defaults.strips_per_box = "10";
+    } else if (category === "capsule") {
+      defaults.capsules_per_strip = "10";
+      defaults.strips_per_box = "10";
+    } else if (category === "syrup" || category === "drops") {
+      defaults.ml_per_bottle = "100";
+      defaults.bottles_per_box = "12";
+    } else if (category === "injection") {
+      defaults.ml_per_vial = "5";
+      defaults.vials_per_box = "10";
+    } else if (category === "ointment" || category === "gel") {
+      defaults.grams_per_tube = "30";
+      defaults.tubes_per_box = "10";
+    } else if (category === "inhaler") {
+      defaults.doses_per_inhaler = "100";
+      defaults.inhalers_per_box = "1";
+    } else if (category === "powder") {
+      defaults.grams_per_sachet = "10";
+      defaults.sachets_per_box = "10";
+    } else if (category === "soap") {
+      defaults.grams_per_bar = "100";
+      defaults.bars_per_box = "3";
+    } else {
+      defaults.pieces_per_pack = "1";
+      defaults.packs_per_box = "10";
+    }
+    setPackagingFields(prev => {
+      // Only set defaults if field is not already set
+      const updated = { ...prev };
+      Object.entries(defaults).forEach(([key, value]) => {
+        if (!updated[key]) {
+          updated[key] = value;
+        }
+      });
+      return updated;
+    });
+  }, [category, open, selectedMedicine]);
+
   useEffect(() => {
     if (!open) return;
     const query = name.trim();
@@ -235,42 +285,90 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
         const data = await res.json().catch(() => null);
         const list = Array.isArray(data) ? data : data?.results || data?.items || [];
-        // Format suggestions to match expected structure
-        const formatted = list.slice(0, 8).map(item => ({
-          medicine: {
-            id: item.id,
-            name: item.name,
-            category: item.category ? (typeof item.category === 'object' ? item.category : { id: item.category, name: item.category_name || '' }) : null,
-            strength: item.dosage_strength || item.strength || '',
-            rack_location: item.rack_location ? (typeof item.rack_location === 'object' ? item.rack_location : { id: item.rack_location }) : null,
-            gst_percent: item.gst_percent || '0',
-            mrp: item.mrp || '0',
-            form: item.medicine_form ? (typeof item.medicine_form === 'object' ? item.medicine_form : { id: item.medicine_form }) : null,
-            base_uom: item.base_uom ? (typeof item.base_uom === 'object' ? item.base_uom : { id: item.base_uom }) : null,
-            selling_uom: item.selling_uom ? (typeof item.selling_uom === 'object' ? item.selling_uom : { id: item.selling_uom }) : null,
-            // All packaging fields
-            tablets_per_strip: item.tablets_per_strip,
-            capsules_per_strip: item.capsules_per_strip,
-            strips_per_box: item.strips_per_box,
-            ml_per_bottle: item.ml_per_bottle,
-            bottles_per_box: item.bottles_per_box,
-            ml_per_vial: item.ml_per_vial,
-            vials_per_box: item.vials_per_box,
-            grams_per_tube: item.grams_per_tube,
-            tubes_per_box: item.tubes_per_box,
-            doses_per_inhaler: item.doses_per_inhaler,
-            inhalers_per_box: item.inhalers_per_box,
-            grams_per_sachet: item.grams_per_sachet,
-            sachets_per_box: item.sachets_per_box,
-            grams_per_bar: item.grams_per_bar,
-            bars_per_box: item.bars_per_box,
-            pieces_per_pack: item.pieces_per_pack,
-            packs_per_box: item.packs_per_box,
-            pairs_per_pack: item.pairs_per_pack,
-            grams_per_pack: item.grams_per_pack,
-            units_per_pack: item.units_per_pack,
+        // Deduplicate by product_id - same medicine can have multiple batches
+        const seenProducts = new Set();
+        const uniqueList = list.filter(item => {
+          const productId = item.product_id || item.id;
+          if (!productId || seenProducts.has(productId)) {
+            return false;
           }
-        }));
+          seenProducts.add(productId);
+          return true;
+        });
+        
+        // Format suggestions to match expected structure
+        // Global medicines API returns items with product_id, medicine_name, category, etc.
+        const formatted = uniqueList.slice(0, 8).map(item => {
+          // Extract product info from global inventory response
+          const productId = item.product_id || item.id;
+          const medicineName = item.medicine_name || item.name || '';
+          const categoryName = item.category || '';
+          
+          // Map category name to frontend category ID
+          const categoryMapping = {
+            'Tablet': 'tablet',
+            'Capsule': 'capsule',
+            'Syrup/Suspension': 'syrup',
+            'Injection/Vial': 'injection',
+            'Ointment/Cream': 'ointment',
+            'Drops (Eye/Ear/Nasal)': 'drops',
+            'Inhaler': 'inhaler',
+            'Powder/Sachet': 'powder',
+            'Gel': 'gel',
+            'Spray': 'spray',
+            'Lotion/Solution': 'lotion',
+            'Shampoo': 'shampoo',
+            'Soap/Bar': 'soap',
+            'Bandage/Dressing': 'bandage',
+            'Mask (Surgical/N95)': 'mask',
+            'Gloves': 'gloves',
+            'Cotton/Gauze': 'cotton',
+            'Hand Sanitizer': 'sanitizer',
+            'Thermometer': 'thermometer',
+            'Supplement/Vitamin': 'supplement',
+            'Other/Miscellaneous': 'other',
+          };
+          
+          const frontendCategoryId = categoryMapping[categoryName] || normalizeCategoryId(categoryName);
+          
+          return {
+            medicine: {
+              id: productId,
+              name: medicineName,
+              category: frontendCategoryId, // Store frontend category ID
+              categoryName: categoryName, // Store original category name for display
+              categoryId: item.category_id || null, // Store database category ID if available
+              strength: '', // Will be fetched from product detail if needed
+              rack_location: null, // Will be fetched from product detail if needed
+              gst_percent: '0',
+              mrp: item.mrp || '0',
+              form: null,
+              base_uom: null,
+              selling_uom: null,
+              // Packaging fields will be fetched from product detail when selected
+              tablets_per_strip: null,
+              capsules_per_strip: null,
+              strips_per_box: null,
+              ml_per_bottle: null,
+              bottles_per_box: null,
+              ml_per_vial: null,
+              vials_per_box: null,
+              grams_per_tube: null,
+              tubes_per_box: null,
+              doses_per_inhaler: null,
+              inhalers_per_box: null,
+              grams_per_sachet: null,
+              sachets_per_box: null,
+              grams_per_bar: null,
+              bars_per_box: null,
+              pieces_per_pack: null,
+              packs_per_box: null,
+              pairs_per_pack: null,
+              grams_per_pack: null,
+              units_per_pack: null,
+            }
+          };
+        });
         setSuggestions(formatted);
         setOptionsVisible(true);
       } catch (err) {
@@ -312,21 +410,52 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     }
   };
 
-  const handleSuggestionSelect = (item) => {
+  const handleSuggestionSelect = async (item) => {
     const med = item?.medicine || item;
     if (!med) return;
     const medName = med.name || med.medicine_name || "";
     setName(medName);
-    // Extract category - handle both object and ID formats
-    let categoryValue = med.category;
-    if (categoryValue && typeof categoryValue === 'object') {
-      categoryValue = categoryValue.id || categoryValue.name;
-    }
-    const detectedCategory = normalizeCategoryId(categoryValue || item.category);
+    // Extract category - med.category is already the frontend category ID from the formatted response
+    const detectedCategory = med.category || normalizeCategoryId(med.categoryName || med.categoryId);
     setCategory(detectedCategory);
     setSelectedMedicine(med);
     setCategoryTouched(false);
     setOptionsVisible(false);
+    
+    // Fetch product details to get packaging fields and other info
+    if (med.id) {
+      try {
+        // Fetch product details from catalog API
+        const productRes = await fetchWithAuthRetry(`${API_BASE}/api/v1/catalog/products/${med.id}/`);
+        if (productRes.ok) {
+          const productData = await productRes.json().catch(() => null);
+          if (productData) {
+            // Update selectedMedicine with full product details
+            setSelectedMedicine({
+              ...med,
+              ...productData,
+              category: med.category, // Keep frontend category ID
+            });
+          }
+        }
+        
+        // Fetch existing batches for this medicine
+        const batchesRes = await fetchWithAuthRetry(`${BATCHES_API}?product_id=${med.id}&status=ACTIVE`);
+        if (batchesRes.ok) {
+          const batchesData = await batchesRes.json().catch(() => []);
+          const batches = Array.isArray(batchesData) ? batchesData : [];
+          // Use the first active batch if available
+          if (batches.length > 0) {
+            setExistingBatch(batches[0]);
+          } else {
+            setExistingBatch(null);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch product details or batches", err);
+        setExistingBatch(null);
+      }
+    }
   };
 
   const handleClose = () => {
@@ -338,6 +467,8 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     setCategoryTouched(false);
     setSuggestions([]);
     setSelectedMedicine(null);
+    setExistingBatch(null);
+    setPackagingFields({});
     setOptionsVisible(false);
     setLookingUpName(false);
     setErrors({});
@@ -350,17 +481,29 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     if (!name.trim()) localErrors.name = "Medicine name is required";
     if (!category) localErrors.category = "Category is required";
     if (!stockUnit) localErrors.stock_unit = "Stock unit type is required";
-    if (!quantity) localErrors.quantity = "Quantity is required";
-    if (stockUnit === "box" && !boxCount) localErrors.box_count = "Items per box is required";
+    if (quantity === "" || quantity === null || quantity === undefined) {
+      localErrors.quantity = "Quantity is required";
+    } else {
+      const qtyNum = Number(quantity);
+      if (!Number.isFinite(qtyNum)) {
+        localErrors.quantity = "Quantity must be a valid number";
+      }
+    }
+    // Don't require boxCount if medicine is selected (it will use existing packaging fields)
+    if (stockUnit === "box" && !selectedMedicine && !boxCount && !detectedPerBox) {
+      localErrors.box_count = "Items per box is required";
+    }
     return localErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Quick Add: Submit handler called");
     setServerError("");
     setErrors({});
 
     const validationErrors = validate();
+    console.log("Quick Add: Validation errors:", validationErrors);
     if (Object.keys(validationErrors).length) {
       setErrors(validationErrors);
       return;
@@ -374,15 +517,11 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     if (selectedMedicine) {
       // When medicine is selected, use existing medicine data
       const med = selectedMedicine;
-      // Extract category ID properly
-      let categoryId = med.category;
-      if (categoryId && typeof categoryId === 'object') {
-        categoryId = categoryId.id || categoryId.name;
-      }
+      // med.category is already the frontend category ID (e.g., 'tablet', 'capsule')
       medicinePayload = {
         id: med.id,
         name: med.name || name.trim(),
-        category: categoryId || category,
+        category: med.category || category, // Frontend category ID
         form: med.form?.id || med.form,
         strength: med.strength || med.dosage_strength || "",
         base_uom: med.base_uom?.id || med.base_uom,
@@ -390,27 +529,27 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         rack_location: med.rack_location?.id || med.rack_location || 1,
         gst_percent: med.gst_percent || "0",
         mrp: med.mrp || "0",
-        // Include all packaging fields from selected medicine
-        tablets_per_strip: med.tablets_per_strip,
-        capsules_per_strip: med.capsules_per_strip,
-        strips_per_box: med.strips_per_box,
-        ml_per_bottle: med.ml_per_bottle,
-        bottles_per_box: med.bottles_per_box,
-        ml_per_vial: med.ml_per_vial,
-        vials_per_box: med.vials_per_box,
-        grams_per_tube: med.grams_per_tube,
-        tubes_per_box: med.tubes_per_box,
-        doses_per_inhaler: med.doses_per_inhaler,
-        inhalers_per_box: med.inhalers_per_box,
-        grams_per_sachet: med.grams_per_sachet,
-        sachets_per_box: med.sachets_per_box,
-        grams_per_bar: med.grams_per_bar,
-        bars_per_box: med.bars_per_box,
-        pieces_per_pack: med.pieces_per_pack,
-        packs_per_box: med.packs_per_box,
-        pairs_per_pack: med.pairs_per_pack,
-        grams_per_pack: med.grams_per_pack,
-        units_per_pack: med.units_per_pack,
+        // Include all packaging fields from selected medicine - ensure they're numbers, not null
+        tablets_per_strip: med.tablets_per_strip ? Number(med.tablets_per_strip) : undefined,
+        capsules_per_strip: med.capsules_per_strip ? Number(med.capsules_per_strip) : undefined,
+        strips_per_box: med.strips_per_box ? Number(med.strips_per_box) : undefined,
+        ml_per_bottle: med.ml_per_bottle ? Number(med.ml_per_bottle) : undefined,
+        bottles_per_box: med.bottles_per_box ? Number(med.bottles_per_box) : undefined,
+        ml_per_vial: med.ml_per_vial ? Number(med.ml_per_vial) : undefined,
+        vials_per_box: med.vials_per_box ? Number(med.vials_per_box) : undefined,
+        grams_per_tube: med.grams_per_tube ? Number(med.grams_per_tube) : undefined,
+        tubes_per_box: med.tubes_per_box ? Number(med.tubes_per_box) : undefined,
+        doses_per_inhaler: med.doses_per_inhaler ? Number(med.doses_per_inhaler) : undefined,
+        inhalers_per_box: med.inhalers_per_box ? Number(med.inhalers_per_box) : undefined,
+        grams_per_sachet: med.grams_per_sachet ? Number(med.grams_per_sachet) : undefined,
+        sachets_per_box: med.sachets_per_box ? Number(med.sachets_per_box) : undefined,
+        grams_per_bar: med.grams_per_bar ? Number(med.grams_per_bar) : undefined,
+        bars_per_box: med.bars_per_box ? Number(med.bars_per_box) : undefined,
+        pieces_per_pack: med.pieces_per_pack ? Number(med.pieces_per_pack) : undefined,
+        packs_per_box: med.packs_per_box ? Number(med.packs_per_box) : undefined,
+        pairs_per_pack: med.pairs_per_pack ? Number(med.pairs_per_pack) : undefined,
+        grams_per_pack: med.grams_per_pack ? Number(med.grams_per_pack) : undefined,
+        units_per_pack: med.units_per_pack ? Number(med.units_per_pack) : undefined,
       };
     } else {
       // When medicine is new, create with defaults
@@ -426,72 +565,384 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         selling_uom: 7, // Default STRIP UOM - adjust as needed
       };
 
-      // Set packaging fields based on category
+      // Set packaging fields - use values from form state, fallback to defaults
+      const getPackagingValue = (key, defaultValue) => {
+        const formValue = packagingFields[key];
+        if (formValue !== undefined && formValue !== null && formValue !== '') {
+          const num = Number(formValue);
+          return Number.isFinite(num) && num > 0 ? num : defaultValue;
+        }
+        return defaultValue;
+      };
+      
+      // Ensure packaging fields are always numbers, never null/undefined
       if (category === "tablet") {
-        medicinePayload.tablets_per_strip = 10;
-        medicinePayload.strips_per_box = 10;
+        medicinePayload.tablets_per_strip = getPackagingValue('tablets_per_strip', 10);
+        medicinePayload.strips_per_box = getPackagingValue('strips_per_box', 10);
       } else if (category === "capsule") {
-        medicinePayload.capsules_per_strip = 10;
-        medicinePayload.strips_per_box = 10;
+        medicinePayload.capsules_per_strip = getPackagingValue('capsules_per_strip', 10);
+        medicinePayload.strips_per_box = getPackagingValue('strips_per_box', 10);
       } else if (category === "syrup" || category === "drops") {
-        medicinePayload.ml_per_bottle = 100;
-        medicinePayload.bottles_per_box = 12;
+        medicinePayload.ml_per_bottle = getPackagingValue('ml_per_bottle', 100);
+        medicinePayload.bottles_per_box = getPackagingValue('bottles_per_box', 12);
       } else if (category === "injection") {
-        medicinePayload.ml_per_vial = 5;
-        medicinePayload.vials_per_box = 10;
+        medicinePayload.ml_per_vial = getPackagingValue('ml_per_vial', 5);
+        medicinePayload.vials_per_box = getPackagingValue('vials_per_box', 10);
       } else if (category === "ointment" || category === "gel") {
-        medicinePayload.grams_per_tube = 30;
-        medicinePayload.tubes_per_box = 10;
+        medicinePayload.grams_per_tube = getPackagingValue('grams_per_tube', 30);
+        medicinePayload.tubes_per_box = getPackagingValue('tubes_per_box', 10);
       } else if (category === "inhaler") {
-        medicinePayload.doses_per_inhaler = 100;
-        medicinePayload.inhalers_per_box = 1;
+        medicinePayload.doses_per_inhaler = getPackagingValue('doses_per_inhaler', 100);
+        medicinePayload.inhalers_per_box = getPackagingValue('inhalers_per_box', 1);
       } else if (category === "powder") {
-        medicinePayload.grams_per_sachet = 10;
-        medicinePayload.sachets_per_box = 10;
+        medicinePayload.grams_per_sachet = getPackagingValue('grams_per_sachet', 10);
+        medicinePayload.sachets_per_box = getPackagingValue('sachets_per_box', 10);
       } else if (category === "soap") {
-        medicinePayload.grams_per_bar = 100;
-        medicinePayload.bars_per_box = 3;
+        medicinePayload.grams_per_bar = getPackagingValue('grams_per_bar', 100);
+        medicinePayload.bars_per_box = getPackagingValue('bars_per_box', 3);
       } else {
-        medicinePayload.pieces_per_pack = 1;
-        medicinePayload.packs_per_box = 10;
+        medicinePayload.pieces_per_pack = getPackagingValue('pieces_per_pack', 1);
+        medicinePayload.packs_per_box = getPackagingValue('packs_per_box', 10);
       }
+      
+      // Log packaging fields for debugging
+      console.log("Quick Add: Packaging fields for new medicine:", {
+        category,
+        stockUnit,
+        quantity,
+        tablets_per_strip: medicinePayload.tablets_per_strip,
+        strips_per_box: medicinePayload.strips_per_box,
+        capsules_per_strip: medicinePayload.capsules_per_strip,
+        ml_per_bottle: medicinePayload.ml_per_bottle,
+        bottles_per_box: medicinePayload.bottles_per_box,
+      });
 
       if (hasBoxCount && perBoxField) {
         medicinePayload[perBoxField] = parsedBoxCount;
       }
     }
 
+    // Clean up payload - remove undefined values
+    const cleanPayload = (obj) => {
+      const cleaned = {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined && value !== null) {
+          if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+            const cleanedObj = cleanPayload(value);
+            if (Object.keys(cleanedObj).length > 0) {
+              cleaned[key] = cleanedObj;
+            }
+          } else {
+            cleaned[key] = value;
+          }
+        }
+      }
+      return cleaned;
+    };
+
+    // For existing medicine, use existing batch if available, otherwise create new batch
+    const batchPayload = {
+      batch_number: selectedMedicine ? `QUICK-${Date.now()}` : `QUICK-${Date.now()}`,
+      quantity: Number(quantity), // This can be positive (add) or negative (reduce)
+      stock_unit: stockUnit, // "box" or "loose"
+      expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
+      purchase_price: "0",
+    };
+    
+    // Note: The backend will calculate the base quantity (total tablets/units) from:
+    // - quantity (e.g., 10 boxes or 50 strips)
+    // - stock_unit ("box" or "loose")
+    // - packaging fields (tablets_per_strip, strips_per_box, etc.)
+    // For example: 10 boxes × 10 strips/box × 10 tablets/strip = 1000 tablets
+
+    // Ensure packaging fields are always included (don't remove them in cleanPayload)
+    // Create payload with medicine and batch
+    const finalMedicinePayload = { ...medicinePayload };
+    // Remove undefined but keep null and 0 values for packaging fields
+    Object.keys(finalMedicinePayload).forEach(key => {
+      if (finalMedicinePayload[key] === undefined) {
+        delete finalMedicinePayload[key];
+      }
+    });
+    
     const payload = {
       location_id: Number(DEFAULT_LOCATION_ID),
-      medicine: medicinePayload,
-      batch: {
-        batch_number: `QUICK-${Date.now()}`,
-        quantity: Number(quantity),
-        stock_unit: stockUnit,
-        mfg_date: undefined,
-        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
-        quantity_uom: 8, // Default UOM ID - adjust as needed
-        purchase_price: "0",
-      },
+      medicine: finalMedicinePayload,
+      batch: cleanPayload(batchPayload),
     };
+
+    console.log("Quick Add Payload:", JSON.stringify(payload, null, 2));
+    console.log("Quick Add: Selected Medicine:", selectedMedicine);
+    console.log("Quick Add: Stock Unit:", stockUnit, "Quantity:", quantity);
+    console.log("Quick Add: Medicine Payload Packaging Fields:", {
+      tablets_per_strip: payload.medicine?.tablets_per_strip,
+      strips_per_box: payload.medicine?.strips_per_box,
+      capsules_per_strip: payload.medicine?.capsules_per_strip,
+      ml_per_bottle: payload.medicine?.ml_per_bottle,
+      bottles_per_box: payload.medicine?.bottles_per_box,
+    });
+    console.log("Quick Add: Will calculate stock as:", 
+      stockUnit === "box" 
+        ? `${quantity} boxes × packaging fields = total base units`
+        : `${quantity} loose units × packaging fields = total base units`
+    );
 
     setSubmitting(true);
     try {
+      // If medicine is selected and has an existing batch, update stock instead of creating new batch
+      if (selectedMedicine && existingBatch) {
+        console.log("Quick Add: Updating existing batch", existingBatch.id);
+        
+        // Use add-medicine endpoint but with existing batch ID to update stock
+        // The backend will handle the conversion and create movement for the difference
+        // We need to calculate what the new total quantity should be
+        // But actually, it's easier to use the adjust-stock endpoint which just adds/reduces
+        
+        // First, calculate base quantity change using the same logic backend uses
+        // We'll use add-medicine to get the conversion, then use adjust-stock
+        // Actually simpler: use PUT to update batch, backend will calculate difference
+        
+        // Fetch current batch details
+        try {
+          const batchDetailRes = await fetchWithAuthRetry(MEDICINE_DETAIL_API(existingBatch.id));
+          if (!batchDetailRes.ok) {
+            throw new Error("Failed to fetch batch details");
+          }
+          const batchDetail = await batchDetailRes.json().catch(() => null);
+          
+          if (batchDetail && batchDetail.batch) {
+          // Calculate new quantity: add the entered quantity to current quantity
+          // The backend will calculate the base quantity from packaging fields
+          const currentQty = parseFloat(batchDetail.batch.quantity) || 0;
+          const currentStockUnit = batchDetail.batch.stock_unit || "loose";
+          const qtyChange = Number(quantity);
+          
+          // If stock units match, add quantities; otherwise use the new quantity
+          const newQty = (stockUnit === currentStockUnit) ? currentQty + qtyChange : qtyChange;
+          
+          const updatePayload = {
+            location_id: Number(DEFAULT_LOCATION_ID),
+            medicine: cleanPayload(medicinePayload),
+            batch: {
+              id: existingBatch.id,
+              batch_number: batchDetail.batch.batch_number,
+              quantity: newQty,
+              stock_unit: stockUnit,
+              mfg_date: batchDetail.batch.mfg_date,
+              expiry_date: batchDetail.batch.expiry_date,
+              purchase_price: batchDetail.batch.purchase_price || "0",
+            },
+          };
+          
+          console.log("Quick Add: Updating batch with payload:", JSON.stringify(updatePayload, null, 2));
+          
+          const updateResponse = await fetchWithAuthRetry(MEDICINE_DETAIL_API(existingBatch.id), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatePayload),
+          });
+          
+          const updateBody = await updateResponse.json().catch(() => null);
+          if (!updateResponse.ok) {
+            const errorMsg = updateBody?.detail || JSON.stringify(updateBody);
+            setServerError(errorMsg);
+            setSubmitting(false);
+            return;
+          }
+          
+            console.log("Quick Add: Success! Stock updated via PUT.");
+            dispatchInventoryRefresh();
+            if (onSaved) onSaved(updateBody);
+            handleClose();
+            setSubmitting(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Quick Add: Error updating existing batch", err);
+          setServerError(err.message || "Failed to update batch");
+          setSubmitting(false);
+          return;
+        }
+      }
+      
+      // Check if medicine already exists by searching for it first
+      // This prevents creating duplicate medicines when user types name manually
+      if (!selectedMedicine && name.trim()) {
+        console.log("Quick Add: Checking if medicine already exists...");
+        try {
+          const searchRes = await fetchWithAuthRetry(`${GLOBAL_MEDICINES_API}${encodeURIComponent(name.trim())}`);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json().catch(() => null);
+            const list = Array.isArray(searchData) ? searchData : searchData?.results || searchData?.items || [];
+            // Find exact match by name
+            const existingMed = list.find(item => 
+              item.medicine_name?.toLowerCase() === name.trim().toLowerCase()
+            );
+            
+            if (existingMed) {
+              console.log("Quick Add: Found existing medicine, will update stock instead");
+              // Set selectedMedicine to trigger update flow
+              // We'll use the existing medicine's ID and fetch full details
+              const productId = existingMed.product_id;
+              if (productId) {
+                // Use catalog API to get product details
+                const productRes = await fetchWithAuthRetry(`${API_BASE}/api/v1/catalog/products/${productId}/`);
+                if (productRes.ok) {
+                  const productData = await productRes.json().catch(() => null);
+                  // Catalog API returns product directly, not wrapped in medicine
+                  const med = productData || {};
+                  if (med.id) {
+                    // Fetch batches to find active one
+                    const batchesRes = await fetchWithAuthRetry(`${BATCHES_API}?product_id=${productId}&status=ACTIVE`);
+                    if (batchesRes.ok) {
+                      const batchesData = await batchesRes.json().catch(() => null);
+                      const batches = Array.isArray(batchesData) ? batchesData : batchesData?.results || batchesData?.items || [];
+                      const firstBatch = batches.length > 0 ? batches[0] : null;
+                      
+                      if (firstBatch) {
+                        // Update existing batch - map category from object to string ID
+                        const categoryName = med.category?.name || med.category;
+                        const categoryId = categoryName ? categoryName.toLowerCase() : category;
+                        const updateMedPayload = {
+                          id: med.id,
+                          name: med.name,
+                          category: categoryId,
+                          form: med.medicine_form?.id || med.form?.id || med.form,
+                          strength: med.dosage_strength || med.strength || "",
+                          base_uom: med.base_uom?.id || med.base_uom,
+                          selling_uom: med.selling_uom?.id || med.selling_uom,
+                          rack_location: med.rack_location?.id || med.rack_location || 1,
+                          gst_percent: med.gst_percent || "0",
+                          mrp: med.mrp || "0",
+                          tablets_per_strip: med.tablets_per_strip ? Number(med.tablets_per_strip) : undefined,
+                          capsules_per_strip: med.capsules_per_strip ? Number(med.capsules_per_strip) : undefined,
+                          strips_per_box: med.strips_per_box ? Number(med.strips_per_box) : undefined,
+                          ml_per_bottle: med.ml_per_bottle ? Number(med.ml_per_bottle) : undefined,
+                          bottles_per_box: med.bottles_per_box ? Number(med.bottles_per_box) : undefined,
+                          ml_per_vial: med.ml_per_vial ? Number(med.ml_per_vial) : undefined,
+                          vials_per_box: med.vials_per_box ? Number(med.vials_per_box) : undefined,
+                          grams_per_tube: med.grams_per_tube ? Number(med.grams_per_tube) : undefined,
+                          tubes_per_box: med.tubes_per_box ? Number(med.tubes_per_box) : undefined,
+                          doses_per_inhaler: med.doses_per_inhaler ? Number(med.doses_per_inhaler) : undefined,
+                          inhalers_per_box: med.inhalers_per_box ? Number(med.inhalers_per_box) : undefined,
+                          grams_per_sachet: med.grams_per_sachet ? Number(med.grams_per_sachet) : undefined,
+                          sachets_per_box: med.sachets_per_box ? Number(med.sachets_per_box) : undefined,
+                          grams_per_bar: med.grams_per_bar ? Number(med.grams_per_bar) : undefined,
+                          bars_per_box: med.bars_per_box ? Number(med.bars_per_box) : undefined,
+                          pieces_per_pack: med.pieces_per_pack ? Number(med.pieces_per_pack) : undefined,
+                          packs_per_box: med.packs_per_box ? Number(med.packs_per_box) : undefined,
+                          pairs_per_pack: med.pairs_per_pack ? Number(med.pairs_per_pack) : undefined,
+                          grams_per_pack: med.grams_per_pack ? Number(med.grams_per_pack) : undefined,
+                          units_per_pack: med.units_per_pack ? Number(med.units_per_pack) : undefined,
+                        };
+                        
+                        // Use same update logic as selectedMedicine flow
+                        const tempPayload = {
+                          location_id: Number(DEFAULT_LOCATION_ID),
+                          medicine: cleanPayload(updateMedPayload),
+                          batch: {
+                            batch_number: `TEMP-CALC-${Date.now()}`,
+                            quantity: Math.abs(Number(quantity)),
+                            stock_unit: stockUnit,
+                            expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
+                            purchase_price: "0",
+                          },
+                        };
+                        
+                        const tempResponse = await fetchWithAuthRetry(ADD_MEDICINE_API, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(tempPayload),
+                        });
+                        
+                        let baseQtyChange = 0;
+                        if (tempResponse.ok) {
+                          const tempBody = await tempResponse.json().catch(() => null);
+                          if (tempBody && tempBody.batch && tempBody.batch.base_quantity) {
+                            baseQtyChange = parseFloat(tempBody.batch.base_quantity) || 0;
+                            if (Number(quantity) < 0) {
+                              baseQtyChange = -baseQtyChange;
+                            }
+                          }
+                        }
+                        
+                        // Use PUT endpoint to update the batch
+                        const currentQty = parseFloat(firstBatch.quantity) || 0;
+                        const currentStockUnit = firstBatch.stock_unit || "loose";
+                        const qtyChange = Number(quantity);
+                        const newQty = (stockUnit === currentStockUnit) ? currentQty + qtyChange : qtyChange;
+                        
+                        const updatePayload = {
+                          location_id: Number(DEFAULT_LOCATION_ID),
+                          medicine: cleanPayload(updateMedPayload),
+                          batch: {
+                            id: firstBatch.id,
+                            batch_number: firstBatch.batch_number,
+                            quantity: newQty,
+                            stock_unit: stockUnit,
+                            mfg_date: firstBatch.mfg_date,
+                            expiry_date: firstBatch.expiry_date,
+                            purchase_price: firstBatch.purchase_price || "0",
+                          },
+                        };
+                        
+                        const updateResponse = await fetchWithAuthRetry(`${API_BASE}/api/v1/inventory/medicines/${firstBatch.id}/`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(updatePayload),
+                        });
+                        
+                        const updateBody = await updateResponse.json().catch(() => null);
+                        if (updateResponse.ok) {
+                          console.log("Quick Add: Success! Stock updated in existing medicine.");
+                          dispatchInventoryRefresh();
+                          if (onSaved) onSaved(updateBody);
+                          handleClose();
+                          setSubmitting(false);
+                          return;
+                        } else {
+                          const errorMsg = updateBody?.detail || JSON.stringify(updateBody);
+                          setServerError(errorMsg);
+                          setSubmitting(false);
+                          return;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("Quick Add: Error checking for existing medicine, proceeding with new medicine", err);
+        }
+      }
+      
+      // If no existing medicine found, create new batch
+      console.log("Quick Add: Creating new medicine and batch");
       const response = await fetchWithAuthRetry(ADD_MEDICINE_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const body = await response.json().catch(() => null);
+      
+      console.log("Quick Add Response:", response.status, body);
+      
       if (!response.ok) {
         if (body?.detail) {
           setServerError(body.detail);
         } else if (body && typeof body === "object") {
           const errorMessages = Object.entries(body)
             .flatMap(([key, value]) => {
-              if (Array.isArray(value)) return value;
-              if (typeof value === "string") return [value];
-              if (typeof value === "object") return Object.values(value).flat();
+              if (Array.isArray(value)) return value.map(v => `${key}: ${v}`);
+              if (typeof value === "string") return [`${key}: ${value}`];
+              if (typeof value === "object") {
+                return Object.entries(value).flatMap(([k, v]) => {
+                  if (Array.isArray(v)) return v.map(vv => `${key}.${k}: ${vv}`);
+                  return [`${key}.${k}: ${v}`];
+                });
+              }
               return [];
             })
             .join("; ");
@@ -499,16 +950,26 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         } else {
           setServerError(`Save failed (${response.status})`);
         }
+        setSubmitting(false);
         return;
       }
 
+      console.log("Quick Add: Success! New batch created and stock added.");
       dispatchInventoryRefresh();
       if (onSaved) onSaved(body);
       handleClose();
+      setSubmitting(false);
     } catch (err) {
       console.error("Quick add medicine failed", err);
-      setServerError("Network error. Please try again.");
-    } finally {
+      const errorMsg = err.message || "Please try again.";
+      // Handle ReferenceError for existingBatch
+      if (err instanceof ReferenceError && err.message.includes("existingBatch")) {
+        setServerError("Error: Please refresh and try again.");
+      } else if (errorMsg.includes("existingBatch")) {
+        setServerError(`Error: ${errorMsg}. Please try again.`);
+      } else {
+        setServerError(`Network error: ${errorMsg}`);
+      }
       setSubmitting(false);
     }
   };
@@ -562,26 +1023,38 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                   suggestions.map((item) => {
                     const med = item?.medicine || item;
                     const medName = med?.name || med?.medicine_name || "Unnamed";
-                    let medCategory = "";
-                    if (med?.category) {
-                      if (typeof med.category === 'object') {
-                        medCategory = med.category.name || "";
-                      } else {
-                        medCategory = String(med.category);
-                      }
-                    }
-                    if (!medCategory) {
-                      medCategory = item?.category || "";
-                    }
+                    // Use categoryName for display (the original category name from API)
+                    const medCategory = med?.categoryName || med?.category || "";
+                    const medStrength = med?.strength || "";
                     return (
                       <button
                         type="button"
                         key={`${med?.id || medName}-${medCategory}`}
                         className="quick-add-suggestion"
                         onClick={() => handleSuggestionSelect(item)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          padding: '12px',
+                          width: '100%',
+                          textAlign: 'left',
+                          border: 'none',
+                          borderBottom: '1px solid #e5e7eb',
+                          background: 'white',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
                       >
-                        <span className="name">{medName}</span>
-                        {medCategory && <span className="meta">{medCategory}</span>}
+                        <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                          {medName}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#6b7280' }}>
+                          {medCategory && <span>📦 {medCategory}</span>}
+                          {medStrength && <span>💊 {medStrength}</span>}
+                        </div>
                       </button>
                     );
                   })}
@@ -732,7 +1205,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
             if (relevantFields.length === 0) return null;
             
             return relevantFields.map(field => {
-              const value = selectedMedicine ? selectedMedicine[field.key] : null;
+              const value = selectedMedicine ? selectedMedicine[field.key] : (packagingFields[field.key] || '');
               const displayValue = value !== null && value !== undefined && value !== '' 
                 ? String(value) 
                 : '';
@@ -745,6 +1218,14 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                     value={displayValue}
                     readOnly={selectedMedicine}
                     disabled={selectedMedicine}
+                    onChange={(e) => {
+                      if (!selectedMedicine) {
+                        setPackagingFields(prev => ({
+                          ...prev,
+                          [field.key]: e.target.value
+                        }));
+                      }
+                    }}
                     style={selectedMedicine ? {
                       backgroundColor: '#f3f4f6',
                       cursor: 'not-allowed',
@@ -767,20 +1248,37 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
             <label>Quantity ({quantityLabel}) *</label>
             <input
               type="number"
-              min="0"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              placeholder={stockUnit === 'box' ? 'e.g., 10, 20' : 'e.g., 100, 50'}
+              placeholder={stockUnit === 'box' ? 'e.g., 10, 20 (use negative to reduce stock)' : 'e.g., 100, 50 (use negative to reduce stock)'}
               className={errors.quantity ? "error" : ""}
             />
             {renderFieldError("quantity")}
+            <div className="hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              {stockUnit === 'box' 
+                ? 'Enter positive number to add stock, negative to reduce stock'
+                : 'Enter positive number to add stock, negative to reduce stock'}
+            </div>
           </div>
 
           <div className="quick-add-actions">
             <button type="button" className="btn-secondary" onClick={handleClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={submitting}
+              onClick={(e) => {
+                // Fallback: ensure form submission works
+                if (!e.defaultPrevented) {
+                  const form = e.target.closest('form');
+                  if (form && !form.checkValidity()) {
+                    form.reportValidity();
+                  }
+                }
+              }}
+            >
               {submitting ? "Adding..." : "Add Medicine"}
             </button>
           </div>
