@@ -12,7 +12,7 @@ const DEFAULT_LOCATION_ID = getDefaultLocationId();
 const CreateOrder = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const vendor = location.state?.vendor;
+  const Supplier = location.state?.Supplier;
   const { showAlert } = useAlert();
 
   const [vendorData, setVendorData] = useState(null);
@@ -37,24 +37,24 @@ const CreateOrder = () => {
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    if (!vendor) {
+    if (!Supplier) {
       navigate("/suppliers");
       return;
     }
 
     const fetchVendor = async () => {
       try {
-        const res = await authFetch(`${API_BASE}/api/v1/procurement/vendors/${vendor.id}/`);
+        const res = await authFetch(`${API_BASE}/api/v1/procurement/vendors/${Supplier.id}/`);
         if (!res.ok) return;
         const data = await res.json();
         setVendorData(data);
       } catch (err) {
-        console.error("Vendor fetch error:", err);
+        console.error("Supplier fetch error:", err);
       }
     };
 
     fetchVendor();
-  }, [vendor, navigate]);
+  }, [Supplier, navigate]);
 
   const fetchUOMs = async () => {
     try {
@@ -125,7 +125,7 @@ const CreateOrder = () => {
     if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid qty", "Error");
     if (!manualCategory) return showAlert("Select category", "Error");
     if (!manualUOM) return showAlert("Select UOM", "Error");
-    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
+    if (!vendorData?.id) return showAlert("Supplier not loaded", "Error");
 
     const productPayload = {
       code: generateProductCode(manualProductName.trim()),
@@ -211,7 +211,7 @@ const CreateOrder = () => {
   };
 
   const handleCreateOrder = async () => {
-    if (!vendorData?.id) return showAlert("Vendor not loaded", "Error");
+    if (!vendorData?.id) return showAlert("Supplier not loaded", "Error");
 
     const orderRows = items.filter((r) => Number(r.quantity) > 0);
     if (orderRows.length === 0) return showAlert("Add at least one product", "Error");
@@ -232,7 +232,7 @@ const CreateOrder = () => {
   );
 
     const payload = {
-      vendor: Number(vendorData.id),
+      Supplier: Number(vendorData.id),
       location: DEFAULT_LOCATION_ID,
       order_date: orderDate,
       expected_date: expectedDate || null,

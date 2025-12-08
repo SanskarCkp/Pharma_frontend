@@ -13,7 +13,7 @@ const VendorDetails = () => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
 
-  const [vendor, setVendor] = useState(null);
+  const [Supplier, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [suppliedProducts, setSuppliedProducts] = useState([]);
@@ -21,16 +21,16 @@ const VendorDetails = () => {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Fetch Vendor Basic Details
+  // Fetch Supplier Basic Details
   useEffect(() => {
     const fetchVendor = async () => {
       try {
         const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/vendors/${id}/`);
-        if (!res.ok) throw new Error("Vendor not found");
+        if (!res.ok) throw new Error("Supplier not found");
         const data = await res.json();
         setVendor(data);
       } catch (err) {
-        console.error("Failed to fetch vendor:", err);
+        console.error("Failed to fetch Supplier:", err);
         setVendor(null);
       } finally {
         setLoading(false);
@@ -41,17 +41,17 @@ const VendorDetails = () => {
 
   // Fetch Purchase Orders
   useEffect(() => {
-    if (!vendor) return;
+    if (!Supplier) return;
 
     const loadPurchaseHistory = async () => {
       try {
         const res = await authFetch(
-          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?Supplier=${Supplier.id}`
         );
         const data = await res.json();
         const orders = data.results || data || [];
         const filteredOrders = orders.filter(
-          (ord) => Number(ord.vendor) === Number(vendor.id)
+          (ord) => Number(ord.Supplier) === Number(Supplier.id)
         );
         setPurchaseHistory(filteredOrders);
       } catch (err) {
@@ -59,15 +59,15 @@ const VendorDetails = () => {
       }
     };
     loadPurchaseHistory();
-  }, [vendor]);
+  }, [Supplier]);
 
   useEffect(() => {
-    if (!vendor) return;
+    if (!Supplier) return;
 
     const loadSuppliedProducts = async () => {
       try {
         const res = await authFetch(
-          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?Supplier=${Supplier.id}`
         );
         const data = await res.json();
         const orders = data.results || data || [];
@@ -102,7 +102,7 @@ const VendorDetails = () => {
           const pRes = await authFetch(`${API_BASE_URL}/api/v1/catalog/products/${pId}/`);
           const pData = await pRes.json();
 
-          if (pData.preferred_vendor === vendor.id) {
+          if (pData.preferred_vendor === Supplier.id) {
             products.push(pData);
           }
         }
@@ -110,13 +110,13 @@ const VendorDetails = () => {
         setSuppliedProducts(products);
 
       } catch (err) {
-        console.error("Failed to fetch vendor products:", err);
+        console.error("Failed to fetch Supplier products:", err);
         setSuppliedProducts([]);
       }
     };
 
     loadSuppliedProducts();
-  }, [vendor]);
+  }, [Supplier]);
 
 
   const handleImportClick = () => {
@@ -133,8 +133,8 @@ const VendorDetails = () => {
     setImporting(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("vendor_id", vendor.id);
-    formData.append("location_id", vendor.default_location || 1);
+    formData.append("vendor_id", Supplier.id);
+    formData.append("location_id", Supplier.default_location || 1);
 
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/import-purchase-pdf/`, {
@@ -147,11 +147,11 @@ const VendorDetails = () => {
       showAlert(`Imported ${data.lines_created} lines successfully!`, "Import Success");
 
       const ordersRes = await authFetch(
-        `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
+        `${API_BASE_URL}/api/v1/procurement/purchase-orders/?Supplier=${Supplier.id}`
       );
       const ordersData = await ordersRes.json();
       const filteredOrders = (ordersData.results || ordersData).filter(
-        (ord) => Number(ord.vendor) === Number(vendor.id)
+        (ord) => Number(ord.Supplier) === Number(Supplier.id)
       );
       setPurchaseHistory(filteredOrders);
       setActiveTab("purchase");
@@ -163,11 +163,11 @@ const VendorDetails = () => {
     }
   };
 
-  if (loading) return <div className="vendor-loading">Loading vendor details...</div>;
-  if (!vendor) return <div className="vendor-loading">Vendor not found!</div>;
+  if (loading) return <div className="Supplier-loading">Loading Supplier details...</div>;
+  if (!Supplier) return <div className="Supplier-loading">Supplier not found!</div>;
 
   return (
-    <div className="vendor-details-wrap">
+    <div className="Supplier-details-wrap">
       {/* Hidden File Input */}
       <input
         type="file"
@@ -178,93 +178,93 @@ const VendorDetails = () => {
       />
 
       {/* Page Header */}
-      <div className="vendor-details-header">
+      <div className="Supplier-details-header">
         <button className="back-btn" onClick={() => navigate("/suppliers")}>
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
         <div>
-          <h2>{vendor.name || "Vendor Details"}</h2>
+          <h2>{Supplier.name || "Supplier Details"}</h2>
           <p>Supplier Details & KPIs</p>
         </div>
       </div>
 
-      <div className="vendor-details-grid">
+      <div className="Supplier-details-grid">
         {/* Basic Info */}
-        <div className="vendor-detail-card">
+        <div className="Supplier-detail-card">
           <h3>Basic Information</h3>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Phone:</span>
-            <span className="vendor-info-value">{vendor.contact_phone || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Phone:</span>
+            <span className="Supplier-info-value">{Supplier.contact_phone || "-"}</span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Email:</span>
-            <span className="vendor-info-value">{vendor.email || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Email:</span>
+            <span className="Supplier-info-value">{Supplier.email || "-"}</span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Address:</span>
-            <span className="vendor-info-value">{vendor.address || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Address:</span>
+            <span className="Supplier-info-value">{Supplier.address || "-"}</span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">GSTIN:</span>
-            <span className="vendor-info-value">{vendor.gstin || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">GSTIN:</span>
+            <span className="Supplier-info-value">{Supplier.gstin || "-"}</span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Supplier Type:</span>
-            <span className="vendor-info-value">{vendor.supplier_type || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Supplier Type:</span>
+            <span className="Supplier-info-value">{Supplier.supplier_type || "-"}</span>
           </div>
         </div>
 
         {/* Supplier Status */}
-        <div className="vendor-detail-card">
+        <div className="Supplier-detail-card">
           <h3>Supplier Status</h3>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Status:</span>
-            <span className="vendor-info-value">
-              <span className={`vendor-status-badge ${vendor.is_active ? "active" : "inactive"}`}>
-                {vendor.is_active ? "Active" : "Inactive"}
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Status:</span>
+            <span className="Supplier-info-value">
+              <span className={`Supplier-status-badge ${Supplier.is_active ? "active" : "inactive"}`}>
+                {Supplier.is_active ? "Active" : "Inactive"}
               </span>
             </span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Payment Terms:</span>
-            <span className="vendor-info-value">{vendor.payment_terms || "-"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Payment Terms:</span>
+            <span className="Supplier-info-value">{Supplier.payment_terms || "-"}</span>
           </div>
-          <div className="vendor-info-row">
-            <span className="vendor-info-label">Rating:</span>
-            <span className="vendor-info-value">{vendor.rating || "N/A"}</span>
+          <div className="Supplier-info-row">
+            <span className="Supplier-info-label">Rating:</span>
+            <span className="Supplier-info-value">{Supplier.rating || "N/A"}</span>
           </div>
-          <div className="vendor-metrics-row">
-            <div className="vendor-metric">
-              <div className="vendor-metric-value">{suppliedProducts.length}</div>
-              <div className="vendor-metric-label">Products</div>
+          <div className="Supplier-metrics-row">
+            <div className="Supplier-metric">
+              <div className="Supplier-metric-value">{suppliedProducts.length}</div>
+              <div className="Supplier-metric-label">Products</div>
             </div>
-            <div className="vendor-metric">
-              <div className="vendor-metric-value">{purchaseHistory.length}</div>
-              <div className="vendor-metric-label">Orders</div>
+            <div className="Supplier-metric">
+              <div className="Supplier-metric-value">{purchaseHistory.length}</div>
+              <div className="Supplier-metric-label">Orders</div>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="vendor-detail-card">
+        <div className="Supplier-detail-card">
           <h3>Quick Actions</h3>
-          <div className="vendor-quick-actions">
+          <div className="Supplier-quick-actions">
             <button
-              className="vendor-action-btn"
-              onClick={() => navigate(`/masters/products`, { state: { vendor } })}
+              className="Supplier-action-btn"
+              onClick={() => navigate(`/masters/products`, { state: { Supplier } })}
             >
               Create Order
             </button>
             <button
-              className="vendor-action-btn"
-              onClick={() => navigate(`/masters/products/vendor-catalog/${id}`, { state: { vendor } })}
+              className="Supplier-action-btn"
+              onClick={() => navigate(`/masters/products/Supplier-catalog/${id}`, { state: { Supplier } })}
             >
               View Catalog
             </button>
-            {vendor.supplier_type === "ONLINE" && (
+            {Supplier.supplier_type === "ONLINE" && (
               <button
-                className="vendor-action-btn"
+                className="Supplier-action-btn"
                 disabled={importing}
                 onClick={handleImportClick}
               >
@@ -272,14 +272,14 @@ const VendorDetails = () => {
               </button>
             )}
             <button
-              className="vendor-action-btn"
-              onClick={() => navigate(`/suppliers/edit/${id}`, { state: { vendor } })}
+              className="Supplier-action-btn"
+              onClick={() => navigate(`/suppliers/edit/${id}`, { state: { Supplier } })}
             >
               Edit Supplier
             </button>
             <button
-              className="vendor-action-btn"
-              onClick={() => navigate(`/masters/products/purchase-orders/`, { state: { vendor } })}
+              className="Supplier-action-btn"
+              onClick={() => navigate(`/masters/products/purchase-orders/`, { state: { Supplier } })}
             >
               Purchase Orders
             </button>
@@ -287,25 +287,25 @@ const VendorDetails = () => {
         </div>
 
         {/* TAB SECTION */}
-        <div className="vendor-tabs-card">
-          <div className="vendor-tabs">
+        <div className="Supplier-tabs-card">
+          <div className="Supplier-tabs">
             <button
-              className={`vendor-tab ${activeTab === "purchase" ? "active" : ""}`}
+              className={`Supplier-tab ${activeTab === "purchase" ? "active" : ""}`}
               onClick={() => setActiveTab("purchase")}
             >
               Purchase History
             </button>
             <button
-              className={`vendor-tab ${activeTab === "products" ? "active" : ""}`}
+              className={`Supplier-tab ${activeTab === "products" ? "active" : ""}`}
               onClick={() => setActiveTab("products")}
             >
               Supplied Products
             </button>
           </div>
 
-          <div className="vendor-table-wrap">
+          <div className="Supplier-table-wrap">
             {activeTab === "purchase" && (
-              <table className="vendor-table">
+              <table className="Supplier-table">
                 <thead>
                   <tr>
                     <th>PO No</th>
@@ -315,7 +315,7 @@ const VendorDetails = () => {
                 </thead>
                 <tbody>
                   {purchaseHistory.length === 0 ? (
-                    <tr><td colSpan="3" className="vendor-table-empty">No purchase history found.</td></tr>
+                    <tr><td colSpan="3" className="Supplier-table-empty">No purchase history found.</td></tr>
                   ) : (
                     purchaseHistory.map((order) => (
                       <tr key={order.id}>
@@ -330,7 +330,7 @@ const VendorDetails = () => {
             )}
 
             {activeTab === "products" && (
-              <table className="vendor-table">
+              <table className="Supplier-table">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -340,14 +340,14 @@ const VendorDetails = () => {
                 </thead>
                 <tbody>
                   {suppliedProducts.length === 0 ? (
-                    <tr><td colSpan="3" className="vendor-table-empty">No products supplied.</td></tr>
+                    <tr><td colSpan="3" className="Supplier-table-empty">No products supplied.</td></tr>
                   ) : (
                     suppliedProducts.map((prod) => (
                       <tr key={prod.id}>
                         <td>{prod.name}</td>
                         <td>{prod.category_name || "-"}</td>
                         <td>
-                          <span className={`vendor-status-badge ${prod.is_active ? "active" : "inactive"}`}>
+                          <span className={`Supplier-status-badge ${prod.is_active ? "active" : "inactive"}`}>
                             {prod.is_active ? "Active" : "Inactive"}
                           </span>
                         </td>

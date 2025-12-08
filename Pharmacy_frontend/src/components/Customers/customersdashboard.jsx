@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import styles from "./customersdashboard.module.css";
 import { Eye, Trash2 } from "lucide-react";
 import { useAlert } from "../ui/alert-provider";
+import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-// Normalize API base to ensure /api/v1 suffix exists
-const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
+const CUSTOMERS_URL = apiUrl("customers/");
 
 const CustomersDashboard = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
@@ -29,10 +29,11 @@ const CustomersDashboard = () => {
   const fetchStats = async (filter = "none") => {
     try {
       setLoadingStats(true);
-      let url = `${API_BASE}/api/v1/customers/?stats=true`;
-      if (filter !== "none") url += `&filter=${filter}`;
+      const url = new URL(CUSTOMERS_URL, window.location.origin);
+      url.searchParams.set("stats", "true");
+      if (filter !== "none") url.searchParams.set("filter", filter);
 
-      const res = await fetch(url);
+      const res = await authFetch(url.toString());
       if (!res.ok) throw new Error("Stats fetch error");
 
       const data = await res.json();
@@ -52,7 +53,7 @@ const CustomersDashboard = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const res = await authFetch(`${API_BASE}/api/v1/customers/`);
+      const res = await authFetch(CUSTOMERS_URL);
       if (!res.ok) throw new Error("Customers fetch error");
 
       const data = await res.json();
@@ -86,7 +87,7 @@ const CustomersDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
     try {
-      const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/`, { method: "DELETE" });
+      const res = await authFetch(`${CUSTOMERS_URL}${id}/`, { method: "DELETE" });
       if (res.ok) {
         showAlert("Customer deleted!", "Success");
         fetchCustomers();

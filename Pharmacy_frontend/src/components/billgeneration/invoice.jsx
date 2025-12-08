@@ -75,29 +75,32 @@ export default function Invoice() {
       const element = printRef.current;
 
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 2.5,
         useCORS: true,
         logging: false,
-        allowTaint: true
+        backgroundColor: "#fff",
+        scrollX: 0,
+        scrollY: -window.scrollY,
       });
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
+      const margin = 2; // mm
+      const imgWidth = pageWidth - margin * 2;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
+      while (heightLeft > 0) {
+        position -= pageHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
@@ -132,7 +135,7 @@ export default function Invoice() {
               />
             </div>
             <div className={styles.companyInfo}>
-              <h2 className={styles.companyName}>The Wellness Medicines</h2>
+              <h2 className={styles.companyName}>Keshav Medicals</h2>
               <p className={styles.companySubtitle}>(a unit of wellness pharma)</p>
               <p className={styles.companyAddress}>
                 Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,<br />

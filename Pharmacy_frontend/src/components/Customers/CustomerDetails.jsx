@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Phone, Mail, MapPin, UserCheck } from "lucide-react";
 import "./customerdetails.css";
 import { authFetch } from "../../api/http";
+import { apiUrl } from "../../api/base";
 
-const rawBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-const API_BASE = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
+const CUSTOMER_URL = apiUrl("customers/");
 
 const CustomerDetails = () => {
   const { id } = useParams();
@@ -27,11 +27,13 @@ const CustomerDetails = () => {
 
     const fetchCustomer = async () => {
       try {
-        const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/?summary=true`);
+        const url = new URL(`${CUSTOMER_URL}${id}/`, window.location.origin);
+        url.searchParams.set("summary", "true");
+
+        const res = await authFetch(url.toString());
         if (!res.ok) throw new Error(`HTTP error! ${res.status}`);
         const data = await res.json();
-        console.log("Fetched customer summary:", data); // Debug log
-        setCustomerData(data); // Store full backend response
+        setCustomerData(data);
       } catch (err) {
         console.error("Customer Fetch Error:", err);
       } finally {
@@ -48,7 +50,7 @@ const CustomerDetails = () => {
       setShowInvoices(true);
       setInvoiceLoading(true);
       try {
-        const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/invoices/`);
+        const res = await authFetch(`${CUSTOMER_URL}${id}/invoices/`);
         if (res.ok) {
           const data = await res.json();
           setInvoices(Array.isArray(data) ? data : data.results || []);
@@ -75,7 +77,7 @@ const CustomerDetails = () => {
     <div className="customer-details-container">
       <div className="customer-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
-          ← Back
+          &lt; Back
         </button>
         <h1 className="customer-name">{customer?.name}</h1>
       </div>
@@ -134,7 +136,7 @@ const CustomerDetails = () => {
                           <td>{inv.invoice_no || inv.id}</td>
                           <td>{inv.date?.slice(0, 10) || "-"}</td>
                           <td>{inv.items || 0}</td>
-                          <td>₹ {inv.amount || 0}</td>
+                          <td>Rs {inv.amount || 0}</td>
                           <td>{inv.payment_status || "-"}</td>
                           <td>{inv.payment_status || "-"}</td>
                           <td>
@@ -168,15 +170,15 @@ const CustomerDetails = () => {
         {/* Purchase Stats */}
         <div className="kpi-card purchase-stats">
           <h3>Purchase Stats</h3>
-          <p>Total Purchases: ₹ {purchase_status?.total_purchases || 0}</p>
-          <p>Avg Bill: ₹ {purchase_status?.avg_bill_value || 0}</p>
+          <p>Total Purchases: Rs {purchase_status?.total_purchases || 0}</p>
+          <p>Avg Bill: Rs {purchase_status?.avg_bill_value || 0}</p>
         </div>
 
         {/* This Month */}
         <div className="kpi-card this-month">
           <h3>This Month</h3>
           <p>Visits: {this_month?.visits || 0}</p>
-          <p>Amount Spent: ₹ {this_month?.amount_spent || 0}</p>
+          <p>Amount Spent: Rs {this_month?.amount_spent || 0}</p>
         </div>
       </div>
     </div>

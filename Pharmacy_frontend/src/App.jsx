@@ -1,11 +1,10 @@
 // src/App.jsx
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Routes,
   Route,
   Navigate,
-  useNavigate,
-  useLocation,
+  useParams,
 } from "react-router-dom";
 
 // Layout
@@ -59,6 +58,7 @@ import PaymentTerms from "./components/Masters/payment_terms/payment_terms.jsx";
 import RackLocations from "./components/Masters/rack_locations/rack_locations.jsx";
 
 // User
+import Users from "./components/users/users.jsx";
 import UserDevices from "./components/user/user_devices/user_devices.jsx";
 import TransferVouchers from "./components/user/transfer_vouchers/transfer_vouchers.jsx";
 import BreachLogs from "./components/user/breach_logs/breach_logs.jsx";
@@ -104,7 +104,17 @@ import Ndpsdailyentries from "./components/ndpsdailyentries/ndpsdailyentries.jsx
 // Reports
 import SalesReport from "./components/reports/SalesReport.jsx";
 import PurchaseReport from "./components/reports/PurchaseReport.jsx";
-import ExpiryReport from "./components/reports/ExpiryReport.jsx";
+
+// Redirect helpers for legacy supplier URLs
+const RedirectVendorDetail = () => {
+  const { id } = useParams();
+  return <Navigate to={`/suppliers/viewdetails/${id}`} replace />;
+};
+
+const RedirectVendorEdit = () => {
+  const { id } = useParams();
+  return <Navigate to={`/suppliers/edit/${id}`} replace />;
+};
 
 /** Shell for authenticated pages */
 function AppLayout() {
@@ -125,15 +135,29 @@ function AppLayout() {
 
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
+            <Route path="/masters/users" element={<Users />} />
 
-            <Route path="/masters/vendors" element={<Vendorsdashboard />} />
-            <Route path="/masters/vendors/add" element={<AddVendors />} />
-            <Route path="/masters/vendors/view/:id" element={<ViewVendor />} />
-            <Route path="/masters/vendors/edit/:id" element={<EditVendor />} />
-            <Route
-              path="/masters/vendors/viewdetails/:id"
-              element={<VendorDetails />}
-            />
+            {/* Suppliers (canonical) */}
+            <Route path="/suppliers" element={<Vendorsdashboard />} />
+            <Route path="/suppliers/add" element={<AddVendors />} />
+            <Route path="/suppliers/view/:id" element={<ViewVendor />} />
+            <Route path="/suppliers/edit/:id" element={<EditVendor />} />
+            <Route path="/suppliers/viewdetails/:id" element={<VendorDetails />} />
+
+            {/* Legacy masters URLs redirect to suppliers */}
+            <Route path="/masters/Suppliers" element={<Navigate to="/suppliers" replace />} />
+            <Route path="/masters/Suppliers/add" element={<Navigate to="/suppliers/add" replace />} />
+            <Route path="/masters/Suppliers/view/:id" element={<RedirectVendorDetail />} />
+            <Route path="/masters/Suppliers/viewdetails/:id" element={<RedirectVendorDetail />} />
+            <Route path="/masters/Suppliers/edit/:id" element={<RedirectVendorEdit />} />
+            <Route path="/masters/vendors" element={<Navigate to="/suppliers" replace />} />
+            <Route path="/masters/vendors/add" element={<Navigate to="/suppliers/add" replace />} />
+            <Route path="/masters/vendors/view/:id" element={<RedirectVendorDetail />} />
+            <Route path="/masters/vendors/viewdetails/:id" element={<RedirectVendorDetail />} />
+            <Route path="/masters/vendors/edit/:id" element={<RedirectVendorEdit />} />
+
+            {/* Shortcuts for sidebar entries */}
+            <Route path="/customers" element={<Navigate to="/masters/customers" replace />} />
 
             <Route
               path="/masters/customers"
@@ -184,7 +208,7 @@ function AppLayout() {
               element={<ReceiveItems />}
             />
             <Route
-              path="/masters/products/vendor-catalog/:id"
+              path="/masters/products/Supplier-catalog/:id"
               element={<ProductCatalog />}
             />
 
@@ -210,6 +234,7 @@ function AppLayout() {
               path="/unitofmeasurement"
               element={<UnitOfMeasurement />}
             />
+            <Route path="/hsncode" element={<MedicineForms />} />
             <Route path="/medicineforms" element={<MedicineForms />} />
             <Route
               path="/medicinecategories"
@@ -279,7 +304,6 @@ function AppLayout() {
             />
             <Route path="/reports/sales" element={<SalesReport />} />
             <Route path="/reports/purchases" element={<PurchaseReport />} />
-            <Route path="/reports/expiry" element={<ExpiryReport />} />
           </Routes>
         </main>
       </div>
@@ -290,23 +314,6 @@ function AppLayout() {
 }
 
 export default function App() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // 👇 This runs once whenever the app is loaded (including refresh)
-  useEffect(() => {
-    const path = location.pathname;
-
-    // If we are NOT already on a public route, force redirect to /login
-    if (
-      !path.startsWith("/login") &&
-      !path.startsWith("/reset-password")
-    ) {
-      navigate("/login", { replace: true });
-    }
-    // ⚠️ empty dependency array = only on first mount (page load / refresh)
-  }, []); 
-
   return (
     <Routes>
       {/* Public routes */}

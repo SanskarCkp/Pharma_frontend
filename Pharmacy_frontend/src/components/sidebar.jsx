@@ -41,14 +41,14 @@ const Sidebar = () => {
     { path: "/billgeneration/billlist", activeMatch: "/billgeneration", label: "Billing", icon: <FileText size={18} /> },
     { path: "/reports/sales", activeMatch: "/reports", label: "Reports", icon: <BarChart2 size={18} /> },
     { path: "/suppliers", activeMatch: "/suppliers", label: "Suppliers", icon: <Store size={18} /> },
-    { path: "/customers", activeMatch: "/customers", label: "Customers", icon: <UserCircle size={18} /> },
+    { path: "/masters/customers", activeMatch: "/masters/customers", label: "Customers", icon: <UserCircle size={18} /> },
     { path: "/expiryalrets", activeMatch: "/expiryalrets", label: "Expiry Alerts", icon: <Hourglass size={18} /> },
     { path: "/settings", activeMatch: "/settings", label: "Settings", icon: <ShoppingCart size={18} /> },
 
     
     // { path: "/retention-policies", label: "Retention Policies", icon: <ShoppingCart size={18} /> },
     // { path: "/consentledger", label: "Consent Ledger", icon: <BookText size={18} /> },
-    // { path: "/vendorreturns", label: "Vendor Returns", icon: <Undo2 size={18} /> },
+    // { path: "/vendorreturns", label: "Supplier Returns", icon: <Undo2 size={18} /> },
     // { path: "/transferlines", label: "Transfer Lines", icon: <ArrowLeftRight size={18} /> },
     // { path: "/prescriptions", label: "Prescriptions", icon: <FileText size={18} /> },
     // { path: "/saleslines", label: "Sales Lines", icon: <ReceiptText size={18} /> },
@@ -125,7 +125,7 @@ const Sidebar = () => {
           to="/masters"
           onClick={closeMobileMenu}
           className={() => {
-            // Exclude vendors, customers, and products as they have their own menu items or are sub-pages
+            // Exclude suppliers, customers, and products so they have their own highlighting
             const isExcluded = location.pathname.startsWith("/suppliers") ||
                               location.pathname.startsWith("/masters/customers") ||
                               location.pathname.startsWith("/masters/products");
@@ -154,7 +154,7 @@ const Sidebar = () => {
             className={() => {
               let active = location.pathname.startsWith(item.activeMatch);
 
-              // Special case for Suppliers: also match vendor-related product pages
+              // Special case for Suppliers: also match Supplier-related product pages
               if (item.label === "Suppliers" && location.pathname.startsWith("/masters/products")) {
                 active = true;
               }

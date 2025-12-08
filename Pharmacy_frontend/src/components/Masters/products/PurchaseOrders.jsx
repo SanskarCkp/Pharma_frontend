@@ -11,23 +11,23 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const PurchaseOrders = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const vendor = location.state?.vendor || null;
+  const Supplier = location.state?.Supplier || null;
   const { showAlert } = useAlert();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!vendor?.id) {
+    if (!Supplier?.id) {
       setLoading(false);
       return;
     }
 
     const fetchOrders = async () => {
       try {
-        // Fetch orders filtered by vendor from backend
+        // Fetch orders filtered by Supplier from backend
         const res = await authFetch(
-          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/procurement/purchase-orders/?Supplier=${Supplier.id}`
         );
 
         const data = await res.json();
@@ -35,7 +35,7 @@ const PurchaseOrders = () => {
 
         // Extra safety: filter in React also
         const filteredOrders = ordersList.filter(
-          (order) => Number(order.vendor) === Number(vendor.id)
+          (order) => Number(order.Supplier) === Number(Supplier.id)
         );
 
         // Fetch PO lines and calculate total items for each order
@@ -76,11 +76,11 @@ const PurchaseOrders = () => {
     };
 
     fetchOrders();
-  }, [vendor]);
+  }, [Supplier]);
 
   const handleReceiveItems = (id) =>
     navigate(`/masters/products/receive-items/${id}`, {
-      state: { vendor },
+      state: { Supplier },
     });
 
   const handleDelete = async (id) => {
@@ -116,11 +116,11 @@ const PurchaseOrders = () => {
         <h1 className="page-title">Purchase Orders</h1>
       </div>
 
-      {vendor ? (
-        <p className="vendor-name">Vendor: {vendor.name}</p>
+      {Supplier ? (
+        <p className="Supplier-name">Supplier: {Supplier.name}</p>
       ) : (
-        <p className="vendor-name" style={{ color: "red" }}>
-          Vendor not selected. Please select a vendor to view orders.
+        <p className="Supplier-name" style={{ color: "red" }}>
+          Supplier not selected. Please select a Supplier to view orders.
         </p>
       )}
 

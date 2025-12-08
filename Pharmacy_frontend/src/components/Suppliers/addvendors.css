@@ -1,5 +1,5 @@
 /* Page Container */
-.vendors-container {
+.Suppliers-container {
   width: 100%;
   padding: 25px;
 }
@@ -26,7 +26,7 @@
 }
 
 /* Title */
-.vendors-title {
+.Suppliers-title {
   font-size: 24px;
   font-weight: 600;
   margin: 0; /* remove default margin */

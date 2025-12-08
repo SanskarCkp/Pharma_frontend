@@ -58,7 +58,7 @@ export default function GenerateBill() {
   const locationId = getDefaultLocationId();
   const { showAlert } = useAlert();
 
-  const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "" });
+  const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "", doctor: "" });
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
@@ -451,9 +451,9 @@ export default function GenerateBill() {
               City *
               <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Customer city" />
             </label>
-             <label>
-              Consulting Doctor*
-              <input value={customer.name} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Consulting" />
+            <label className="full-width">
+              Doctor
+              <input value={customer.doctor} onChange={(e) => setCustomer({ ...customer, doctor: e.target.value })} placeholder="Doctor name (optional)" />
             </label>
           </div>
         </section>
