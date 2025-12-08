@@ -12,7 +12,7 @@ const ReceiveItems = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const vendor = location.state?.vendor || null;
+  const Supplier = location.state?.Supplier || null;
   const { showAlert } = useAlert();
 
   const [purchaseOrder, setPurchaseOrder] = useState(null);
@@ -248,8 +248,8 @@ const ReceiveItems = () => {
         setPurchaseOrder({
           id: poData.id,
           po_number: poData.po_number,
-          supplier: vendor ? vendor.name : poData.vendor_name || "",
-          vendor_id: vendor?.id || poData.vendor?.id,
+          supplier: Supplier ? Supplier.name : poData.vendor_name || "",
+          vendor_id: Supplier?.id || poData.Supplier?.id,
           location_id: resolvedLocationId,
           location: resolvedLocationId,
           order_date: poData.order_date,
@@ -264,7 +264,7 @@ const ReceiveItems = () => {
     };
 
     fetchDetails();
-  }, [id, vendor]);
+  }, [id, Supplier]);
 
   // Handler with batch autofill
   const handleItemEdit = (idx, field, value) => {

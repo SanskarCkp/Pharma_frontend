@@ -180,6 +180,12 @@
   height: 400px;
   display: flex;
   flex-direction: column;
+  border: 1px solid #f0f0f0;
+  transition: box-shadow 0.3s ease;
+}
+
+.report-chart-card:hover {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
 }
 
 .report-chart-card h4 {
@@ -187,6 +193,7 @@
   font-weight: 600;
   color: #333;
   flex-shrink: 0;
+  font-size: 16px;
 }
 
 .report-chart-wrapper {
@@ -200,6 +207,24 @@
   left: 0;
   width: 100% !important;
   height: 100% !important;
+}
+
+/* =========================================================
+   CHARTS GRID LAYOUT
+   ========================================================= */
+.report-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.report-charts-grid .chart-primary {
+  grid-column: 1 / 2;
+}
+
+.report-charts-grid .chart-secondary {
+  grid-column: 2 / 3;
 }
 
 /* =========================================================
@@ -367,8 +392,168 @@
 }
 
 /* =========================================================
+   INSIGHTS GRID
+   ========================================================= */
+.report-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.report-insight-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-insight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.insight-title {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  border-bottom: 2px solid #f3f4f6;
+  padding-bottom: 8px;
+}
+
+.insight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insight-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.insight-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(19, 181, 125, 0.12);
+  color: #13b57d;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.insight-rank.warning {
+  background: rgba(255, 167, 38, 0.12);
+  color: #f59e0b;
+}
+
+.insight-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.insight-label {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.insight-value {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.insight-bar {
+  grid-column: 2 / 3;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.insight-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #13b57d, #17c486);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.insight-bar-fill.warning {
+  background: linear-gradient(90deg, #ffa726, #fb8c00);
+}
+
+/* Stats Card Specific Styles */
+.stats-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.stat-value.positive {
+  color: #13b57d;
+}
+
+.stat-value.negative {
+  color: #d9534f;
+}
+
+/* =========================================================
    RESPONSIVE
    ========================================================= */
+@media (max-width: 1200px) {
+  .report-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-charts-grid .chart-primary,
+  .report-charts-grid .chart-secondary {
+    grid-column: 1 / 2;
+  }
+}
+
 @media (max-width: 900px) {
   .report-wrap {
     padding: 20px 30px;
@@ -379,7 +564,7 @@
   }
 
   .kpi-cards {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -409,5 +594,9 @@
 
   .report-table {
     min-width: 500px;
+  }
+
+  .report-chart-card {
+    height: 320px;
   }
 }

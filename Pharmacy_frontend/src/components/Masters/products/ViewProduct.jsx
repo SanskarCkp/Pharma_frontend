@@ -32,10 +32,10 @@ const ViewProduct = () => {
   }, [id]);
 
   return (
-    <div className="vendors-container">
-      <h1 className="vendors-title">View Product</h1>
+    <div className="Suppliers-container">
+      <h1 className="Suppliers-title">View Product</h1>
 
-      <form className="vendors-form">
+      <form className="Suppliers-form">
 
         <div className="form-row">
           <div className="form-group">

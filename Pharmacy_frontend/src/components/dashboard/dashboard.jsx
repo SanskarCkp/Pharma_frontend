@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -20,7 +20,7 @@ const MONTHLY_URL = apiUrl("dashboard/monthly/");
 const pieColors = ["#2ECC71", "#F1C40F", "#E74C3C"];
 
 const formatCurrency = (value) =>
-  `₹${Number(value || 0).toLocaleString("en-IN", {
+  `â‚¹${Number(value || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -87,17 +87,24 @@ const Dashboard = () => {
           color: "#3498DB",
         },
         {
-          title: "Pending Bills",
-          value: summary?.sales?.pending_bills ?? 0,
-          sub: `${formatCurrency(summary?.sales?.pending_amount)} outstanding`,
-          color: "#9B59B6",
+          title: "Today's Profit",
+          value: formatCurrency(summary?.sales?.today_profit ?? 0),
+          sub: summary?.sales?.profit_margin ? `${summary.sales.profit_margin}% margin` : "Profit margin",
+          color: "#13b57d",
+        },
+        {
+          title: "Expiry Alerts",
+          value: summary?.expiry?.critical ?? 0,
+          sub: `${summary?.expiry?.warning ?? 0} warning, ${summary?.expiry?.safe ?? 0} safe`,
+          color: "#E74C3C",
         },
       ]
     : [
-        { title: "Total Medicines", value: "—", sub: "", color: "#2ECC71" },
-        { title: "Low Stock Alerts", value: "—", sub: "", color: "#F39C12" },
-        { title: "Today's Sales", value: "—", sub: "", color: "#3498DB" },
-        { title: "Pending Bills", value: "—", sub: "", color: "#9B59B6" },
+        { title: "Total Medicines", value: "â€”", sub: "", color: "#2ECC71" },
+        { title: "Low Stock Alerts", value: "â€”", sub: "", color: "#F39C12" },
+        { title: "Today's Sales", value: "â€”", sub: "", color: "#3498DB" },
+        { title: "Today's Profit", value: "â€”", sub: "", color: "#13b57d" },
+        { title: "Expiry Alerts", value: "â€”", sub: "", color: "#E74C3C" },
       ];
 
   const inventoryStatus = summary?.inventory?.status || { in_stock: 0, low_stock: 0, out_of_stock: 0 };
@@ -114,7 +121,6 @@ const Dashboard = () => {
   }));
 
   const recentSales = summary?.recent_sales || [];
-  const lowStock = summary?.low_stock_items || [];
 
   const handleRefresh = () => setRefreshKey((n) => n + 1);
 
@@ -151,7 +157,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px', width: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px', width: '100%' }}>
         {cards.map((card, index) => (
           <div key={index} className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100">
             <div className="font-medium text-gray-600">{card.title}</div>
@@ -194,12 +200,48 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-5 mt-5">
+            <div className=\"grid grid-cols-1 gap-5 mt-5\">
+        <div className=\"p-5 bg-white rounded-xl shadow border border-gray-100\">
+          <h3 className=\"font-semibold mb-3\">Recent Sales</h3>
+          {recentSales.length === 0 && <p className=\"text-gray-500 text-sm\">No sales yet.</p>}
+          {recentSales.map((sale, index) => (
+            <div className=\"flex justify-between py-3 border-b last:border-b-0\" key={${sale.invoice_no || index}-}>
+              <div>
+                <div className=\"font-medium\">{sale.customer_name || \"-\"}</div>
+                <div className=\"text-gray-500 text-sm\">
+                  {sale.invoice_date ? new Date(sale.invoice_date).toLocaleString() : \"-\"}
+                </div>
+              </div>
+              <div className=\"font-semibold\">{formatCurrency(sale.amount)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-5 bg-white rounded-xl shadow border border-gray-100">
+          <h3 className="font-semibold mb-3">Low Stock Medicines</h3>
+          {lowStock.length === 0 && <p className="text-gray-500 text-sm">Inventory is healthy ðŸŽ‰</p>}
+          {lowStock.map((item) => (
+            <div key={item.product_id} className="mb-4 pb-3 border-b last:border-b-0">
+              <div className="flex justify-between">
+                <span className="font-medium">{item.product_name}</span>
+                <span className="text-sm text-gray-600">
+                  {Number(item.stock_base || 0)} units available
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="p-5 bg-white rounded-xl shadow border border-gray-100">
           <h3 className="font-semibold mb-3">Recent Sales</h3>
           {recentSales.length === 0 && <p className="text-gray-500 text-sm">No sales yet.</p>}
           {recentSales.map((sale, index) => (
-            <div className="flex justify-between py-3 border-b" key={`${sale.invoice_no || index}-${sale.invoice_date}`}>
+            <div className="flex justify-between py-3 border-b last:border-b-0" key={`${sale.invoice_no || index}-${sale.invoice_date}`}>
               <div>
                 <div className="font-medium">{sale.customer_name || "-"}</div>
                 <div className="text-gray-500 text-sm">
@@ -210,24 +252,10 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
-
-        <div className="p-5 bg-white rounded-xl shadow border border-gray-100">
-          <h3 className="font-semibold mb-3">Low Stock Medicines</h3>
-          {lowStock.length === 0 && <p className="text-gray-500 text-sm">Inventory is healthy 🎉</p>}
-          {lowStock.map((item) => (
-            <div key={item.product_id} className="mb-4">
-              <div className="flex justify-between">
-                <span className="font-medium">{item.product_name}</span>
-                <span className="text-sm text-gray-600">
-                  {Number(item.stock_base || 0)} units available
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
 };
 
 export default Dashboard;
+

@@ -5,7 +5,6 @@ import "../styles/reports.css";
 const TABS = [
   { path: "/reports/sales", label: "Sales Report" },
   { path: "/reports/purchases", label: "Purchase Report" },
-  { path: "/reports/expiry", label: "Expiry Report" },
 ];
 
 export default function ReportTabs() {

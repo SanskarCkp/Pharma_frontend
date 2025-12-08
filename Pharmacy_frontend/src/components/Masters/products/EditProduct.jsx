@@ -68,17 +68,17 @@ const EditProduct = () => {
   };
 
   return (
-    <div className="vendors-container">
+    <div className="Suppliers-container">
       {/* ✅ Back button added */}
       <div className="editproduct-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
-        <h1 className="vendors-title">Update Product</h1>
+        <h1 className="Suppliers-title">Update Product</h1>
       </div>
 
-      <form className="vendors-form" onSubmit={handleSubmit}>
+      <form className="Suppliers-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <div className="form-group">
             <label>Name:</label>

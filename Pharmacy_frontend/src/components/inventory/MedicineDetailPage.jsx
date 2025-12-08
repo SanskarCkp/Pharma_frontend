@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
@@ -61,7 +62,8 @@ export default function MedicineDetailPage() {
     <div className="inv-detail-wrap">
       <div className="inv-detail-header">
         <button className="btn-secondary" onClick={() => nav("/inventory/medicines")}>
-          ← Back
+          <ArrowLeft size={18} />
+          Back
         </button>
         <div>
           <h2>{medicine?.name || "Medicine Details"}</h2>

@@ -1,10 +1,11 @@
 // src/components/settings/SettingsDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Home, AlertCircle, CreditCard, Database, Bell } from "lucide-react";
+import { Home, AlertCircle, Database, Bell, Edit2, X } from "lucide-react";
 import styles from "./settingsdashboard.module.css";
 import { authFetch } from "../../api/http";
 import { useAlert } from "../ui/alert-provider";
+import Notifications from "./Notifications";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -15,11 +16,12 @@ const SettingsDashboard = () => {
   const [activeSection, setActiveSection] = useState("Business Details");
   const [loading, setLoading] = useState(false);
   const [businessExists, setBusinessExists] = useState(false);
+  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
+  const [isEditingAlerts, setIsEditingAlerts] = useState(false);
 
   const settingsSections = [
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
-    { name: "Tax & Billing", icon: <CreditCard size={24} /> },
     // { name: "Backup & Restore", icon: <Database size={24} /> },
     { name: "Notifications", icon: <Bell size={24} /> },
   ];
@@ -114,6 +116,14 @@ const SettingsDashboard = () => {
   }, []);
 
   // -------------------------------------------------------
+  // RESET EDIT MODE WHEN SECTION CHANGES
+  // -------------------------------------------------------
+  useEffect(() => {
+    setIsEditingBusiness(false);
+    setIsEditingAlerts(false);
+  }, [activeSection]);
+
+  // -------------------------------------------------------
   // HANDLERS
   // -------------------------------------------------------
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -136,12 +146,18 @@ const SettingsDashboard = () => {
       if (response.ok) {
         showAlert("Business details saved!", "Success");
         setBusinessExists(true);
+        setIsEditingBusiness(false);
       } else {
         showAlert("Failed to save business details", "Error");
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelBusiness = () => {
+    setIsEditingBusiness(false);
+    fetchBusinessDetails(); // Reset to original values
   };
 
   // -------------------------------------------------------
@@ -170,6 +186,7 @@ const SettingsDashboard = () => {
 
       if (response.ok) {
         showAlert("Alert thresholds saved!", "Success");
+        setIsEditingAlerts(false);
         fetchAlertSettings();
       } else {
         showAlert("Failed to save alert settings", "Error");
@@ -180,6 +197,11 @@ const SettingsDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelAlerts = () => {
+    setIsEditingAlerts(false);
+    fetchAlertSettings(); // Reset to original values
   };
 
   // -------------------------------------------------------
@@ -212,6 +234,47 @@ const SettingsDashboard = () => {
         {/* --------------------------------------------- */}
         {activeSection === "Business Details" && (
           <div className={styles["business-section"]}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
+              {!isEditingBusiness ? (
+                <button
+                  className={styles["edit-btn"]}
+                  onClick={() => setIsEditingBusiness(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    backgroundColor: "#0ea5e9",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <Edit2 size={16} />
+                  Edit
+                </button>
+              ) : (
+                <button
+                  className={styles["cancel-btn"]}
+                  onClick={handleCancelBusiness}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    backgroundColor: "#6b7280",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              )}
+            </div>
 
             <div className={styles["business-form"]}>
               {Object.entries(formData).map(([key, value]) => (
@@ -219,18 +282,40 @@ const SettingsDashboard = () => {
                   <label>{key.replace(/_/g, " ").toUpperCase()}</label>
 
                   {key === "address" ? (
-                    <textarea name={key} value={value} onChange={handleChange} />
+                    <textarea
+                      name={key}
+                      value={value}
+                      onChange={handleChange}
+                      disabled={!isEditingBusiness}
+                      readOnly={!isEditingBusiness}
+                    />
                   ) : key === "registration_date" ? (
-                    <input type="date" name={key} value={value} onChange={handleChange} />
+                    <input
+                      type="date"
+                      name={key}
+                      value={value}
+                      onChange={handleChange}
+                      disabled={!isEditingBusiness}
+                      readOnly={!isEditingBusiness}
+                    />
                   ) : (
-                    <input type="text" name={key} value={value} onChange={handleChange} />
+                    <input
+                      type="text"
+                      name={key}
+                      value={value}
+                      onChange={handleChange}
+                      disabled={!isEditingBusiness}
+                      readOnly={!isEditingBusiness}
+                    />
                   )}
                 </div>
               ))}
 
-              <button className={styles["save-btn"]} onClick={handleSave} disabled={loading}>
-                {loading ? "Saving..." : "Save"}
-              </button>
+              {isEditingBusiness && (
+                <button className={styles["save-btn"]} onClick={handleSave} disabled={loading}>
+                  {loading ? "Saving..." : "Save"}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -240,6 +325,47 @@ const SettingsDashboard = () => {
         {/* --------------------------------------------- */}
         {activeSection === "Alert Thresholds" && (
           <div className={styles["alert-section"]}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
+              {!isEditingAlerts ? (
+                <button
+                  className={styles["edit-btn"]}
+                  onClick={() => setIsEditingAlerts(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    backgroundColor: "#0ea5e9",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <Edit2 size={16} />
+                  Edit
+                </button>
+              ) : (
+                <button
+                  className={styles["cancel-btn"]}
+                  onClick={handleCancelAlerts}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    backgroundColor: "#6b7280",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              )}
+            </div>
 
             <div className={styles["alert-card"]}>
               <h3>Inventory Alerts</h3>
@@ -252,6 +378,8 @@ const SettingsDashboard = () => {
                     name="low_stock_threshold"
                     value={alertData.low_stock_threshold}
                     onChange={handleAlertChange}
+                    disabled={!isEditingAlerts}
+                    readOnly={!isEditingAlerts}
                   />
                 </div>
 
@@ -261,6 +389,7 @@ const SettingsDashboard = () => {
                     name="out_of_stock_alert"
                     value={alertData.out_of_stock_alert}
                     onChange={handleAlertChange}
+                    disabled={!isEditingAlerts}
                   >
                     <option value="No">No</option>
                     <option value="Yes">Yes</option>
@@ -277,6 +406,8 @@ const SettingsDashboard = () => {
                     name="critical_expiry_days"
                     value={alertData.critical_expiry_days}
                     onChange={handleAlertChange}
+                    disabled={!isEditingAlerts}
+                    readOnly={!isEditingAlerts}
                   />
                 </div>
 
@@ -287,6 +418,8 @@ const SettingsDashboard = () => {
                     name="warning_expiry_days"
                     value={alertData.warning_expiry_days}
                     onChange={handleAlertChange}
+                    disabled={!isEditingAlerts}
+                    readOnly={!isEditingAlerts}
                   />
                 </div>
               </div>
@@ -298,6 +431,7 @@ const SettingsDashboard = () => {
                     name="auto_remove_expired"
                     value={alertData.auto_remove_expired}
                     onChange={handleAlertChange}
+                    disabled={!isEditingAlerts}
                   >
                     <option value="Manually only">Manually only</option>
                     <option value="Automatically">Automatically</option>
@@ -340,21 +474,12 @@ const SettingsDashboard = () => {
                 </div>
               </div> */}
 
-              <button className={styles["save-btn"]} onClick={handleAlertSave} disabled={loading}>
-                {loading ? "Saving..." : "Save"}
-              </button>
+              {isEditingAlerts && (
+                <button className={styles["save-btn"]} onClick={handleAlertSave} disabled={loading}>
+                  {loading ? "Saving..." : "Save"}
+                </button>
+              )}
             </div>
-          </div>
-        )}
-
-        {/* --------------------------------------------- */}
-        {/* COMING SOON SECTIONS */}
-        {/* --------------------------------------------- */}
-        {activeSection === "Tax & Billing" && (
-          <div className={styles["coming-soon-section"]}>
-            <CreditCard size={64} className={styles["coming-soon-icon"]} />
-            <h2>Tax & Billing</h2>
-            <p>Feature Coming Soon</p>
           </div>
         )}
 
@@ -367,10 +492,8 @@ const SettingsDashboard = () => {
         )}
 
         {activeSection === "Notifications" && (
-          <div className={styles["coming-soon-section"]}>
-            <Bell size={64} className={styles["coming-soon-icon"]} />
-            <h2>Notifications</h2>
-            <p>Feature Coming Soon</p>
+          <div style={{ marginTop: 40 }}>
+            <Notifications />
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ import { Store, PhoneCall, Mail, Trash2, Plus } from "lucide-react";
 const VendorsDashboard = () => {
   const cx = (...classes) => classes.filter(Boolean).join(" ");
   const { showAlert } = useAlert();
-  const [vendors, setVendors] = useState([]);
+  const [Suppliers, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const VendorsDashboard = () => {
 
   const VENDORS_API = `${API_BASE_URL}/api/v1/procurement/vendors/`;
 
-  // Fetch Vendors
+  // Fetch Suppliers
   useEffect(() => {
     const fetchVendors = async () => {
       try {
@@ -35,29 +35,29 @@ const VendorsDashboard = () => {
         else if (list?.results) vendorsList = list.results;
         else if (list?.data) vendorsList = list.data;
 
-        // Fetch summary for each vendor
+        // Fetch summary for each Supplier
         const vendorsWithSummary = await Promise.all(
-          vendorsList.map(async (vendor) => {
+          vendorsList.map(async (Supplier) => {
             try {
               const sumRes = await authFetch(
-                `${VENDORS_API}${vendor.id}/summary/`
+                `${VENDORS_API}${Supplier.id}/summary/`
               );
               const summary = await sumRes.json();
 
               return {
-                ...vendor,
+                ...Supplier,
                 products_count: summary.products,
                 orders_count: summary.total_orders,
               };
             } catch (err) {
-              return { ...vendor, products_count: 0, orders_count: 0 };
+              return { ...Supplier, products_count: 0, orders_count: 0 };
             }
           })
         );
 
         setVendors(vendorsWithSummary);
       } catch (err) {
-        console.error("Error fetching vendors:", err);
+        console.error("Error fetching Suppliers:", err);
       } finally {
         setLoading(false);
       }
@@ -66,8 +66,8 @@ const VendorsDashboard = () => {
     fetchVendors();
   }, []);
 
-  // Filter vendors
-  const filtered = vendors.filter((v) => {
+  // Filter Suppliers
+  const filtered = Suppliers.filter((v) => {
     const name = v.vendor_name ?? v.name ?? v.company_name ?? "";
     const contactPerson =
       v.vendor_contact_person ?? v.contact_person ?? v.person_name ?? "";
@@ -88,10 +88,10 @@ const VendorsDashboard = () => {
     navigate(`/suppliers/edit/${id}`);
   };
 
-  // DELETE vendor
+  // DELETE Supplier
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this vendor?"))
+    if (!window.confirm("Are you sure you want to delete this Supplier?"))
       return;
 
     try {
@@ -102,7 +102,7 @@ const VendorsDashboard = () => {
       if (res.ok) {
         setVendors((prev) => prev.filter((v) => v.id !== id));
       } else {
-        showAlert("Failed to delete vendor", "Error");
+        showAlert("Failed to delete Supplier", "Error");
       }
     } catch (err) {
       console.error("Delete failed:", err);
@@ -111,7 +111,7 @@ const VendorsDashboard = () => {
   };
 
   return (
-    <div className={cx(styles["customers-container"], styles["vendors-page"])}>
+    <div className={cx(styles["customers-container"], styles["Suppliers-page"])}>
       <div className={styles["header-row"]}>
         <div>
           <h1 className={styles["customers-title"]}>Supplier Management</h1>
@@ -133,25 +133,25 @@ const VendorsDashboard = () => {
       </div>
 
       {loading ? (
-        <p className={styles["loading-text"]}>Loading vendors...</p>
+        <p className={styles["loading-text"]}>Loading Suppliers...</p>
       ) : filtered.length === 0 ? (
-        <div className={styles["no-vendors-box"]}>
-          <p>No vendors found.</p>
+        <div className={styles["no-Suppliers-box"]}>
+          <p>No Suppliers found.</p>
         </div>
       ) : (
         <div className={styles["cards-grid"]}>
-          {filtered.map((vendor) => {
-            const id = vendor.id;
+          {filtered.map((Supplier) => {
+            const id = Supplier.id;
             const name =
-              vendor.vendor_name ?? vendor.name ?? vendor.company_name ?? "Untitled Vendor";
+              Supplier.vendor_name ?? Supplier.name ?? Supplier.company_name ?? "Untitled Supplier";
             const phone =
-              vendor.vendor_contact ?? vendor.contact_phone ?? vendor.phone ?? "-";
+              Supplier.vendor_contact ?? Supplier.contact_phone ?? Supplier.phone ?? "-";
             const contactPerson =
-              vendor.vendor_contact_person ?? vendor.contact_person ?? vendor.person_name ?? "-";
-            const email = vendor.vendor_email ?? vendor.email ?? "-";
+              Supplier.vendor_contact_person ?? Supplier.contact_person ?? Supplier.person_name ?? "-";
+            const email = Supplier.vendor_email ?? Supplier.email ?? "-";
 
             return (
-              <div key={id} className={styles["vendor-card"]}>
+              <div key={id} className={styles["Supplier-card"]}>
                 <div className={styles["card-top"]} onClick={() => openVendor(id)}>
                   <div>
                     <div className={styles["card-title"]}>{name}</div>
@@ -175,13 +175,13 @@ const VendorsDashboard = () => {
                   <div className={styles["metrics-row"]}>
                     <div className={styles.metric}>
                       <div className={styles["metric-value"]}>
-                        {vendor.products_count}
+                        {Supplier.products_count}
                       </div>
                       <div className={styles["metric-label"]}>Products</div>
                     </div>
                     <div className={styles.metric}>
                       <div className={styles["metric-value"]}>
-                        {vendor.orders_count}
+                        {Supplier.orders_count}
                       </div>
                       <div className={styles["metric-label"]}>Orders</div>
                     </div>
@@ -192,10 +192,10 @@ const VendorsDashboard = () => {
                   <div
                     className={cx(
                       styles["status-badge"],
-                      vendor.is_active ? styles.active : styles.inactive
+                      Supplier.is_active ? styles.active : styles.inactive
                     )}
                   >
-                    {vendor.is_active ? "Active" : "Inactive"}
+                    {Supplier.is_active ? "Active" : "Inactive"}
                   </div>
 
                   <div className={styles["action-icons"]}>

@@ -49,7 +49,7 @@ const EditVendor = () => {
     loadTerms();
   }, []);
 
-  // Fetch vendor data
+  // Fetch Supplier data
   useEffect(() => {
     const loadVendor = async () => {
       setLoading(true);
@@ -74,8 +74,8 @@ const EditVendor = () => {
           is_active: !!data.is_active,
         });
       } catch (error) {
-        console.error("Error loading vendor", error);
-        showAlert("Failed to load vendor information.", "Error");
+        console.error("Error loading Supplier", error);
+        showAlert("Failed to load Supplier information.", "Error");
       } finally {
         setLoading(false);
       }
@@ -102,34 +102,34 @@ const EditVendor = () => {
         body: JSON.stringify(formData),
       });
       if (res.ok) {
-        showAlert("Vendor Updated Successfully!", "Success");
+        showAlert("Supplier Updated Successfully!", "Success");
         navigate("/suppliers");
       } else {
         const errData = await res.json();
-        showAlert("Failed to Update Vendor! " + JSON.stringify(errData), "Error");
+        showAlert("Failed to Update Supplier! " + JSON.stringify(errData), "Error");
       }
     } catch (err) {
-      console.error("Error updating vendor:", err);
-      showAlert("Error updating vendor. See console for details.", "Error");
+      console.error("Error updating Supplier:", err);
+      showAlert("Error updating Supplier. See console for details.", "Error");
     }
   };
 
   if (loading) {
-    return <div className="vendors-container"><p>Loading...</p></div>;
+    return <div className="Suppliers-container"><p>Loading...</p></div>;
   }
 
   return (
-    <div className="vendors-container">
+    <div className="Suppliers-container">
       {/* Page Header */}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
-        <h1 className="vendors-title">Edit Supplier</h1>
+        <h1 className="Suppliers-title">Edit Supplier</h1>
       </div>
 
-      <form className="vendors-form" onSubmit={handleSubmit}>
+      <form className="Suppliers-form" onSubmit={handleSubmit}>
         {/* BASIC INFORMATION */}
         <div className="section-card">
           <h2 className="section-heading">Basic Information</h2>

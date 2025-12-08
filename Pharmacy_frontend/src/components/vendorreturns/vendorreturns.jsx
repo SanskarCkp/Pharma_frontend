@@ -39,9 +39,9 @@ const VendorReturns = () => {
     setReturns([...returns, newReturn]);
 
     showAlert(
-      `Vendor Return Created!\n
+      `Supplier Return Created!\n
 Return ID: ${newReturn.id}
-Vendor ID: ${newReturn.vendorId}
+Supplier ID: ${newReturn.vendorId}
 Purchase Line ID: ${newReturn.purchaseLineId}
 Batch Lot ID: ${newReturn.batchLotId}
 Quantity (Base): ${newReturn.qtyBase}
@@ -72,7 +72,7 @@ Created At: ${newReturn.createdAt}`,
 
   return (
     <div className="vendorreturns">
-      <h2>Vendor Returns</h2>
+      <h2>Supplier Returns</h2>
 
       {/* ===== FORM SECTION ===== */}
       <form onSubmit={handleSubmit} className="vendorReturnForm">
@@ -82,13 +82,13 @@ Created At: ${newReturn.createdAt}`,
         </div>
 
         <div className="formGroup">
-          <label>Vendor ID:</label>
+          <label>Supplier ID:</label>
           <input
             type="text"
             name="vendorId"
             value={formData.vendorId}
             onChange={handleChange}
-            placeholder="Enter Vendor ID"
+            placeholder="Enter Supplier ID"
             required
           />
         </div>
@@ -177,21 +177,21 @@ Created At: ${newReturn.createdAt}`,
         </div>
 
         <button type="submit" className="submitBtn">
-          Create Vendor Return
+          Create Supplier Return
         </button>
       </form>
 
       {/* ===== LIST SECTION ===== */}
       <div className="vendorReturnList">
-        <h3>📋 Vendor Return Records</h3>
+        <h3>📋 Supplier Return Records</h3>
         {returns.length === 0 ? (
-          <p className="noRecords">No vendor returns found.</p>
+          <p className="noRecords">No Supplier returns found.</p>
         ) : (
           <table>
             <thead>
               <tr>
                 <th>Return ID</th>
-                <th>Vendor ID</th>
+                <th>Supplier ID</th>
                 <th>Purchase Line ID</th>
                 <th>Batch Lot ID</th>
                 <th>Qty (Base)</th>

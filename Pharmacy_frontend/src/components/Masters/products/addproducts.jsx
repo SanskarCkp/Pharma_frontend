@@ -10,7 +10,7 @@ const AddProduct = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const vendorFromState = location.state?.vendor; // passed vendor
+  const vendorFromState = location.state?.Supplier; // passed Supplier
   const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
@@ -70,7 +70,7 @@ const AddProduct = () => {
 
     if (res.ok) {
       showAlert(id ? "Product Updated Successfully!" : "Product Added Successfully!", "Success");
-      navigate("/procurement/orders/create", { state: { vendor: vendorFromState, refresh: true } });
+      navigate("/procurement/orders/create", { state: { Supplier: vendorFromState, refresh: true } });
     } else {
       const errText = await res.text();
       console.error(errText);
@@ -79,9 +79,9 @@ const AddProduct = () => {
   };
 
   return (
-    <div className="vendors-container">
-      <h1 className="vendors-title">{id ? "Update Product" : "Add Product"}</h1>
-      <form className="vendors-form" onSubmit={handleSubmit}>
+    <div className="Suppliers-container">
+      <h1 className="Suppliers-title">{id ? "Update Product" : "Add Product"}</h1>
+      <form className="Suppliers-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <div className="form-group">
             <label>Name:</label>
@@ -146,7 +146,7 @@ const AddProduct = () => {
 
         <div className="form-row">
           <div className="form-group">
-            <label>Preferred Vendor:</label>
+            <label>Preferred Supplier:</label>
             <input type="number" name="preferred_vendor" value={formData.preferred_vendor} readOnly />
           </div>
         </div>
@@ -165,7 +165,7 @@ const AddProduct = () => {
         </div>
 
         <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={() => navigate("/procurement/orders/create", { state: { vendor: vendorFromState, refresh: true } })}>
+          <button type="button" className="cancel-btn" onClick={() => navigate("/procurement/orders/create", { state: { Supplier: vendorFromState, refresh: true } })}>
             Cancel
           </button>
           <button type="submit" className="submit-btn">{id ? "Update" : "Save"}</button>

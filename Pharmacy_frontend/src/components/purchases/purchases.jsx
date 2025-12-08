@@ -57,13 +57,13 @@ const Purchases = () => {
       {/* ================= FORM ================= */}
       <form className="purchaseForm" onSubmit={handleSubmit}>
         <div className="formGroup">
-          <label>Vendor ID:</label>
+          <label>Supplier ID:</label>
           <input
             name="vendorId"
             type="text"
             value={formData.vendorId}
             onChange={handleChange}
-            placeholder="Enter Vendor ID"
+            placeholder="Enter Supplier ID"
             required
           />
         </div>
@@ -81,7 +81,7 @@ const Purchases = () => {
         </div>
 
         <div className="formGroup">
-          <label>Vendor Invoice No:</label>
+          <label>Supplier Invoice No:</label>
           <input
             name="vendorInvoiceNo"
             type="text"
@@ -158,7 +158,7 @@ const Purchases = () => {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Vendor ID</th>
+                <th>Supplier ID</th>
                 <th>Location ID</th>
                 <th>Invoice No</th>
                 <th>Date</th>

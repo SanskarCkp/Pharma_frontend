@@ -9,29 +9,29 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 const ProductCatalog = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const vendor = location.state?.vendor;
+  const Supplier = location.state?.Supplier;
 
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [categories, setCategories] = useState([]);
 
-  // Redirect if vendor not provided
+  // Redirect if Supplier not provided
   useEffect(() => {
-    if (!vendor?.id) {
+    if (!Supplier?.id) {
       navigate("/suppliers");
     }
-  }, [vendor, navigate]);
+  }, [Supplier, navigate]);
 
-  // Fetch only this vendor's products
+  // Fetch only this Supplier's products
   useEffect(() => {
-    if (!vendor?.id) return;
+    if (!Supplier?.id) return;
 
     const fetchVendorProducts = async () => {
       try {
         // Use preferred_vendor filter (your DB field)
         const res = await authFetch(
-          `${API_BASE_URL}/api/v1/catalog/products/?preferred_vendor=${vendor.id}`
+          `${API_BASE_URL}/api/v1/catalog/products/?preferred_vendor=${Supplier.id}`
         );
 
         const data = await res.json();
@@ -39,18 +39,18 @@ const ProductCatalog = () => {
 
         // Extra safety: filter again in frontend
         const vendorProducts = list.filter(
-          (p) => Number(p.preferred_vendor) === Number(vendor.id)
+          (p) => Number(p.preferred_vendor) === Number(Supplier.id)
         );
 
         setProducts(vendorProducts);
       } catch (err) {
-        console.error("Failed to fetch vendor products:", err);
+        console.error("Failed to fetch Supplier products:", err);
         setProducts([]);
       }
     };
 
     fetchVendorProducts();
-  }, [vendor]);
+  }, [Supplier]);
 
   // Fetch categories
   useEffect(() => {
@@ -85,7 +85,7 @@ const ProductCatalog = () => {
         </button>
         <div className="catalog-header-text">
           <h1 className="catalog-title">Product Catalog</h1>
-          <p className="vendor-subtitle">{vendor?.name || "Unknown Vendor"}</p>
+          <p className="Supplier-subtitle">{Supplier?.name || "Unknown Supplier"}</p>
         </div>
       </div>
 

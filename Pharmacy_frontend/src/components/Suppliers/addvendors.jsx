@@ -66,30 +66,30 @@ const AddVendor = () => {
       });
 
       if (res.ok) {
-        showAlert("Vendor Added Successfully!", "Success");
+        showAlert("Supplier Added Successfully!", "Success");
         navigate("/suppliers");
       } else {
         const errData = await res.json();
-        showAlert("Failed to Save Vendor! " + JSON.stringify(errData), "Error");
+        showAlert("Failed to Save Supplier! " + JSON.stringify(errData), "Error");
       }
     } catch (err) {
-      console.error("Error saving vendor", err);
-      showAlert("Failed to Save Vendor! Check console for details.", "Error");
+      console.error("Error saving Supplier", err);
+      showAlert("Failed to Save Supplier! Check console for details.", "Error");
     }
   };
 
   return (
-    <div className="vendors-container">
+    <div className="Suppliers-container">
       {/* Page Header */}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate("/suppliers")}>
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
-        <h1 className="vendors-title">Add Supplier</h1>
+        <h1 className="Suppliers-title">Add Supplier</h1>
       </div>
 
-      <form className="vendors-form" onSubmit={handleSubmit}>
+      <form className="Suppliers-form" onSubmit={handleSubmit}>
         {/* BASIC INFORMATION */}
         <div className="section-card">
           <h2 className="section-heading">Basic Information</h2>

@@ -9,7 +9,7 @@
   min-height: calc(100vh - 70px - 60px - 48px);
 }
 
-.vendors-page {
+.Suppliers-page {
   padding: 25px 45px;
 }
 
@@ -27,15 +27,15 @@
   padding-bottom: 1rem;
 }
 
-/* Scoped to vendors page to avoid overrides from other modules */
-.vendors-page .customers-title {
+/* Scoped to Suppliers page to avoid overrides from other modules */
+.Suppliers-page .customers-title {
   font-size: 2rem;
   font-weight: 700;
   color: #111827;
   margin: 0;
 }
 
-.vendors-page .customers-heading {
+.Suppliers-page .customers-heading {
   font-size: 0.95rem;
   font-weight: 400;
   color: #6b7280;
@@ -88,7 +88,7 @@
 
 /* loading / empty */
 .loading-text,
-.no-vendors-box {
+.no-Suppliers-box {
   padding: 28px;
   background: #fff;
   border-radius: 12px;
@@ -114,7 +114,7 @@
 }
 
 /* card */
-.vendor-card {
+.Supplier-card {
   background: #ffffff;
   border-radius: 12px;
   padding: 14px;
@@ -127,7 +127,7 @@
   transition: transform 180ms ease, box-shadow 180ms ease;
   border: 1px solid rgba(15, 23, 42, 0.03);
 }
-.vendor-card:hover {
+.Supplier-card:hover {
   transform: translateY(-6px);
   box-shadow: rgba(2,6,23,0.10) 0px 10px 30px;
 }
