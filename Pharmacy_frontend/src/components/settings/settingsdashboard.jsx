@@ -20,7 +20,7 @@ const SettingsDashboard = () => {
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
     { name: "Tax & Billing", icon: <CreditCard size={24} /> },
-    { name: "Backup & Restore", icon: <Database size={24} /> },
+    // { name: "Backup & Restore", icon: <Database size={24} /> },
     { name: "Notifications", icon: <Bell size={24} /> },
   ];
 

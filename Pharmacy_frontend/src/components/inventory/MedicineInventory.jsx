@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
@@ -471,9 +472,6 @@ export default function MedicineInventory() {
                           </button>
                           <button className="inv-icon" title="Edit" onClick={() => handleEdit(r)}>
                             Edit
-                          </button>
-                          <button className="inv-icon" title="Stock summary" onClick={() => fetchStockSummaryForProduct(r)}>
-                            Stats
                           </button>
                           <button
                             className="inv-icon danger"

@@ -1,6 +1,12 @@
 // src/App.jsx
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 
 // Layout
 import Sidebar from "./components/sidebar";
@@ -10,10 +16,8 @@ import Topbar from "./components/Topbar.jsx";
 
 // Public
 import Login from "./components/user/login";
-import ResetPassword from "./components/user/ResetPassword"; // ensure path: src/components/user/ResetPassword.jsx
+import ResetPassword from "./components/user/ResetPassword";
 
-// Protected (Masters) user management
-import UserList from "./components/users/UserList.jsx";    
 // Guard
 import PrivateRoute from "./components/user/privateroute";
 
@@ -25,8 +29,7 @@ import MastersDashboard from "./components/Masters/masters.jsx";
 
 // Inventory
 import MedicineInventory from "./components/inventory/MedicineInventory.jsx";
-import ManageMedicinePage from "./components/inventory/ManageMedicinePage.jsx";
-import MedicineDetailPage from "./components/inventory/MedicineDetailPage.jsx";
+import AddMedicine from "./components/inventory/AddMedicine.jsx";
 
 // Masters
 
@@ -48,9 +51,6 @@ import ProductsDashboard from "./components/Masters/products/createorder.jsx";
 import PurchaseOrders from "./components/Masters/products/PurchaseOrders.jsx";
 import ReceiveItems from "./components/Masters/products/ReceiveItems.jsx";
 import ProductCatalog from "./components/Masters/products/ProductCatalog.jsx";
-
-
-
 import AddProduct from "./components/Masters/products/addproducts.jsx";
 import ViewProduct from "./components/Masters/products/ViewProduct.jsx";
 import EditProduct from "./components/Masters/products/EditProduct.jsx";
@@ -79,13 +79,9 @@ import ExpiryAlerts from "./components/expiryalerts/expiryalerts.jsx";
 
 // Settings / retention
 import SettingsDashboard from "./components/settings/settingsdashboard.jsx";
-import Notifications from "./components/settings/Notifications.jsx"; 
+import Notifications from "./components/settings/Notifications.jsx";
 import BackupRestore from "./components/settings/BackupRestore.jsx";
-
-
-
 import TaxBillingConfiguration from "./components/settings/TaxBillingConfiguration";
-
 import AddSetting from "./components/settings/addsettings.jsx";
 import EditSetting from "./components/settings/EditSettings.jsx";
 import ViewSetting from "./components/settings/ViewSetting.jsx";
@@ -103,14 +99,12 @@ import Saleslines from "./components/saleslines/saleslines.jsx";
 import H1registerentries from "./components/h1registerentries/h1registerentries.jsx";
 import Ndpsdailyentries from "./components/ndpsdailyentries/ndpsdailyentries.jsx";
 
-
-/* Reports */
+// Reports
 import SalesReport from "./components/reports/SalesReport.jsx";
 import PurchaseReport from "./components/reports/PurchaseReport.jsx";
 import ExpiryReport from "./components/reports/ExpiryReport.jsx";
-import TopSellingReport from "./components/reports/TopSellingReport.jsx";
 
-
+/** Shell for authenticated pages */
 function AppLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 overflow-x-hidden">
@@ -125,13 +119,10 @@ function AppLayout() {
 
             <Route path="/home" element={<Home />} />
             <Route path="/inventory/medicines" element={<MedicineInventory />} />
-            <Route path="/inventory/medicines/add" element={<ManageMedicinePage />} />
-            <Route path="/inventory/medicines/:batchId/edit" element={<ManageMedicinePage />} />
-            <Route path="/inventory/medicines/:batchId" element={<MedicineDetailPage />} />
+            <Route path="/inventory/medicines/add" element={<AddMedicine />} />
 
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
-            <Route path="/masters/users" element={<UserList />} />
 
             <Route path="/suppliers" element={<Vendorsdashboard />} />
             <Route path="/suppliers/add" element={<AddVendors />} />
@@ -145,23 +136,48 @@ function AppLayout() {
 
             <Route path="/masters/roles" element={<RolesDashboard />} />
             <Route path="/masters/roles/add" element={<AddRole />} />
-            <Route path="/masters/locations" element={<LocationsDashboard />} />
+            <Route
+              path="/masters/locations"
+              element={<LocationsDashboard />}
+            />
             <Route path="/masters/locations/add" element={<AddLocation />} />
-            <Route path="/masters/locations/view/:id" element={<ViewLocation />} />
-            <Route path="/masters/locations/edit/:id" element={<EditLocation />} />
+            <Route
+              path="/masters/locations/view/:id"
+              element={<ViewLocation />}
+            />
+            <Route
+              path="/masters/locations/edit/:id"
+              element={<EditLocation />}
+            />
 
             <Route path="/masters/products" element={<ProductsDashboard />} />
             <Route path="/masters/products/add" element={<AddProduct />} />
-            <Route path="/masters/products/view/:id" element={<ViewProduct />} />
-            <Route path="/masters/products/edit/:id" element={<EditProduct />} />
-            <Route path="/masters/products/purchase-orders" element={<PurchaseOrders />} />
-            <Route path="/masters/products/receive-items/:id" element={<ReceiveItems />} />
-            <Route path="/masters/products/vendor-catalog/:id" element={<ProductCatalog />} />
-
-
+            <Route
+              path="/masters/products/view/:id"
+              element={<ViewProduct />}
+            />
+            <Route
+              path="/masters/products/edit/:id"
+              element={<EditProduct />}
+            />
+            <Route
+              path="/masters/products/purchase-orders"
+              element={<PurchaseOrders />}
+            />
+            <Route
+              path="/masters/products/receive-items/:id"
+              element={<ReceiveItems />}
+            />
+            <Route
+              path="/masters/products/vendor-catalog/:id"
+              element={<ProductCatalog />}
+            />
 
             <Route path="/masters/payment-terms" element={<PaymentTerms />} />
-            <Route path="/masters/rack-locations" element={<RackLocations />} />
+            <Route
+              path="/masters/rack-locations"
+              element={<RackLocations />}
+            />
 
             {/* User Section */}
             <Route path="/user-devices" element={<UserDevices />} />
@@ -171,14 +187,26 @@ function AppLayout() {
             <Route path="/recall-events" element={<RecallEvents />} />
             <Route path="/purchase-lines" element={<PurchaseLines />} />
             <Route path="/sales-invoices" element={<SalesInvoices />} />
-            <Route path="/unitofmeasurement" element={<UnitOfMeasurement />} />
+            <Route
+              path="/unitofmeasurement"
+              element={<UnitOfMeasurement />}
+            />
             <Route path="/medicineforms" element={<MedicineForms />} />
-            <Route path="/medicinecategories" element={<Medicinecategories />} />
+            <Route
+              path="/medicinecategories"
+              element={<Medicinecategories />}
+            />
 
             {/* Bill generation */}
             <Route path="/billgeneration/billlist" element={<BillList />} />
-            <Route path="/billgeneration/generate" element={<GenerateBill />} />
-            <Route path="/billgeneration/invoice/:id" element={<Invoice />} />
+            <Route
+              path="/billgeneration/generate"
+              element={<GenerateBill />}
+            />
+            <Route
+              path="/billgeneration/invoice/:id"
+              element={<Invoice />}
+            />
 
             {/* Core */}
             <Route path="/dashboard" element={<Dashboard />} />
@@ -187,18 +215,31 @@ function AppLayout() {
 
             {/* Settings */}
             <Route path="/settings" element={<SettingsDashboard />} />
-            <Route path="/settings/notifications" element={<Notifications />} />
-            <Route path="/settings/backup-restore" element={<BackupRestore />} />
-            
-
-            <Route path="/settings/tax-billing" element={<TaxBillingConfiguration />} />
+            <Route
+              path="/settings/notifications"
+              element={<Notifications />}
+            />
+            <Route
+              path="/settings/backup-restore"
+              element={<BackupRestore />}
+            />
+            <Route
+              path="/settings/tax-billing"
+              element={<TaxBillingConfiguration />}
+            />
             <Route path="/settings/add" element={<AddSetting />} />
             <Route path="/settings/edit/:key" element={<EditSetting />} />
             <Route path="/settings/view/:key" element={<ViewSetting />} />
 
             {/* Retention */}
-            <Route path="/retention-policies" element={<RetentionDashboard />} />
-            <Route path="/retention-policies/add" element={<AddRetention />} />
+            <Route
+              path="/retention-policies"
+              element={<RetentionDashboard />}
+            />
+            <Route
+              path="/retention-policies/add"
+              element={<AddRetention />}
+            />
 
             {/* Others */}
             <Route path="/rackrules" element={<Rackrules />} />
@@ -208,16 +249,17 @@ function AppLayout() {
             <Route path="/transferlines" element={<Transferlines />} />
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/saleslines" element={<Saleslines />} />
-            <Route path="/h1registerentries" element={<H1registerentries />} />
-            <Route path="/ndpsdailyentries" element={<Ndpsdailyentries />} />
-             <Route path="/dashboard" element={<Dashboard />} />
-            {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
-
-            {/*Reports*/}
+            <Route
+              path="/h1registerentries"
+              element={<H1registerentries />}
+            />
+            <Route
+              path="/ndpsdailyentries"
+              element={<Ndpsdailyentries />}
+            />
             <Route path="/reports/sales" element={<SalesReport />} />
             <Route path="/reports/purchases" element={<PurchaseReport />} />
             <Route path="/reports/expiry" element={<ExpiryReport />} />
-            <Route path="/reports/top-selling" element={<TopSellingReport />} />
           </Routes>
         </main>
       </div>
@@ -228,13 +270,30 @@ function AppLayout() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 👇 This runs once whenever the app is loaded (including refresh)
+  useEffect(() => {
+    const path = location.pathname;
+
+    // If we are NOT already on a public route, force redirect to /login
+    if (
+      !path.startsWith("/login") &&
+      !path.startsWith("/reset-password")
+    ) {
+      navigate("/login", { replace: true });
+    }
+    // ⚠️ empty dependency array = only on first mount (page load / refresh)
+  }, []); 
+
   return (
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Protected app shell: everything matched by "/*" will be guarded */}
+      {/* All other routes protected */}
       <Route
         path="/*"
         element={
@@ -244,7 +303,7 @@ export default function App() {
         }
       />
 
-      {/* Unknown paths -> send to login */}
+      {/* fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

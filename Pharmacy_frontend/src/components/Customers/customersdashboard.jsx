@@ -29,7 +29,7 @@ const CustomersDashboard = () => {
   const fetchStats = async (filter = "none") => {
     try {
       setLoadingStats(true);
-      let url = `${API_BASE}/customers/?stats=true`;
+      let url = `${API_BASE}/api/v1/customers/?stats=true`;
       if (filter !== "none") url += `&filter=${filter}`;
 
       const res = await fetch(url);
@@ -52,7 +52,7 @@ const CustomersDashboard = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/customers/`);
+      const res = await authFetch(`${API_BASE}/api/v1/customers/`);
       if (!res.ok) throw new Error("Customers fetch error");
 
       const data = await res.json();
@@ -86,7 +86,7 @@ const CustomersDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/customers/${id}/`, { method: "DELETE" });
+      const res = await authFetch(`${API_BASE}/api/v1/customers/${id}/`, { method: "DELETE" });
       if (res.ok) {
         showAlert("Customer deleted!", "Success");
         fetchCustomers();

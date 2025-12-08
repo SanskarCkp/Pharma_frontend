@@ -379,17 +379,32 @@ export default function GenerateBill() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Invoice failed (${res.status})`);
       }
+
       const data = await res.json();
+
+      // 🔥 MAKE PAYMENT RIGHT HERE
+      await authFetch(`${INVOICES_URL}${data.id}/complete-payment/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: selectedMethod,
+          amount: amountPaying
+        })
+      });
+
+      // continue the remaining code
       dispatchInventoryRefresh();
       setCart([]);
       setSelectedProduct(null);
       setAmountPaying("");
       setSelectedMethod("");
       setSearchTerm("");
+
       navigate(`/billgeneration/invoice/${data.id}`);
     } catch (err) {
       console.error(err);

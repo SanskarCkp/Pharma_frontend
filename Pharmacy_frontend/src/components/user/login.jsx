@@ -4,8 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../common/logo";
 import MedicalCarousel from "../common/MedicalCarousel";
 import { fetchUsersFromBackend } from "../../api/users";
-import { useAuth } from "../../context/AuthContext";
-
+ 
 export default function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
@@ -15,8 +14,7 @@ export default function Login() {
   const [userList, setUserList] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login: loginWithDevice } = useAuth();
-
+ 
   useEffect(() => {
     async function load() {
       try {
@@ -31,7 +29,10 @@ export default function Login() {
         });
         setUserList(normalized);
       } catch (e) {
-        console.warn("Failed to load users from backend, falling back to localStorage", e);
+        console.warn(
+          "Failed to load users from backend, falling back to localStorage",
+          e
+        );
         try {
           const stored = localStorage.getItem("app_users");
           if (stored) {
@@ -49,24 +50,40 @@ export default function Login() {
     }
     load();
   }, []);
-
+ 
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-
+ 
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr("");
     setLoading(true);
     try {
-      const loginResponse = await loginWithDevice(form.username, form.password);
-      console.log("[Login] login response", loginResponse);
-
+      // Call backend login
+      const data = await apiLogin(form.username, form.password);
+ 
+      // Defensive token extraction (support multiple response shapes)
+      const access = data?.access ?? data?.access_token ?? data?.token ?? null;
+      const refresh = data?.refresh ?? data?.refresh_token ?? null;
+ 
+      if (access || refresh) {
+        try {
+          // storeTokens writes to localStorage using your keys
+          storeTokens({ access, refresh });
+        } catch (e) {
+          console.warn("Failed to store tokens:", e);
+        }
+      } else {
+        // If no tokens returned, throw so UI shows error
+        throw new Error("Login succeeded but server did not return tokens.");
+      }
+ 
       // small success animation
       setCarouselOn(true);
-
+ 
       // compute where to go next (default to /dashboard)
       const dest = location.state?.from?.pathname || "/dashboard";
-
+ 
       setTimeout(() => {
         setCarouselOn(false);
         navigate(dest, { replace: true });
@@ -78,7 +95,7 @@ export default function Login() {
       setLoading(false);
     }
   };
-
+ 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gray-50">
       <img
@@ -88,7 +105,7 @@ export default function Login() {
       />
       <div className="absolute inset-0 bg-[#BEE3F8]/65" />
       <Logo />
-
+ 
       <div className="z-30 relative w-full max-w-[980px] px-4">
         <div className="mx-auto flex items-center justify-center gap-8">
           <div style={{ width: 420 }} />
@@ -107,8 +124,11 @@ export default function Login() {
                     Login to an account
                   </h2>
                 </div>
-
-                <div className="px-6 overflow-hidden" style={{ maxHeight: "unset" }}>
+ 
+                <div
+                  className="px-6 overflow-hidden"
+                  style={{ maxHeight: "unset" }}
+                >
                   <div
                     className="pt-4 pb-6"
                     style={{ transform: "translateY(0)", opacity: 1 }}
@@ -138,15 +158,17 @@ export default function Login() {
                                 value={u.username || u.email}
                                 label={
                                   u.fullName
-                                    ? `${u.fullName} (${u.email || u.username})`
-                                    : (u.email || u.username)
+                                    ? `${u.fullName} (${
+                                        u.email || u.username
+                                      })`
+                                    : u.email || u.username
                                 }
                               />
                             ))}
                           </datalist>
                         )}
                       </div>
-
+ 
                       <div>
                         <label className="text-sm font-medium text-gray-700">
                           Password <span className="text-rose-500">*</span>
@@ -169,11 +191,11 @@ export default function Login() {
                           </button>
                         </div>
                       </div>
-
+ 
                       {err && (
                         <div className="text-sm text-rose-600">{err}</div>
                       )}
-
+ 
                       <div>
                         <button
                           type="submit"
@@ -183,7 +205,7 @@ export default function Login() {
                           {loading ? "Logging in..." : "Login"}
                         </button>
                       </div>
-
+ 
                       <div className="flex items-center justify-between text-xs mt-1">
                         <button
                           type="button"
@@ -197,7 +219,7 @@ export default function Login() {
                   </div>
                 </div>
               </div>
-
+ 
               <div
                 className="absolute left-4 right-4 -bottom-3 rounded-lg pointer-events-none transition-opacity duration-300"
                 style={{ height: 20 }}
@@ -207,7 +229,7 @@ export default function Login() {
           <div style={{ width: 420 }} />
         </div>
       </div>
-
+ 
       <MedicalCarousel show={carouselOn} />
     </div>
   );
