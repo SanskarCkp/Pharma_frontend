@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import "./payment_terms.css";
 
 import { authFetch } from "../../../api/http";
@@ -207,9 +208,15 @@ export default function PaymentTerms() {
                   <td>{r.days}</td>
                   <td className="pm-muted">{r.description}</td>
                   <td className="pm-actions">
-                    <button className="pm-icon" title="View" onClick={() => openView(r)} disabled={saving}>👁️</button>
-                    <button className="pm-icon" title="Edit" onClick={() => openEdit(r)} disabled={saving}>✏️</button>
-                    <button className="pm-icon danger" title="Delete" onClick={() => handleDelete(r.id)} disabled={saving}>🗑️</button>
+                    <button className="pm-icon" title="View" onClick={() => openView(r)} disabled={saving}>
+                      <Eye size={16} />
+                    </button>
+                    <button className="pm-icon" title="Edit" onClick={() => openEdit(r)} disabled={saving}>
+                      <Pencil size={16} />
+                    </button>
+                    <button className="pm-icon danger" title="Delete" onClick={() => handleDelete(r.id)} disabled={saving}>
+                      <Trash2 size={16} />
+                    </button>
                   </td>
                 </tr>
               )) : (

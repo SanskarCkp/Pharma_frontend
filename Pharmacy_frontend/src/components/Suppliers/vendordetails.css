@@ -10,17 +10,21 @@
   min-height: calc(100vh - 70px - 60px - 48px);
 }
 
-/* Header Section - matching inventory style */
-.Supplier-details-header {
+/* Header Section - Back button */
+.Supplier-header-section {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 2rem 0;
-  position: sticky;
-  top: 0;
+  margin-bottom: 1rem;
+}
+
+/* Header Section - matching inventory style */
+.Supplier-details-header {
   background: #fff;
-  z-index: 10;
-  padding-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 30px;
+  box-shadow: none;
+  margin-bottom: 2rem;
 }
 
 .Supplier-details-header h2 {
@@ -37,23 +41,31 @@
 }
 
 .back-btn {
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  background: #f3f4f6;
+  gap: 8px;
+  background: #10b981 !important;
+  color: white !important;
+  padding: 10px 16px;
+  border: 1px solid #059669 !important;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
-  color: #374151;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
 .back-btn:hover {
-  background: #e5e7eb;
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: white !important;
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.back-btn:active {
+  transform: translateY(0);
 }
 
 /* Cards Grid */

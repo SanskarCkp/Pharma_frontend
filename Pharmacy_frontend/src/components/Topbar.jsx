@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, Pill, Store, User, Bell } from "lucide-react";
 import { authFetch } from "../api/http";
 import "./topbar.css";
 
@@ -176,7 +177,7 @@ export default function Topbar() {
                         className="search-result-item"
                         onClick={() => handleResultClick("page", page.path)}
                       >
-                        <span className="search-icon">⇢</span>
+                        <ArrowRight size={16} className="search-icon" />
                         <div className="search-item-content">
                           <div className="search-item-name">{page.label}</div>
                           <div className="search-item-detail">{page.path}</div>
@@ -195,7 +196,7 @@ export default function Topbar() {
                         className="search-result-item"
                         onClick={() => handleResultClick("medicine", med.id)}
                       >
-                        <span className="search-icon">💊</span>
+                        <Pill size={16} className="search-icon" />
                         <div className="search-item-content">
                           <div className="search-item-name">{med.name || med.medicine_name}</div>
                           <div className="search-item-detail">
@@ -217,7 +218,7 @@ export default function Topbar() {
                         className="search-result-item"
                         onClick={() => handleResultClick("supplier", supplier.id)}
                       >
-                        <span className="search-icon">🏪</span>
+                        <Store size={16} className="search-icon" />
                         <div className="search-item-content">
                           <div className="search-item-name">
                             {supplier.vendor_name || supplier.name || supplier.company_name}
@@ -240,7 +241,7 @@ export default function Topbar() {
                         className="search-result-item"
                         onClick={() => handleResultClick("customer", customer.id)}
                       >
-                        <span className="search-icon">👤</span>
+                        <User size={16} className="search-icon" />
                         <div className="search-item-content">
                           <div className="search-item-name">{customer.name}</div>
                           <div className="search-item-detail">
@@ -265,7 +266,7 @@ export default function Topbar() {
             aria-label="Notifications"
             onClick={() => setShowNotifications((prev) => !prev)}
           >
-            <span className="icon">🔔</span>
+            <Bell size={18} className="icon" />
             <span className="badge">0</span>
           </button>
           {showNotifications && (
@@ -281,7 +282,7 @@ export default function Topbar() {
             <div className="app-topbar__name">Admin</div>
             <div className="app-topbar__role">Pharmacist</div>
           </div>
-          <span className="icon">👤</span>
+          <User size={18} className="icon" />
         </div>
       </div>
     </div>

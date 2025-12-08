@@ -11,8 +11,6 @@ const AddVendor = () => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
 
-  const [paymentTermsList, setPaymentTermsList] = useState([]);
-
   const [formData, setFormData] = useState({
     name: "",
     gstin: "",
@@ -21,7 +19,6 @@ const AddVendor = () => {
     contact_person: "",
     address: "",
     product_info: "",
-    payment_terms: "",
     bank_name: "",
     account_no: "",
     ifsc: "",
@@ -30,23 +27,6 @@ const AddVendor = () => {
     supplier_type: "",
     is_active: true,
   });
-
-  // Fetch payment terms from API
-  useEffect(() => {
-    const loadTerms = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/payment-terms/`);
-        const data = await res.json();
-
-        // Handle paginated or plain array response
-        const list = data.results ? data.results : data;
-        setPaymentTermsList(Array.isArray(list) ? list : []);
-      } catch (error) {
-        console.error("Error loading payment terms", error);
-      }
-    };
-    loadTerms();
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -162,25 +142,6 @@ const AddVendor = () => {
             ></textarea>
           </div>
         </div>
-
-        {/* PAYMENT TERMS
-        <div className="section-card">
-          <h2 className="section-heading">Business Terms</h2>
-          <div className="row">
-            <div className="field">
-              <label>Payment Terms *</label>
-              <select name="payment_terms" value={formData.payment_terms} onChange={handleChange} required>
-  <option value="">Select</option>
-  {paymentTermsList.map((pt) => (
-    <option key={pt.id} value={pt.id}>
-      {pt.name}
-    </option>
-  ))}
-</select>
-
-            </div>
-          </div>
-        </div> */}
 
         {/* BANK DETAILS */}
         <div className="section-card">

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { authFetch } from "../../api/http"; // Use this if you handle auth (token) in your project
 import { useAlert } from "../ui/alert-provider";
 import "./addvendors.css";
+import "../inventory/inventory.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL; // e.g. http://127.0.0.1:8000/api/v1
 
@@ -13,16 +14,15 @@ const EditVendor = () => {
   const { showAlert } = useAlert();
 
   const [loading, setLoading] = useState(true);
-  const [paymentTermsList, setPaymentTermsList] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
+    supplier_type: "",
     gstin: "",
     contact_phone: "",
     email: "",
     contact_person: "",
     address: "",
     product_info: "",
-    payment_terms: "",
     bank_name: "",
     account_no: "",
     ifsc: "",
@@ -30,24 +30,6 @@ const EditVendor = () => {
     rating: "",
     is_active: true,
   });
-
-  // Fetch payment terms list (correct endpoint!)
-  useEffect(() => {
-    const loadTerms = async () => {
-      try {
-        // Endpoint is BASE_URL/settings/payment-terms/ (no extra /api/v1!)
-        const res = await authFetch(`${API_BASE_URL}/api/v1/settings/payment-terms/`);
-        const data = await res.json();
-        // Handle paginated and plain array
-        const list = data.results ? data.results : data;
-        setPaymentTermsList(Array.isArray(list) ? list : []);
-      } catch (error) {
-        console.error("Error loading payment terms", error);
-        setPaymentTermsList([]);
-      }
-    };
-    loadTerms();
-  }, []);
 
   // Fetch Supplier data
   useEffect(() => {
@@ -59,13 +41,13 @@ const EditVendor = () => {
         const data = await res.json();
         setFormData({
           name: data.name || "",
+          supplier_type: data.supplier_type || "",
           gstin: data.gstin || "",
           contact_phone: data.contact_phone || "",
           email: data.email || "",
           contact_person: data.contact_person || "",
           address: data.address || "",
           product_info: data.product_info || "",
-          payment_terms: String(data.payment_terms || ""),
           bank_name: data.bank_name || "",
           account_no: data.account_no || "",
           ifsc: data.ifsc || "",
@@ -120,12 +102,16 @@ const EditVendor = () => {
 
   return (
     <div className="Suppliers-container">
-      {/* Page Header */}
-      <div className="page-header">
+      {/* Header Section - Back button */}
+      <div className="page-header-section">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
-          <span>Back</span>
+          Back
         </button>
+      </div>
+
+      {/* Header Card */}
+      <div className="page-header-card">
         <h1 className="Suppliers-title">Edit Supplier</h1>
       </div>
 
@@ -200,23 +186,6 @@ const EditVendor = () => {
               onChange={handleChange}
               placeholder="Eg: Antibiotics, Surgical Items, Diabetic Medicines, etc."
             ></textarea>
-          </div>
-        </div>
-
-        {/* PAYMENT TERMS */}
-        <div className="section-card">
-          <h2 className="section-heading">Business Terms</h2>
-          <div className="row">
-            <div className="field">
-              <label>Payment Terms *</label>
-              <select name="payment_terms" value={formData.payment_terms} onChange={handleChange} required>
-                <option value="">Select</option>
-                {paymentTermsList.map((pt) => (
-                  <option key={pt.id} value={pt.id}>{pt.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field"></div>
           </div>
         </div>
 

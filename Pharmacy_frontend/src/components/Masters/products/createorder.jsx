@@ -2,9 +2,29 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import "./createorder.css";
+import "../../inventory/inventory.css";
 import { authFetch } from "../../../api/http";
 import { getDefaultLocationId } from "../../../config/location";
 import { useAlert } from "../../ui/alert-provider";
+
+// Same categories as in AddMedicine component
+const MEDICINE_CATEGORIES = [
+  { id: 'tablet', name: 'Tablet' },
+  { id: 'capsule', name: 'Capsule' },
+  { id: 'syrup', name: 'Syrup/Suspension' },
+  { id: 'injection', name: 'Injection/Vial' },
+  { id: 'ointment', name: 'Ointment/Cream' },
+  { id: 'drops', name: 'Drops (Eye/Ear/Nasal)' },
+  { id: 'inhaler', name: 'Inhaler' },
+  { id: 'powder', name: 'Powder/Sachet' },
+  { id: 'gel', name: 'Gel' },
+  { id: 'spray', name: 'Spray' },
+  { id: 'lotion', name: 'Lotion/Solution' },
+  { id: 'shampoo', name: 'Shampoo' },
+  { id: 'soap', name: 'Soap/Bar' },
+  { id: 'bandage', name: 'Bandage/Dressing' },
+  { id: 'mask', name: 'Mask (Surgical/N95)' },
+];
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
@@ -21,14 +41,11 @@ const CreateOrder = () => {
   const [notes, setNotes] = useState("");
 
   const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [uoms, setUoms] = useState([]);
 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [manualProductName, setManualProductName] = useState("");
   const [manualQty, setManualQty] = useState(1);
   const [manualCategory, setManualCategory] = useState("");
-  const [manualUOM, setManualUOM] = useState("");
 
   const [totalItems, setTotalItems] = useState(0);
 
@@ -56,30 +73,11 @@ const CreateOrder = () => {
     fetchVendor();
   }, [Supplier, navigate]);
 
-  const fetchUOMs = async () => {
-    try {
-      const res = await authFetch(`${API_BASE}/api/v1/catalog/uoms/`);
-      const data = await res.json();
-      setUoms(Array.isArray(data) ? data : data.results || []);
-    } catch (err) {
-      console.error("UOM fetch error:", err);
-    }
-  };
-
-  const fetchProductsAndCategories = async () => {
+  const fetchProducts = async () => {
     try {
       const pRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`);
       const pData = await pRes.json();
       const productList = Array.isArray(pData) ? pData : pData.results || [];
-
-      const cRes = await authFetch(`${API_BASE}/api/v1/catalog/categories/`);
-      let categoryList = [];
-      if (cRes.ok) {
-        const cData = await cRes.json();
-        categoryList = Array.isArray(cData) ? cData : cData.results || [];
-      }
-
-      setCategories(categoryList);
 
       const normalized = productList.map((p) => ({
         uid: `p_${p.id}`,
@@ -88,7 +86,6 @@ const CreateOrder = () => {
         quantity: Number(p.pack_unit) || 0,
         expected_unit_cost: p.purchase_price || 0,
         category: typeof p.category === "object" ? p.category.id : p.category || null,
-        uom: p.base_unit || "",
         isNew: false,
       }));
 
@@ -102,8 +99,7 @@ const CreateOrder = () => {
 
   useEffect(() => {
     if (vendorData) {
-      fetchProductsAndCategories();
-      fetchUOMs();
+      fetchProducts();
     }
   }, [vendorData]);
 
@@ -122,9 +118,8 @@ const CreateOrder = () => {
 
   const handleAddManualProduct = async () => {
     if (!manualProductName.trim()) return showAlert("Enter product name", "Error");
-    if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid qty", "Error");
     if (!manualCategory) return showAlert("Select category", "Error");
-    if (!manualUOM) return showAlert("Select UOM", "Error");
+    if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid quantity", "Error");
     if (!vendorData?.id) return showAlert("Supplier not loaded", "Error");
 
     const productPayload = {
@@ -137,7 +132,7 @@ const CreateOrder = () => {
       pack_size: "",
       manufacturer: "",
       mrp: 0,
-      base_unit: manualUOM,
+      base_unit: "",
       pack_unit: String(manualQty),
       units_per_pack: 1,
       base_unit_step: 1,
@@ -146,7 +141,7 @@ const CreateOrder = () => {
       storage_instructions: "",
       is_sensitive: false,
       is_active: true,
-      category: Number(manualCategory),
+      category: manualCategory,
       preferred_vendor: Number(vendorData.id),
     };
 
@@ -171,11 +166,7 @@ const CreateOrder = () => {
         name: created.name,
         quantity: Number(manualQty),
         expected_unit_cost: created.mrp || 0,
-        category:
-          typeof created.category === "object"
-            ? created.category.id
-            : created.category || Number(manualCategory),
-        uom: manualUOM,
+        category: manualCategory,
         isNew: false,
       };
 
@@ -183,7 +174,6 @@ const CreateOrder = () => {
       setManualProductName("");
       setManualQty(1);
       setManualCategory("");
-      setManualUOM("");
       setShowAddProduct(false);
     } catch (err) {
       console.error("Manual product error:", err);
@@ -194,11 +184,6 @@ const CreateOrder = () => {
   const handleQuantityChange = (uid, value) =>
     setItems((prev) =>
       prev.map((it) => (it.uid === uid ? { ...it, quantity: Number(value) || 0 } : it))
-    );
-
-  const handleUOMChange = (uid, value) =>
-    setItems((prev) =>
-      prev.map((it) => (it.uid === uid ? { ...it, uom: value } : it))
     );
 
   const handleDelete = (uid) =>
@@ -269,12 +254,16 @@ const CreateOrder = () => {
 
   return (
     <div className="createorder-container">
-      {/* Header */}
-      <div className="page-header">
+      {/* Header Section - Back button */}
+      <div className="page-header-section">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
-          <span>Back</span>
+          Back
         </button>
+      </div>
+
+      {/* Header Card */}
+      <div className="page-header-card">
         <h1 className="page-title">Create Order</h1>
       </div>
 
@@ -284,9 +273,12 @@ const CreateOrder = () => {
           {/* Supplier Info */}
           <div className="kpi-card">
             <h3>Supplier Info</h3>
-            <div className="kpi-item">Supplier: {vendorData.name}</div>
             <div className="kpi-item">
-              Order Date:
+              <label>Supplier:</label>
+              <span>{vendorData.name}</span>
+            </div>
+            <div className="kpi-item">
+              <label>Order Date:</label>
               <input
                 type="date"
                 value={orderDate}
@@ -317,7 +309,7 @@ const CreateOrder = () => {
                   onChange={(e) => setManualCategory(e.target.value)}
                 >
                   <option value="">Select Category</option>
-                  {categories.map((c) => (
+                  {MEDICINE_CATEGORIES.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -328,18 +320,8 @@ const CreateOrder = () => {
                   min="1"
                   value={manualQty}
                   onChange={(e) => setManualQty(e.target.value)}
+                  placeholder="Enter quantity"
                 />
-                <select
-                  value={manualUOM}
-                  onChange={(e) => setManualUOM(e.target.value)}
-                >
-                  <option value="">Select UOM</option>
-                  {uoms.map((u) => (
-                    <option key={u.id} value={u.code}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
                 <button className="submit-btn" onClick={handleAddManualProduct}>
                   Add
                 </button>
@@ -349,13 +331,13 @@ const CreateOrder = () => {
             {items.length === 0 ? (
               <div className="no-products">No products available.</div>
             ) : (
+              <div className="inv-table-wrap">
               <table className="products-table">
                 <thead>
                   <tr>
                     <th>Product</th>
                     <th>Category</th>
-                    <th>Qty</th>
-                    <th>UOM</th>
+                    <th>Quantity</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -364,7 +346,7 @@ const CreateOrder = () => {
                     <tr key={item.uid}>
                       <td>{item.name}</td>
                       <td>
-                        {categories.find((c) => String(c.id) === String(item.category))
+                        {MEDICINE_CATEGORIES.find((c) => c.id === item.category)
                           ?.name || "—"}
                       </td>
                       <td>
@@ -378,30 +360,19 @@ const CreateOrder = () => {
                         />
                       </td>
                       <td>
-                        <select
-                          value={item.uom || ""}
-                          onChange={(e) => handleUOMChange(item.uid, e.target.value)}
-                        >
-                          <option value="">Select</option>
-                          {uoms.map((u) => (
-                            <option key={u.id} value={u.code}>
-                              {u.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
                         <button
                           className="delete-btn"
                           onClick={() => handleDelete(item.uid)}
+                          title="Delete product"
                         >
-                          <Trash2 size={18} color="red" />
+                          <Trash2 size={18} color="#ef4444" strokeWidth={2} />
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 
@@ -409,15 +380,15 @@ const CreateOrder = () => {
           <div className="kpi-card">
             <h3>Additional Information</h3>
             <div className="kpi-item">
-              Expected Delivery:
+              <label>Expected Delivery:</label>
               <input
                 type="date"
                 value={expectedDate}
                 onChange={(e) => setExpectedDate(e.target.value)}
               />
             </div>
-            <div className="kpi-item">
-              Notes:
+            <div className="kpi-item" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+              <label>Notes:</label>
               <textarea
                 placeholder="Enter notes..."
                 value={notes}

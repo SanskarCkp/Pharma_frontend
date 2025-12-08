@@ -60,11 +60,16 @@ export default function MedicineDetailPage() {
 
   return (
     <div className="inv-detail-wrap">
-      <div className="inv-detail-header">
-        <button className="btn-secondary" onClick={() => nav("/inventory/medicines")}>
+      {/* Header Section - Back button */}
+      <div className="inv-detail-header-section">
+        <button className="back-btn" onClick={() => nav("/inventory/medicines")}>
           <ArrowLeft size={18} />
           Back
         </button>
+      </div>
+
+      {/* Header Card */}
+      <div className="inv-detail-header-card">
         <div>
           <h2>{medicine?.name || "Medicine Details"}</h2>
           <p>Inventory details for batch {batch?.batch_number}</p>

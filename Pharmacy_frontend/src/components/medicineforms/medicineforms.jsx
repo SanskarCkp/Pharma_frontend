@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./medicineforms.css";
+import { Eye, Pencil, Trash2, ArrowLeft, Plus } from "lucide-react";
+import styles from "./medicineforms.module.css";
+import "../inventory/inventory.css";
 import { authFetch } from "../../api/http";
 
 const empty = { id: "", name: "", description: "" };
@@ -158,17 +160,24 @@ export default function MedicineForms() {
   }, [showForm, showView, deleteItem]);
 
   return (
-    <div className="mfWrap">
-      <div className="mfHeader">
-        <button className="mfBack" onClick={() => nav(-1)} disabled={loading}>
-          ← Back
+    <div className={styles.mfWrap}>
+      {/* Header Section - Back button */}
+      <div className={styles.mfHeaderSection}>
+        <button className={styles.backBtn} onClick={() => nav(-1)} disabled={loading}>
+          <ArrowLeft size={18} />
+          Back
         </button>
-        <div className="mfHeadings">
+      </div>
+
+      {/* Header */}
+      <div className={styles.mfHeaderCard}>
+        <div>
           <h2>HSN Code</h2>
           <p>Manage all available HSN Code</p>
         </div>
-        <button className="mfAdd" onClick={openAdd} disabled={loading || saving}>
-          ＋ Add New
+        <button className={styles.mfAdd} onClick={openAdd} disabled={loading || saving}>
+          <Plus size={18} />
+          Add New
         </button>
       </div>
 
@@ -177,8 +186,9 @@ export default function MedicineForms() {
       {loading ? (
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
-        <div className="mfCard">
-          <table className="mfTable">
+        <div className={styles.mfCard}>
+          <div className="inv-table-wrap">
+          <table className="inv-table">
             <thead>
               <tr>
                 <th className="slno-col">SL No</th>
@@ -193,11 +203,17 @@ export default function MedicineForms() {
                   <tr key={r.id}>
                     <td className="slno-col">{i + 1}</td>
                     <td>{r.name}</td>
-                    <td className="mfMuted">{r.description || "-"}</td>
-                    <td className="mfActions">
-                      <button className="mfIcon" onClick={() => openView(r)}>👁️</button>
-                      <button className="mfIcon" onClick={() => openEdit(r)}>✎</button>
-                      <button className="mfIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
+                    <td className={styles.mfMuted}>{r.description || "-"}</td>
+                    <td className={styles.mfActions}>
+                      <button className={styles.mfIcon} onClick={() => openView(r)} title="View">
+                        <Eye size={16} />
+                      </button>
+                      <button className={styles.mfIcon} onClick={() => openEdit(r)} title="Edit">
+                        <Pencil size={16} />
+                      </button>
+                      <button className={`${styles.mfIcon} ${styles.danger}`} onClick={() => confirmDelete(r)} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -210,35 +226,36 @@ export default function MedicineForms() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="mfModalBackdrop" onMouseDown={closeForm}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className={styles.mfModalBackdrop} onMouseDown={closeForm}>
+          <div className={styles.mfModal} onMouseDown={(e) => e.stopPropagation()}>
+            <div className={styles.mfModalHeader}>
               <h3>{editingId ? "Edit Form" : "Add New Form"}</h3>
-              <button className="mfClose" onClick={closeForm}>✕</button>
+              <button className={styles.mfClose} onClick={closeForm}>✕</button>
             </div>
-            <form className="mfForm" onSubmit={handleSubmit}>
-              <label className="mfLabel">
-                Name <span className="mfReq">*</span>
+            <form className={styles.mfForm} onSubmit={handleSubmit}>
+              <label className={styles.mfLabel}>
+                <span style={{ whiteSpace: "nowrap" }}>Name <span className={styles.mfReq}>*</span></span>
                 <input
-                  className={`mfInput ${errors.name ? "mfInputError" : ""}`}
+                  className={`${styles.mfInput} ${errors.name ? styles.mfInputError : ""}`}
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Enter form name"
                   autoFocus
                 />
-                {errors.name && <div className="mfError">{errors.name}</div>}
+                {errors.name && <div className={styles.mfError}>{errors.name}</div>}
               </label>
 
-              <label className="mfLabel">
+              <label className={styles.mfLabel}>
                 Description
                 <input
-                  className="mfInput"
+                  className={styles.mfInput}
                   name="description"
                   value={form.description}
                   onChange={handleChange}
@@ -246,9 +263,9 @@ export default function MedicineForms() {
                 />
               </label>
 
-              <div className="mfBtnRow">
-                <button type="button" className="mfBtn" onClick={closeForm}>Cancel</button>
-                <button type="submit" className="mfBtn primary">
+              <div className={styles.mfBtnRow}>
+                <button type="button" className={styles.mfBtn} onClick={closeForm}>Cancel</button>
+                <button type="submit" className={`${styles.mfBtn} ${styles.primary}`}>
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Add Item"}
                 </button>
               </div>
@@ -259,40 +276,40 @@ export default function MedicineForms() {
 
       {/* View Modal */}
       {showView && (
-        <div className="mfModalBackdrop" onMouseDown={() => setShowView(null)}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className={styles.mfModalBackdrop} onMouseDown={() => setShowView(null)}>
+          <div className={styles.mfModal} onMouseDown={(e) => e.stopPropagation()}>
+            <div className={styles.mfModalHeader}>
               <h3>View Form</h3>
-              <button className="mfClose" onClick={() => setShowView(null)}>✕</button>
+              <button className={styles.mfClose} onClick={() => setShowView(null)}>✕</button>
             </div>
-            <div className="mfViewTable">
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Name</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">{showView.name}</span>
+            <div className={styles.mfViewTable}>
+              <div className={styles.mfViewRow}>
+                <span className={styles.mfViewLabel}>Name</span>
+                <span className={styles.mfViewColon}>:</span>
+                <span className={styles.mfViewValue}>{showView.name}</span>
               </div>
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Description</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">{showView.description || "-"}</span>
+              <div className={styles.mfViewRow}>
+                <span className={styles.mfViewLabel}>Description</span>
+                <span className={styles.mfViewColon}>:</span>
+                <span className={styles.mfViewValue}>{showView.description || "-"}</span>
               </div>
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Created</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">
+              <div className={styles.mfViewRow}>
+                <span className={styles.mfViewLabel}>Created</span>
+                <span className={styles.mfViewColon}>:</span>
+                <span className={styles.mfViewValue}>
                   {showView.created_at ? new Date(showView.created_at).toLocaleString() : "-"}
                 </span>
               </div>
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Updated</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">
+              <div className={styles.mfViewRow}>
+                <span className={styles.mfViewLabel}>Updated</span>
+                <span className={styles.mfViewColon}>:</span>
+                <span className={styles.mfViewValue}>
                   {showView.updated_at ? new Date(showView.updated_at).toLocaleString() : "-"}
                 </span>
               </div>
             </div>
-            <div className="mfBtnRow center">
-              <button className="mfBtn" onClick={() => setShowView(null)}>Close</button>
+            <div className={`${styles.mfBtnRow} ${styles.center}`}>
+              <button className={styles.mfBtn} onClick={() => setShowView(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -300,18 +317,18 @@ export default function MedicineForms() {
 
       {/* Delete Modal */}
       {deleteItem && (
-        <div className="mfModalBackdrop" onMouseDown={() => setDeleteItem(null)}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className={styles.mfModalBackdrop} onMouseDown={() => setDeleteItem(null)}>
+          <div className={styles.mfModal} onMouseDown={(e) => e.stopPropagation()}>
+            <div className={styles.mfModalHeader}>
               <h3>Confirm Delete</h3>
-              <button className="mfClose" onClick={() => setDeleteItem(null)}>✕</button>
+              <button className={styles.mfClose} onClick={() => setDeleteItem(null)}>✕</button>
             </div>
             <div style={{ padding: 20 }}>
               Are you sure you want to delete <strong>{deleteItem.name}</strong> form?
             </div>
-            <div className="mfBtnRow">
-              <button className="mfBtn" onClick={() => setDeleteItem(null)}>Cancel</button>
-              <button className="mfBtn danger" onClick={handleDelete}>
+            <div className={styles.mfBtnRow}>
+              <button className={styles.mfBtn} onClick={() => setDeleteItem(null)}>Cancel</button>
+              <button className={`${styles.mfBtn} ${styles.danger}`} onClick={handleDelete}>
                 {saving ? "Deleting..." : "Delete"}
               </button>
             </div>

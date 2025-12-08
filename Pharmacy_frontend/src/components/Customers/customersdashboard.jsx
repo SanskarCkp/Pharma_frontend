@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./customersdashboard.module.css";
+import "../inventory/inventory.css";
 import { Eye, Trash2 } from "lucide-react";
 import { useAlert } from "../ui/alert-provider";
 import { authFetch } from "../../api/http";
@@ -144,38 +145,30 @@ const CustomersDashboard = () => {
         </div>
 
         {/* ------------------- CUSTOMER TABLE ------------------- */}
-        <div className={styles["customers-list"]}>
-          <div className={`${styles["customer-directory-header"]} mb-4`}>
-            <h3>Customer Directory</h3>
-            {/* <button className="add-btn" onClick={() => navigate("/masters/customers/add")}>
-              + Add Customer
-            </button> */}
-          </div>
-
+        <div className="inv-table-wrap">
           {loading ? (
-            <p>Loading customers...</p>
+            <div style={{ padding: 20 }}>Loading...</div>
           ) : (
-            <table className={styles["customers-table"]}>
+            <table className="inv-table">
               <thead>
                 <tr>
-                 <th>Customer ID</th>
+                  <th>Customer ID</th>
                   <th>Name</th>
                   <th>Phone</th>
                   <th>Email</th>
                   <th>Type</th>
                   <th>City</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th style={{ width: 140, textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {customers.length ? (
-                  customers.map((c, index) => (
+                  customers.map((c) => (
                     <tr key={c.id}>
-        {/* Customer Code */}
-        <td>{c.code || "-"}</td>
+                      <td>{c.code || "-"}</td>
                       <td
-                        className={styles["customer-name-link"]}
+                        style={{ cursor: "pointer", color: "#2563eb" }}
                         onClick={() => navigate(`/masters/customers/${c.id}`)}
                       >
                         {c.name}
@@ -185,30 +178,40 @@ const CustomersDashboard = () => {
                       <td>{c.type || "-"}</td>
                       <td>{c.city || "-"}</td>
                       <td>
-                        {c.is_active ? (
-                          <span className={styles["status-active"]}>Active</span>
-                        ) : (
-                          <span className={styles["status-inactive"]}>Inactive</span>
-                        )}
+                        <span
+                          className={`badge ${
+                            c.is_active ? "green" : "red"
+                          }`}
+                        >
+                          {c.is_active ? "Active" : "Inactive"}
+                        </span>
                       </td>
-                      <td className={styles["actions-cell"]}>
-                        <Eye
-                          size={18}
-                          className="action-icon view-icon"
-                          onClick={() => navigate(`/masters/customers/${c.id}`)}
-                        />
-                        <Trash2
-                          size={18}
-                          className="action-icon delete-icon"
-                          onClick={() => handleDelete(c.id)}
-                        />
-                      </td>
+                       <td className="inv-actions-cell">
+                         <div style={{ display: "inline-flex", gap: 8 }}>
+                           <button
+                             className="inv-icon"
+                             title="View details"
+                             onClick={() => navigate(`/masters/customers/${c.id}`)}
+                             style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                           >
+                             <Eye size={16} />
+                           </button>
+                           <button
+                             className="inv-icon danger"
+                             title="Delete"
+                             onClick={() => handleDelete(c.id)}
+                             style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                         </div>
+                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className={styles["no-data"]}>
-                      No customers found.
+                    <td colSpan="8" style={{ textAlign: "center", padding: 14 }}>
+                      No customers found
                     </td>
                   </tr>
                 )}

@@ -82,7 +82,6 @@ import ExpiryAlerts from "./components/expiryalerts/expiryalerts.jsx";
 
 // Settings / retention
 import SettingsDashboard from "./components/settings/settingsdashboard.jsx";
-import Notifications from "./components/settings/Notifications.jsx";
 import BackupRestore from "./components/settings/BackupRestore.jsx";
 import TaxBillingConfiguration from "./components/settings/TaxBillingConfiguration";
 import AddSetting from "./components/settings/addsettings.jsx";
@@ -263,10 +262,6 @@ function AppLayout() {
 
             {/* Settings */}
             <Route path="/settings" element={<SettingsDashboard />} />
-            <Route
-              path="/settings/notifications"
-              element={<Notifications />}
-            />
             <Route
               path="/settings/backup-restore"
               element={<BackupRestore />}

@@ -1,11 +1,10 @@
 // src/components/settings/SettingsDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Home, AlertCircle, Database, Bell, Edit2, X } from "lucide-react";
+import { Home, AlertCircle, Database, Edit2, X } from "lucide-react";
 import styles from "./settingsdashboard.module.css";
 import { authFetch } from "../../api/http";
 import { useAlert } from "../ui/alert-provider";
-import Notifications from "./Notifications";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -23,7 +22,6 @@ const SettingsDashboard = () => {
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
     // { name: "Backup & Restore", icon: <Database size={24} /> },
-    { name: "Notifications", icon: <Bell size={24} /> },
   ];
 
   const [formData, setFormData] = useState({
@@ -488,12 +486,6 @@ const SettingsDashboard = () => {
             <Database size={64} className={styles["coming-soon-icon"]} />
             <h2>Backup & Restore</h2>
             <p>Feature Coming Soon</p>
-          </div>
-        )}
-
-        {activeSection === "Notifications" && (
-          <div style={{ marginTop: 40 }}>
-            <Notifications />
           </div>
         )}
       </div>
