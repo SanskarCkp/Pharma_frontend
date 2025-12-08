@@ -19,7 +19,7 @@ const ProductCatalog = () => {
   // Redirect if vendor not provided
   useEffect(() => {
     if (!vendor?.id) {
-      navigate("/masters/vendors");
+      navigate("/suppliers");
     }
   }, [vendor, navigate]);
 

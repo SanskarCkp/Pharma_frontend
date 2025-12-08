@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./consentledger.css";
+import { useAlert } from "../ui/alert-provider";
 
 const ConsentLedger = () => {
+  const { showAlert } = useAlert();
   const [consents, setConsents] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -37,7 +39,7 @@ const ConsentLedger = () => {
 
     setConsents([...consents, newConsent]);
 
-    alert("✅ Consent Record Created Successfully!");
+    showAlert("Consent Record Created Successfully!", "Success");
     console.log("New Consent Record:", newConsent);
 
     // Reset form after submission

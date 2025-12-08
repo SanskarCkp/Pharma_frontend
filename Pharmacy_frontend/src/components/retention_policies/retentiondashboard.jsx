@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./retentiondashboard.css";
+import styles from "./retentiondashboard.module.css";
+import { useAlert } from "../ui/alert-provider";
 
 const RetentionDashboard = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const [policies, setPolicies] = useState([]);
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   const fetchPolicies = async () => {
     try {
@@ -27,10 +30,10 @@ const RetentionDashboard = () => {
         method: "DELETE",
       });
       if (res.ok) fetchPolicies();
-      else alert("Delete failed");
+      else showAlert("Delete failed", "Error");
     } catch (err) {
       console.error(err);
-      alert("Delete failed");
+      showAlert("Delete failed", "Error");
     }
   };
 
@@ -39,41 +42,41 @@ const RetentionDashboard = () => {
   const holdCount = policies.filter(p => p.hold_from_purge).length;
 
   return (
-    <div className="customers-container">
+    <div className={styles["customers-container"]}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 className="customers-title">Retention Policies</h1>
-          <h2 className="customers-heading">Manage retention rules per module</h2>
+          <h1 className={styles["customers-title"]}>Retention Policies</h1>
+          <h2 className={styles["customers-heading"]}>Manage retention rules per module</h2>
         </div>
 
-        <button className="add-btn" onClick={() => navigate("/retention-policies/add")}>
+        <button className={styles["add-btn"]} onClick={() => navigate("/retention-policies/add")}>
           + Add Policy
         </button>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 18 }}>
-        <div className="bg-white shadow rounded-xl p-5 text-center">
-          <h3 className="text-lg">Total Policies</h3>
-          <p className="text-3xl" style={{ marginTop: 8 }}>{total}</p>
+      <div className={styles.grid} style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 18 }}>
+        <div className={cx(styles["bg-white"], styles.shadow, styles["rounded-xl"], styles["text-center"], "p-5")}>
+          <h3 className={styles["text-lg"]}>Total Policies</h3>
+          <p className={styles["text-3xl"]} style={{ marginTop: 8 }}>{total}</p>
         </div>
 
-        <div className="bg-white shadow rounded-xl p-5 text-center">
-          <h3 className="text-lg">Held From Purge</h3>
-          <p className="text-3xl" style={{ marginTop: 8 }}>{holdCount}</p>
+        <div className={cx(styles["bg-white"], styles.shadow, styles["rounded-xl"], styles["text-center"], "p-5")}>
+          <h3 className={styles["text-lg"]}>Held From Purge</h3>
+          <p className={styles["text-3xl"]} style={{ marginTop: 8 }}>{holdCount}</p>
         </div>
 
-        <div className="bg-white shadow rounded-xl p-5 text-center">
-          <h3 className="text-lg">Placeholder</h3>
-          <p className="text-3xl" style={{ marginTop: 8 }}>—</p>
+        <div className={cx(styles["bg-white"], styles.shadow, styles["rounded-xl"], styles["text-center"], "p-5")}>
+          <h3 className={styles["text-lg"]}>Placeholder</h3>
+          <p className={styles["text-3xl"]} style={{ marginTop: 8 }}>-</p>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="customers-list">
+      <div className={styles["customers-list"]}>
         <h3>Retention Policies List</h3>
 
-        <table className="customers-table">
+        <table className={styles["customers-table"]}>
           <thead>
             <tr>
               <th>ID</th>
@@ -92,11 +95,11 @@ const RetentionDashboard = () => {
                 <td>{p.keep_years}</td>
                 <td>{String(!!p.hold_from_purge)}</td>
                 <td>
-                  <button className="edit-btn" onClick={() => navigate(`/masters/retention-policies/edit/${p.id}`)}>
+                  <button className={styles["edit-btn"]} onClick={() => navigate(`/masters/retention-policies/edit/${p.id}`)}>
                     Edit
                   </button>
 
-                  <button className="delete-btn" onClick={() => handleDelete(p.id)}>
+                  <button className={styles["delete-btn"]} onClick={() => handleDelete(p.id)}>
                     Delete
                   </button>
                 </td>
@@ -105,7 +108,7 @@ const RetentionDashboard = () => {
 
             {policies.length === 0 && (
               <tr>
-                <td colSpan={5} className="no-data">No retention policies found.</td>
+                <td colSpan={5} className={styles["no-data"]}>No retention policies found.</td>
               </tr>
             )}
           </tbody>
