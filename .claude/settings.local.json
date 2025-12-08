@@ -8,7 +8,8 @@
       "Bash(npm run build:*)",
       "Bash(dir:*)",
       "Bash(curl:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(del \"d:\\CKP\\pharmacy\\Pharma_frontend\\Pharmacy_frontend\\src\\components\\medicineforms\\medicineforms.css\")"
     ],
     "deny": [],
     "ask": []

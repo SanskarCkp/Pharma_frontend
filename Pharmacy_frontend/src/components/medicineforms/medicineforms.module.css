@@ -24,13 +24,13 @@
 }
 
 /* Header Section - Back button */
-.mf-header-section {
+.mfHeaderSection {
   display: flex;
   align-items: center;
   margin-bottom: 1rem;
 }
 
-.mfWrap .back-btn {
+.mfWrap .backBtn {
   display: inline-flex !important;
   align-items: center;
   gap: 8px;
@@ -46,7 +46,7 @@
   box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
-.mfWrap .back-btn:hover {
+.mfWrap .backBtn:hover {
   background: #059669 !important;
   border-color: #047857 !important;
   color: white !important;
@@ -54,17 +54,17 @@
   box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
 }
 
-.mfWrap .back-btn:active {
+.mfWrap .backBtn:active {
   transform: translateY(0);
 }
 
-.mfWrap .back-btn:disabled {
+.mfWrap .backBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* Header Card */
-.mf-header-card {
+.mfHeaderCard {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -72,14 +72,14 @@
   margin-bottom: 24px;
 }
 
-.mf-header-card h2 {
+.mfHeaderCard h2 {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
   color: #111827;
 }
 
-.mf-header-card p {
+.mfHeaderCard p {
   margin: 0.5rem 0 0;
   color: #6b7280;
   font-size: 0.95rem;
@@ -277,4 +277,44 @@
 
 .mfBtn.primary:hover {
   background: var(--primary-dark);
+}
+
+.mfBtn.danger {
+  background-color: #dc2626;
+  border-color: transparent;
+  color: #fff;
+}
+
+.mfBtn.danger:hover {
+  background: #b91c1c;
+}
+
+.mfBtnRow.center {
+  justify-content: center;
+}
+
+.mfViewTable {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.mfViewRow {
+  display: grid;
+  grid-template-columns: 120px 20px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.mfViewLabel {
+  font-weight: 600;
+  color: #374151;
+}
+
+.mfViewColon {
+  color: #6b7280;
+}
+
+.mfViewValue {
+  color: #111827;
 }
