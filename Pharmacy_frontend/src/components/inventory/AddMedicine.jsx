@@ -521,7 +521,6 @@ export default function AddMedicine({
       strength: medicine.strength.trim() || undefined,
       rack_location: Number(medicine.rack_location),
       gst_percent: medicine.gst_percent || "0",
-      cost_price: medicine.cost_price,
       mrp: medicine.mrp,
       tablets_per_strip: medicine.tablets_per_strip ? Number(medicine.tablets_per_strip) : undefined,
       strips_per_box: medicine.strips_per_box ? Number(medicine.strips_per_box) : undefined,
@@ -553,6 +552,7 @@ export default function AddMedicine({
       expiry_date: batch.expiry_date,
       quantity: Number(batch.quantity),
       stock_unit: batch.stock_unit,
+      purchase_price: medicine.cost_price || "0",
     };
 
     return {
