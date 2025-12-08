@@ -19,15 +19,16 @@ import {
 import "./Sidebar.css";
 
 // ⬅️ use the logout from api/auth instead of ../utils/logout
-import { logout as clearAuthTokens } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { logout } = useAuth();
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    setIsMobileMenuOpen((prev) => !prev);
   };
 
   const closeMobileMenu = () => {
@@ -68,13 +69,7 @@ const Sidebar = () => {
 
   // 🔥 real logout handler
   const handleLogoutClick = () => {
-    try {
-      // remove access + refresh tokens from localStorage
-      clearAuthTokens();
-    } catch (e) {
-      console.warn("Failed to clear tokens on logout:", e);
-    }
-    // send user to login immediately
+    logout();
     navigate("/login", { replace: true });
   };
 

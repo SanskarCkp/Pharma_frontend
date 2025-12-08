@@ -1,14 +1,11 @@
 // src/App.jsx
 import React from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // Layout
 import Sidebar from "./components/sidebar";
 import Footer from "./components/Footer";
+import LicenseBanner from "./components/common/LicenseBanner";
 import Topbar from "./components/Topbar.jsx";
 
 // Public
@@ -108,9 +105,11 @@ function AppLayout() {
       <Sidebar />
       <div className="flex flex-col flex-grow ml-0 lg:ml-[240px]">
         <Topbar />
-        <main className="flex-grow pt-1 p-6 mt-[60px] lg:mt-[96px] mb-[60px]">
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <div className="flex flex-col flex-grow pt-[60px] lg:pt-[96px]">
+          <LicenseBanner />
+          <main className="flex-grow p-6 mb-[60px]">
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route path="/home" element={<Home />} />
             <Route path="/inventory/medicines" element={<MedicineInventory />} />
@@ -257,16 +256,14 @@ function AppLayout() {
             <Route path="/reports/expiry" element={<ExpiryReport />} />
           </Routes>
         </main>
-        <Footer />
       </div>
+      <Footer />
     </div>
+  </div>
   );
 }
 
 export default function App() {
-  // No automatic redirect - let PrivateRoute handle authentication
-  // PrivateRoute will redirect to /login if user is not authenticated
-
   return (
     <Routes>
       {/* Public routes */}

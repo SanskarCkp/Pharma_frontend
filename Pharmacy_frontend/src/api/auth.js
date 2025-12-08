@@ -2,6 +2,8 @@
 // Combined & cleaned version — supports both API styles (/auth/... or /api/v1/auth/...)
 // And all forgot/verify/reset OTP flows.
 
+import getOrCreateDeviceId from "../utils/device";
+
 const rawBase = import.meta.env.VITE_API_URL || "";
 const API_BASE = rawBase.replace(/\/+$/g, ""); // remove trailing slash
 
@@ -53,6 +55,8 @@ async function doFetch(url, opts = {}) {
 }
 
 // TOKEN HELPERS
+export const AUTH_TOKENS_CHANGED_EVENT = "auth:tokens-changed";
+
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const LEGACY_ACCESS_KEYS = ["access"];
@@ -78,6 +82,18 @@ const removeKeys = (primary, legacyKeys) => {
   legacyKeys.forEach((key) => localStorage.removeItem(key));
 };
 
+const broadcastTokenChange = (detail) => {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+    return;
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_TOKENS_CHANGED_EVENT, { detail }));
+  } catch (error) {
+    console.warn("Failed to broadcast auth token change:", error);
+  }
+};
+
 export function getAccessToken() {
   return readFromStorage(ACCESS_TOKEN_KEY, LEGACY_ACCESS_KEYS);
 }
@@ -89,11 +105,16 @@ export function getRefreshToken() {
 export function storeTokens({ access, refresh }) {
   if (access) persistToStorage(ACCESS_TOKEN_KEY, access, LEGACY_ACCESS_KEYS);
   if (refresh) persistToStorage(REFRESH_TOKEN_KEY, refresh, LEGACY_REFRESH_KEYS);
+
+  const latestAccess = access ?? getAccessToken();
+  const latestRefresh = refresh ?? getRefreshToken();
+  broadcastTokenChange({ access: latestAccess, refresh: latestRefresh });
 }
 
 export function clearTokens() {
   removeKeys(ACCESS_TOKEN_KEY, LEGACY_ACCESS_KEYS);
   removeKeys(REFRESH_TOKEN_KEY, LEGACY_REFRESH_KEYS);
+  broadcastTokenChange({ access: null, refresh: null });
 }
 
 export function logout() { clearTokens(); }
@@ -102,23 +123,23 @@ export function logout() { clearTokens(); }
 // LOGIN (supports both API patterns)
 // ----------------------------
 export async function login(username, password) {
-  // Decide login URL dynamically
+  const rootWithoutV1 = API_BASE.replace(/\/api\/v1$/i, "");
   const url = (() => {
-    if (!API_BASE) return "/auth/token/"; // local dev
+    if (!API_BASE) return "/api/auth/login/";
     if (API_BASE.toLowerCase().endsWith("/api/v1"))
-      return `${API_BASE}/auth/token/`;
-    return `${API_BASE}/api/v1/auth/token/`;
+      return `${rootWithoutV1}/api/auth/login/`;
+    if (API_BASE.toLowerCase().endsWith("/api"))
+      return `${API_BASE}/auth/login/`;
+    return `${API_BASE}/api/auth/login/`;
   })();
+
+  const deviceId = getOrCreateDeviceId();
 
   const data = await doFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, device_id: deviceId }),
   });
-
-  // Save tokens if present
-  if (data.access || data.refresh)
-    storeTokens({ access: data.access, refresh: data.refresh });
 
   return data;
 }
