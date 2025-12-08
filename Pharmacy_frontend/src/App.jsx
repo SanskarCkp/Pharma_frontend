@@ -29,6 +29,8 @@ import MastersDashboard from "./components/Masters/masters.jsx";
 // Inventory
 import MedicineInventory from "./components/inventory/MedicineInventory.jsx";
 import AddMedicine from "./components/inventory/AddMedicine.jsx";
+import MedicineDetailPage from "./components/inventory/MedicineDetailPage.jsx";
+import ManageMedicinePage from "./components/inventory/ManageMedicinePage.jsx";
 
 // Masters
 import Vendorsdashboard from "./components/Suppliers/vendorsdashboard.jsx";
@@ -132,6 +134,8 @@ function AppLayout() {
             <Route path="/home" element={<Home />} />
             <Route path="/inventory/medicines" element={<MedicineInventory />} />
             <Route path="/inventory/medicines/add" element={<AddMedicine />} />
+            <Route path="/inventory/medicines/:batchId/edit" element={<ManageMedicinePage />} />
+            <Route path="/inventory/medicines/:batchId" element={<MedicineDetailPage />} />
 
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
