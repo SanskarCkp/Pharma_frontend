@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import "./billgeneration.css";
+import "./invoice.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 
@@ -39,32 +39,35 @@ export default function Invoice() {
     load();
   }, [id]);
 
-  const subtotal = Number(invoice?.gross_total || 0);
-  const gstAmount = Number(invoice?.tax_total || 0);
-  const total = Number(invoice?.net_total || 0);
+  if (!invoice && !error) return <p>Loading invoice...</p>;
+  if (error)
+    return (
+      <div className="invoice-container">
+        <p className="error">{error}</p>
+        <button onClick={() => navigate(-1)}>← Back</button>
+      </div>
+    );
 
-  // ================= FIXED PAYMENT INFO WITH CASH FALLBACK =================
+  const customer = invoice?.customer_detail || {};
   const payments = invoice?.payments || [];
   let paidAmount = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   let paymentMode = payments.length > 0 ? payments.map((p) => p.mode).join(", ") : "N/A";
 
-  // Fallback: if paid_amount exists in invoice but payments array is empty, assume cash
   if (paidAmount === 0 && invoice?.paid_amount > 0) {
     paidAmount = Number(invoice.paid_amount);
     paymentMode = "CASH";
   }
 
+  const subtotal = Number(invoice?.gross_total || 0);
+  const gstAmount = Number(invoice?.tax_total || 0);
+  const total = Number(invoice?.net_total || 0);
   const balanceAmount = Math.max(total - paidAmount, 0);
 
   let paymentStatus = "UNPAID";
   if (paidAmount >= total && total > 0) paymentStatus = "PAID";
   else if (paidAmount > 0) paymentStatus = "CREDIT";
-  // ========================================================================
 
-  const handlePrint = () => {
-    if (!printRef.current) return;
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
@@ -72,16 +75,12 @@ export default function Invoice() {
     const canvas = await html2canvas(element, { scale: 3, useCORS: true });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
-
     const pageWidth = pdf.internal.pageSize.getWidth();
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
     pdf.save(`${invoice?.invoice_no || "invoice"}.pdf`);
   };
-
- const customer = invoice?.customer_detail || {};
 
   const search = new URLSearchParams(location.search);
   const shouldAutoPrint = search.get("print") === "1";
@@ -93,129 +92,113 @@ export default function Invoice() {
     }
   }, [shouldAutoPrint, invoice, autoPrintDone]);
 
-  if (!invoice && !error) {
-    return (
-      <div style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}>
-        <p>Loading invoice...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}>
-        <p style={{ color: "#dc2626" }}>{error}</p>
-        <button onClick={() => navigate(-1)}>← Back</button>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+    <div className="invoice-container">
+      <div className="invoice-action-bar">
         <button onClick={() => navigate(-1)}>← Back</button>
-
         <div>
-          <button onClick={handleDownloadPDF} style={{ marginRight: "0.5rem" }}>
-            Download
-          </button>
-          <button onClick={handlePrint}>Print</button>
+          <button onClick={handleDownloadPDF} className="btn">Download</button>
+          <button onClick={handlePrint} className="btn">Print</button>
         </div>
       </div>
 
-      <div
-        ref={printRef}
-        style={{
-          border: "1px solid #ddd",
-          padding: "20px",
-          borderRadius: "6px",
-          background: "white",
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <h2 style={{ color: "#14b8a6" }}>Keshav Medical Centre</h2>
-          <p>123 Medical Plaza, MG Road, Mumbai, Maharashtra - 400001</p>
-          <p>Phone: +91 98765 43210 | GSTIN: 27AABCU9603R1Z5</p>
+      <div ref={printRef} className="invoice-box">
+        {/* HEADER */}
+        <div className="invoice-header">
+          <img
+            src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
+            alt="logo"
+            className="mobile-logo"
+          />
+          <h2>The Wellness Medicines</h2>
+          <p>(a unit of wellness pharma)</p>
+          <p>
+            Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,
+            Avalahalli, DB Pura Main Road, Bengaluru-560064
+          </p>
+          <p>GST NO: 29BHOPS2215K1ZU | DL No: 20-KA-B52-257125</p>
+          <p>Mob: 9740050075</p>
         </div>
 
-        {/* CUSTOMER INFO */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+        {/* CUSTOMER & INVOICE INFO */}
+        <div className="invoice-info-block">
           <div>
-            <h4>Bill To</h4>
-            <p><strong>Name:</strong> {customer.name || "-"}</p>
-            <p><strong>Phone:</strong> {customer.phone || "-"}</p>
-            {customer.email && <p><strong>Email:</strong> {customer.email}</p>}
-            {customer.city && <p><strong>City:</strong> {customer.city}</p>}
+            <h4>Patient Info</h4>
+            <p><strong>Name:</strong> {customer.name || invoice?.patient_name || "-"}</p>
+            <p><strong>Address:</strong> {customer.address || invoice?.patient_address || "-"}</p>
+            <p><strong>Doctor:</strong> {invoice?.doctor_name || "-"}</p>
           </div>
-
-          <div style={{ textAlign: "right" }}>
+          <div className="invoice-right">
             <h4>Invoice Info</h4>
             <p><strong>Invoice #:</strong> {invoice.invoice_no || invoice.id}</p>
-            <p>
-              <strong>Date:</strong>{" "}
+            <p><strong>Date:</strong>{" "}
               {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleString() : ""}
+            </p>
+            <p><strong>Time:</strong>{" "}
+              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleTimeString() : ""}
             </p>
           </div>
         </div>
 
-        {/* ITEMS */}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ backgroundColor: "#f3f4f6" }}>
+        {/* ITEMS TABLE */}
+        <table className="invoice-table">
+          <thead>
             <tr>
               <th>#</th>
-              <th>Medicine</th>
-              <th>Batch</th>
-              <th style={{ textAlign: "right" }}>Qty</th>
-              <th style={{ textAlign: "right" }}>Price</th>
-              <th style={{ textAlign: "right" }}>Total</th>
+              <th>Item Name</th>
+              <th>Batch No</th>
+              <th>Exp Dt</th>
+              <th className="right">Qty</th>
+              <th className="right">MRP</th>
+              <th className="right">Rate</th>
+              <th className="right">GST</th>
+              <th className="right">Amount</th>
+              <th>HSN Code</th>
             </tr>
           </thead>
           <tbody>
-            {invoice.lines.map((item, index) => (
+            {invoice.lines?.map((item, index) => (
               <tr key={index}>
                 <td>{index + 1}</td>
                 <td>{item.product_name}</td>
                 <td>{item.batch_no || item.batch_lot}</td>
-                <td style={{ textAlign: "right" }}>{item.qty_base}</td>
-                <td style={{ textAlign: "right" }}>₹{Number(item.rate_per_base).toFixed(2)}</td>
-                <td style={{ textAlign: "right" }}>₹{Number(item.line_total).toFixed(2)}</td>
+                <td>{item.expiry_date || "-"}</td>
+                <td className="right">{item.qty_base}</td>
+                <td className="right">₹{Number(item.mrp || item.rate_per_base).toFixed(2)}</td>
+                <td className="right">₹{Number(item.rate_per_base).toFixed(2)}</td>
+                <td className="right">{Number(item.gst_percent || 0)}%</td>
+                <td className="right">₹{Number(item.line_total).toFixed(2)}</td>
+                <td>{item.hsn_code || "-"}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* SUMMARY */}
-        <div style={{ marginTop: "1.5rem", textAlign: "right" }}>
-          <p><strong>Subtotal:</strong> ₹{subtotal.toFixed(2)}</p>
-          <p><strong>GST:</strong> ₹{gstAmount.toFixed(2)}</p>
-
-          <h3 style={{ borderTop: "1px solid #ccc", paddingTop: "0.5rem" }}>
-            Total: ₹{total.toFixed(2)}
-          </h3>
+        {/* TAX & SUMMARY */}
+        <div className="invoice-summary">
+          <p><strong>Sub Total:</strong> ₹{subtotal.toFixed(2)}</p>
+          <p><strong>Discount:</strong> ₹{invoice?.discount || 0}</p>
+          <p><strong>GST Amt:</strong> ₹{gstAmount.toFixed(2)}</p>
+          <h3>Inv Total: ₹{total.toFixed(2)}</h3>
         </div>
 
         {/* PAYMENT INFO */}
-        <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #ddd" }}>
+        <div className="invoice-payment">
           <h4>Payment Details</h4>
-
           <p><strong>Payment Method:</strong> {paymentMode}</p>
-
-          <p><strong>Status:</strong> 
-            {paymentStatus === "PAID" && " Paid"}
-            {paymentStatus === "CREDIT" && " Credit (Partial Payment)"}
-            {paymentStatus === "UNPAID" && " Unpaid"}
-          </p>
-
+          <p><strong>Status:</strong> {paymentStatus}</p>
           <p><strong>Paid Amount:</strong> ₹{paidAmount.toFixed(2)}</p>
           <p><strong>Balance Amount:</strong> ₹{balanceAmount.toFixed(2)}</p>
         </div>
 
-        <div style={{ marginTop: "2rem", textAlign: "center", color: "#666" }}>
-          <p>Thank you for choosing Keshav Medical Centre!</p>
+        {/* FOOTER */}
+        <div className="invoice-footer">
+          <p>Goods Sold Cannot Be Taken Back.</p>
+          <p>Cold storage insulins will not be taken back strictly once sold.</p>
+          <p>Pharmacy Timings: 8:00am to 10:00pm</p>
           <p>This is a computer-generated invoice.</p>
         </div>
       </div>
     </div>
   );
 }
-
