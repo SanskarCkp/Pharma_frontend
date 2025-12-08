@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
@@ -9,7 +9,7 @@ const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i
 const API_BASE = normalizeBase(rawBase);
 
 const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
-const MEDICINE_SEARCH_API = `${API_BASE}/api/v1/inventory/medicines/?search=`;
+const MEDICINE_SEARCH_API = `${API_BASE}/api/v1/catalog/products/?q=`;
 
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
@@ -37,6 +37,30 @@ const MEDICINE_CATEGORIES = [
   { id: 'supplement', name: 'Supplement/Vitamin', looseLabel: 'Strips', boxLabel: 'Boxes', perBoxLabel: 'Strips per Box', perBoxDefault: 10, perBoxField: 'strips_per_box' },
   { id: 'other', name: 'Other/Miscellaneous', looseLabel: 'Packs', boxLabel: 'Boxes', perBoxLabel: 'Packs per Box', perBoxDefault: 10, perBoxField: 'packs_per_box' }
 ];
+
+const PACKAGING_FIELD_LABELS = {
+  tablets_per_strip: "Tablets per Strip",
+  capsules_per_strip: "Capsules per Strip",
+  strips_per_box: "Strips per Box",
+  ml_per_bottle: "ML per Bottle",
+  bottles_per_box: "Bottles per Box",
+  ml_per_vial: "ML per Vial",
+  vials_per_box: "Vials per Box",
+  grams_per_tube: "Grams per Tube",
+  tubes_per_box: "Tubes per Box",
+  doses_per_inhaler: "Doses per Inhaler",
+  inhalers_per_box: "Inhalers per Box",
+  grams_per_sachet: "Grams per Sachet",
+  sachets_per_box: "Sachets per Box",
+  grams_per_bar: "Grams per Bar",
+  bars_per_box: "Bars per Box",
+  pieces_per_pack: "Pieces per Pack",
+  packs_per_box: "Packs per Box",
+  pairs_per_pack: "Pairs per Pack",
+  grams_per_pack: "Grams per Pack",
+  units_per_pack: "Units per Pack",
+  loose_units: "Loose Units",
+};
 
 const normalizeCategoryId = (category) => {
   if (!category) return "";
@@ -140,41 +164,64 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
   const [category, setCategory] = useState("");
   const [boxCount, setBoxCount] = useState("");
   const [categoryTouched, setCategoryTouched] = useState(false);
-  const [boxCountTouched, setBoxCountTouched] = useState(false);
-  const [autoSuggestion, setAutoSuggestion] = useState({ category: "", perBox: null, source: "" });
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [lookingUpName, setLookingUpName] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const inputWrapperRef = useRef(null);
 
   const selectedCategory = MEDICINE_CATEGORIES.find((c) => c.id === category);
   const quantityLabel =
     stockUnit === "box" ? selectedCategory?.boxLabel || "Boxes" : selectedCategory?.looseLabel || "Units";
   const defaultPerBox = selectedCategory?.perBoxDefault;
-  const autoBoxCount = autoSuggestion.perBox;
   const perBoxField = selectedCategory?.perBoxField;
   const itemsPerBoxLabel = selectedCategory?.perBoxLabel || "Items per Box";
 
-  const boxCountOptions = useMemo(() => {
-    const opts = [];
-    if (autoBoxCount) {
-      opts.push({ value: String(autoBoxCount), label: `Auto-detected (${autoBoxCount})` });
+  const detectedPerBox = useMemo(() => {
+    if (stockUnit !== "box") return "";
+    if (selectedMedicine) {
+      const val = deriveBoxCount(selectedMedicine, category);
+      if (val) return String(val);
     }
-    if (defaultPerBox && defaultPerBox !== autoBoxCount) {
-      opts.push({ value: String(defaultPerBox), label: `Category default (${defaultPerBox})` });
+    if (boxCount) return boxCount;
+    if (defaultPerBox) return String(defaultPerBox);
+    return "";
+  }, [selectedMedicine, category, stockUnit, boxCount, defaultPerBox]);
+
+  const packagingDetails = useMemo(() => {
+    if (!selectedMedicine) return [];
+    const med = selectedMedicine;
+    const entries = [];
+    Object.entries(PACKAGING_FIELD_LABELS).forEach(([field, label]) => {
+      const value = med[field];
+      if (value !== null && value !== undefined && value !== "") {
+        entries.push({ label, value });
+      }
+    });
+    return entries;
+  }, [selectedMedicine]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (selectedMedicine) return;
+    if (stockUnit !== "box") {
+      setBoxCount("");
+      return;
     }
-    if (boxCount && !opts.find((o) => o.value === boxCount)) {
-      opts.push({ value: String(boxCount), label: `Use ${boxCount}` });
+    if (!boxCount && defaultPerBox) {
+      setBoxCount(String(defaultPerBox));
     }
-    return opts;
-  }, [autoBoxCount, defaultPerBox, boxCount]);
+  }, [open, stockUnit, selectedMedicine, defaultPerBox, boxCount]);
 
   useEffect(() => {
     if (!open) return;
     const query = name.trim();
     if (query.length < 2) {
+      setSuggestions([]);
       setLookingUpName(false);
-      setAutoSuggestion({ category: "", perBox: null, source: "" });
       return;
     }
 
@@ -188,82 +235,98 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         if (!res.ok) throw new Error(`Lookup failed (${res.status})`);
         const data = await res.json().catch(() => null);
         const list = Array.isArray(data) ? data : data?.results || data?.items || [];
-        const normalizedQuery = query.toLowerCase();
-        const match =
-          list.find((item) => {
-            const med = item.medicine || item;
-            const medName = (med.name || med.medicine_name || "").toLowerCase();
-            return medName === normalizedQuery;
-          }) || list[0];
-
-        if (!match) {
-          setAutoSuggestion({ category: "", perBox: null, source: "" });
-          return;
-        }
-
-        const med = match.medicine || match;
-        const detectedCategory = normalizeCategoryId(med.category || match.category);
-        const detectedPerBox = deriveBoxCount(med, detectedCategory || category);
-
-        setAutoSuggestion({
-          category: detectedCategory || "",
-          perBox: detectedPerBox,
-          source: med.name || med.medicine_name || match.medicine_name || query,
-        });
-
-        console.log("Auto-detection results:", {
-          detectedCategory,
-          detectedPerBox,
-          categoryTouched,
-          stockUnit,
-          source: med.name || med.medicine_name || match.medicine_name || query
-        });
-
-        // Auto-set category if user hasn't manually changed it
-        if (detectedCategory && !categoryTouched) {
-          setCategory(detectedCategory);
-          console.log("Category auto-set to:", detectedCategory);
-        }
-
-        // Auto-set box count if stock unit is box and user hasn't manually changed it
-        if (stockUnit === "box" && detectedPerBox && !boxCountTouched) {
-          setBoxCount(String(detectedPerBox));
-          console.log("Box count auto-set to:", detectedPerBox);
-        }
+        // Format suggestions to match expected structure
+        const formatted = list.slice(0, 8).map(item => ({
+          medicine: {
+            id: item.id,
+            name: item.name,
+            category: item.category ? (typeof item.category === 'object' ? item.category : { id: item.category, name: item.category_name || '' }) : null,
+            strength: item.dosage_strength || item.strength || '',
+            rack_location: item.rack_location ? (typeof item.rack_location === 'object' ? item.rack_location : { id: item.rack_location }) : null,
+            gst_percent: item.gst_percent || '0',
+            mrp: item.mrp || '0',
+            form: item.medicine_form ? (typeof item.medicine_form === 'object' ? item.medicine_form : { id: item.medicine_form }) : null,
+            base_uom: item.base_uom ? (typeof item.base_uom === 'object' ? item.base_uom : { id: item.base_uom }) : null,
+            selling_uom: item.selling_uom ? (typeof item.selling_uom === 'object' ? item.selling_uom : { id: item.selling_uom }) : null,
+            // All packaging fields
+            tablets_per_strip: item.tablets_per_strip,
+            capsules_per_strip: item.capsules_per_strip,
+            strips_per_box: item.strips_per_box,
+            ml_per_bottle: item.ml_per_bottle,
+            bottles_per_box: item.bottles_per_box,
+            ml_per_vial: item.ml_per_vial,
+            vials_per_box: item.vials_per_box,
+            grams_per_tube: item.grams_per_tube,
+            tubes_per_box: item.tubes_per_box,
+            doses_per_inhaler: item.doses_per_inhaler,
+            inhalers_per_box: item.inhalers_per_box,
+            grams_per_sachet: item.grams_per_sachet,
+            sachets_per_box: item.sachets_per_box,
+            grams_per_bar: item.grams_per_bar,
+            bars_per_box: item.bars_per_box,
+            pieces_per_pack: item.pieces_per_pack,
+            packs_per_box: item.packs_per_box,
+            pairs_per_pack: item.pairs_per_pack,
+            grams_per_pack: item.grams_per_pack,
+            units_per_pack: item.units_per_pack,
+          }
+        }));
+        setSuggestions(formatted);
+        setOptionsVisible(true);
       } catch (err) {
         if (err.name === "AbortError") return;
         console.warn("Medicine lookup failed", err);
       } finally {
         setLookingUpName(false);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [name, open, stockUnit, category, categoryTouched, boxCountTouched]);
+  }, [name, open]);
 
   useEffect(() => {
     if (!open) return;
-    if (stockUnit !== "box") {
-      setBoxCount("");
-      return;
-    }
-    if (boxCountTouched) return;
-    const fallback = autoBoxCount || defaultPerBox;
-    if (fallback && boxCount !== String(fallback)) {
-      setBoxCount(String(fallback));
-    }
-  }, [open, stockUnit, autoBoxCount, defaultPerBox, boxCountTouched, boxCount]);
+    const handler = (event) => {
+      if (!inputWrapperRef.current) return;
+      if (!inputWrapperRef.current.contains(event.target)) {
+        setOptionsVisible(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   const handleCategoryChange = (e) => {
+    if (selectedMedicine) return;
     setCategory(e.target.value);
     setCategoryTouched(true);
   };
 
   const handleStockUnitChange = (e) => {
     setStockUnit(e.target.value);
+    if (selectedMedicine) {
+      setBoxCount("");
+    }
+  };
+
+  const handleSuggestionSelect = (item) => {
+    const med = item?.medicine || item;
+    if (!med) return;
+    const medName = med.name || med.medicine_name || "";
+    setName(medName);
+    // Extract category - handle both object and ID formats
+    let categoryValue = med.category;
+    if (categoryValue && typeof categoryValue === 'object') {
+      categoryValue = categoryValue.id || categoryValue.name;
+    }
+    const detectedCategory = normalizeCategoryId(categoryValue || item.category);
+    setCategory(detectedCategory);
+    setSelectedMedicine(med);
+    setCategoryTouched(false);
+    setOptionsVisible(false);
   };
 
   const handleClose = () => {
@@ -273,8 +336,9 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     setCategory("");
     setBoxCount("");
     setCategoryTouched(false);
-    setBoxCountTouched(false);
-    setAutoSuggestion({ category: "", perBox: null, source: "" });
+    setSuggestions([]);
+    setSelectedMedicine(null);
+    setOptionsVisible(false);
     setLookingUpName(false);
     setErrors({});
     setServerError("");
@@ -302,31 +366,98 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
       return;
     }
 
-    const parsedBoxCount = Number(boxCount || defaultPerBox || 0);
+    const parsedBoxCount = Number(detectedPerBox || defaultPerBox || 0);
     const hasBoxCount = stockUnit === "box" && Number.isFinite(parsedBoxCount) && parsedBoxCount > 0;
 
-    // Build a minimal payload with defaults for required fields
-    const medicinePayload = {
-      name: name.trim(),
-      category: category,
-      strength: "",
-      rack_location: 1, // Default rack - adjust as needed
-      gst_percent: "0",
-      cost_price: "0",
-      mrp: "0",
-      // Set packaging fields to defaults
-      tablets_per_strip: category === "tablet" ? 10 : undefined,
-      capsules_per_strip: category === "capsule" ? 10 : undefined,
-      ml_per_bottle: category === "syrup" ? 100 : undefined,
-      ml_per_vial: category === "injection" ? 5 : undefined,
-      grams_per_tube: category === "ointment" ? 30 : undefined,
-    };
+    let medicinePayload;
+    
+    if (selectedMedicine) {
+      // When medicine is selected, use existing medicine data
+      const med = selectedMedicine;
+      // Extract category ID properly
+      let categoryId = med.category;
+      if (categoryId && typeof categoryId === 'object') {
+        categoryId = categoryId.id || categoryId.name;
+      }
+      medicinePayload = {
+        id: med.id,
+        name: med.name || name.trim(),
+        category: categoryId || category,
+        form: med.form?.id || med.form,
+        strength: med.strength || med.dosage_strength || "",
+        base_uom: med.base_uom?.id || med.base_uom,
+        selling_uom: med.selling_uom?.id || med.selling_uom,
+        rack_location: med.rack_location?.id || med.rack_location || 1,
+        gst_percent: med.gst_percent || "0",
+        mrp: med.mrp || "0",
+        // Include all packaging fields from selected medicine
+        tablets_per_strip: med.tablets_per_strip,
+        capsules_per_strip: med.capsules_per_strip,
+        strips_per_box: med.strips_per_box,
+        ml_per_bottle: med.ml_per_bottle,
+        bottles_per_box: med.bottles_per_box,
+        ml_per_vial: med.ml_per_vial,
+        vials_per_box: med.vials_per_box,
+        grams_per_tube: med.grams_per_tube,
+        tubes_per_box: med.tubes_per_box,
+        doses_per_inhaler: med.doses_per_inhaler,
+        inhalers_per_box: med.inhalers_per_box,
+        grams_per_sachet: med.grams_per_sachet,
+        sachets_per_box: med.sachets_per_box,
+        grams_per_bar: med.grams_per_bar,
+        bars_per_box: med.bars_per_box,
+        pieces_per_pack: med.pieces_per_pack,
+        packs_per_box: med.packs_per_box,
+        pairs_per_pack: med.pairs_per_pack,
+        grams_per_pack: med.grams_per_pack,
+        units_per_pack: med.units_per_pack,
+      };
+    } else {
+      // When medicine is new, create with defaults
+      medicinePayload = {
+        name: name.trim(),
+        category: category,
+        strength: "",
+        rack_location: 1, // Default rack - adjust as needed
+        gst_percent: "0",
+        mrp: "0",
+        form: 1, // Default form - adjust as needed
+        base_uom: 5, // Default TAB UOM - adjust as needed
+        selling_uom: 7, // Default STRIP UOM - adjust as needed
+      };
 
-    if (hasBoxCount) {
-      if (perBoxField) {
-        medicinePayload[perBoxField] = parsedBoxCount;
+      // Set packaging fields based on category
+      if (category === "tablet") {
+        medicinePayload.tablets_per_strip = 10;
+        medicinePayload.strips_per_box = 10;
+      } else if (category === "capsule") {
+        medicinePayload.capsules_per_strip = 10;
+        medicinePayload.strips_per_box = 10;
+      } else if (category === "syrup" || category === "drops") {
+        medicinePayload.ml_per_bottle = 100;
+        medicinePayload.bottles_per_box = 12;
+      } else if (category === "injection") {
+        medicinePayload.ml_per_vial = 5;
+        medicinePayload.vials_per_box = 10;
+      } else if (category === "ointment" || category === "gel") {
+        medicinePayload.grams_per_tube = 30;
+        medicinePayload.tubes_per_box = 10;
+      } else if (category === "inhaler") {
+        medicinePayload.doses_per_inhaler = 100;
+        medicinePayload.inhalers_per_box = 1;
+      } else if (category === "powder") {
+        medicinePayload.grams_per_sachet = 10;
+        medicinePayload.sachets_per_box = 10;
+      } else if (category === "soap") {
+        medicinePayload.grams_per_bar = 100;
+        medicinePayload.bars_per_box = 3;
       } else {
-        medicinePayload.packs_per_box = parsedBoxCount;
+        medicinePayload.pieces_per_pack = 1;
+        medicinePayload.packs_per_box = 10;
+      }
+
+      if (hasBoxCount && perBoxField) {
+        medicinePayload[perBoxField] = parsedBoxCount;
       }
     }
 
@@ -338,7 +469,9 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         quantity: Number(quantity),
         stock_unit: stockUnit,
         mfg_date: undefined,
-        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0], // Default 2 years from now
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0],
+        quantity_uom: 8, // Default UOM ID - adjust as needed
+        purchase_price: "0",
       },
     };
 
@@ -353,6 +486,16 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
       if (!response.ok) {
         if (body?.detail) {
           setServerError(body.detail);
+        } else if (body && typeof body === "object") {
+          const errorMessages = Object.entries(body)
+            .flatMap(([key, value]) => {
+              if (Array.isArray(value)) return value;
+              if (typeof value === "string") return [value];
+              if (typeof value === "object") return Object.values(value).flat();
+              return [];
+            })
+            .join("; ");
+          setServerError(errorMessages || `Save failed (${response.status})`);
         } else {
           setServerError(`Save failed (${response.status})`);
         }
@@ -389,17 +532,61 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         {serverError && <div className="inv-error-banner">{serverError}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div className="field">
+          <div className="field" ref={inputWrapperRef} style={{ position: "relative" }}>
             <label>Medicine Name *</label>
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Paracetamol, Amoxicillin"
+              onChange={(e) => {
+                setName(e.target.value);
+                if (selectedMedicine) {
+                  setSelectedMedicine(null);
+                  setCategory("");
+                }
+              }}
+              placeholder="Type to search existing medicines"
               className={errors.name ? "error" : ""}
               autoFocus
+              onFocus={() => {
+                if (suggestions.length) setOptionsVisible(true);
+              }}
             />
             {renderFieldError("name")}
+            {optionsVisible && (lookingUpName || suggestions.length > 0) && (
+              <div className="quick-add-suggestions">
+                {lookingUpName && <div className="quick-add-suggestion muted">Searching…</div>}
+                {!lookingUpName && suggestions.length === 0 && (
+                  <div className="quick-add-suggestion muted">No matches</div>
+                )}
+                {!lookingUpName &&
+                  suggestions.map((item) => {
+                    const med = item?.medicine || item;
+                    const medName = med?.name || med?.medicine_name || "Unnamed";
+                    let medCategory = "";
+                    if (med?.category) {
+                      if (typeof med.category === 'object') {
+                        medCategory = med.category.name || "";
+                      } else {
+                        medCategory = String(med.category);
+                      }
+                    }
+                    if (!medCategory) {
+                      medCategory = item?.category || "";
+                    }
+                    return (
+                      <button
+                        type="button"
+                        key={`${med?.id || medName}-${medCategory}`}
+                        className="quick-add-suggestion"
+                        onClick={() => handleSuggestionSelect(item)}
+                      >
+                        <span className="name">{medName}</span>
+                        {medCategory && <span className="meta">{medCategory}</span>}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
           <div className="field">
@@ -407,7 +594,9 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
             <select
               value={category}
               onChange={handleCategoryChange}
+              disabled={selectedMedicine}
               className={errors.category ? "error" : ""}
+              style={selectedMedicine ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
             >
               <option value="">Select category</option>
               {MEDICINE_CATEGORIES.map((c) => (
@@ -417,9 +606,9 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
               ))}
             </select>
             {renderFieldError("category")}
-            {autoSuggestion.category && !categoryTouched && category && (
+            {selectedMedicine && category && (
               <div className="hint" style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>
-                ✓ Auto-detected from "{autoSuggestion.source}"
+                ✓ Auto-detected from selected medicine
               </div>
             )}
           </div>
@@ -445,29 +634,134 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
             )}
           </div>
 
-          {stockUnit === 'box' && selectedCategory && (
-            <div className="field">
-              <label>{selectedCategory.perBoxLabel} *</label>
-              <input
-                type="number"
-                value={autoBoxCount || selectedCategory.perBoxDefault}
-                readOnly
-                disabled
-                style={{
-                  backgroundColor: '#f3f4f6',
-                  cursor: 'not-allowed',
-                  color: '#374151',
-                  fontWeight: '500'
-                }}
-              />
-              <div className="hint" style={{ fontSize: '12px', color: autoBoxCount ? '#059669' : '#6b7280', marginTop: '4px' }}>
-                {autoBoxCount
-                  ? `✓ Auto-detected: ${autoBoxCount} ${selectedCategory.looseLabel.toLowerCase()} per box`
-                  : `Default: ${selectedCategory.perBoxDefault} ${selectedCategory.looseLabel.toLowerCase()} per box`
-                }
-              </div>
-            </div>
-          )}
+          {category && stockUnit && (() => {
+            // Use the same structure as AddMedicine - find category with packagingFields
+            const categoryConfig = [
+              { id: 'tablet', packagingFields: [
+                { key: 'tablets_per_strip', label: 'Tablets per Strip', alwaysShow: true },
+                { key: 'strips_per_box', label: 'Strips per Box', showOnlyForBox: true }
+              ]},
+              { id: 'capsule', packagingFields: [
+                { key: 'capsules_per_strip', label: 'Capsules per Strip', alwaysShow: true },
+                { key: 'strips_per_box', label: 'Strips per Box', showOnlyForBox: true }
+              ]},
+              { id: 'syrup', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'injection', packagingFields: [
+                { key: 'ml_per_vial', label: 'ML per Vial', alwaysShow: true },
+                { key: 'vials_per_box', label: 'Vials per Box', showOnlyForBox: true }
+              ]},
+              { id: 'ointment', packagingFields: [
+                { key: 'grams_per_tube', label: 'Grams per Tube', alwaysShow: true },
+                { key: 'tubes_per_box', label: 'Tubes per Box', showOnlyForBox: true }
+              ]},
+              { id: 'drops', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'inhaler', packagingFields: [
+                { key: 'doses_per_inhaler', label: 'Doses per Inhaler', alwaysShow: true },
+                { key: 'inhalers_per_box', label: 'Inhalers per Box', showOnlyForBox: true }
+              ]},
+              { id: 'powder', packagingFields: [
+                { key: 'grams_per_sachet', label: 'Grams per Sachet', alwaysShow: true },
+                { key: 'sachets_per_box', label: 'Sachets per Box', showOnlyForBox: true }
+              ]},
+              { id: 'gel', packagingFields: [
+                { key: 'grams_per_tube', label: 'Grams per Tube', alwaysShow: true },
+                { key: 'tubes_per_box', label: 'Tubes per Box', showOnlyForBox: true }
+              ]},
+              { id: 'spray', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'lotion', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'shampoo', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'soap', packagingFields: [
+                { key: 'grams_per_bar', label: 'Grams per Bar', alwaysShow: true },
+                { key: 'bars_per_box', label: 'Bars per Box', showOnlyForBox: true }
+              ]},
+              { id: 'bandage', packagingFields: [
+                { key: 'pieces_per_pack', label: 'Pieces per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+              { id: 'mask', packagingFields: [
+                { key: 'pieces_per_pack', label: 'Pieces per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+              { id: 'gloves', packagingFields: [
+                { key: 'pairs_per_pack', label: 'Pairs per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+              { id: 'cotton', packagingFields: [
+                { key: 'grams_per_pack', label: 'Grams per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+              { id: 'sanitizer', packagingFields: [
+                { key: 'ml_per_bottle', label: 'ML per Bottle', alwaysShow: true },
+                { key: 'bottles_per_box', label: 'Bottles per Box', showOnlyForBox: true }
+              ]},
+              { id: 'thermometer', packagingFields: [
+                { key: 'pieces_per_pack', label: 'Pieces per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+              { id: 'supplement', packagingFields: [
+                { key: 'tablets_per_strip', label: 'Tablets per Strip', alwaysShow: true },
+                { key: 'strips_per_box', label: 'Strips per Box', showOnlyForBox: true }
+              ]},
+              { id: 'other', packagingFields: [
+                { key: 'units_per_pack', label: 'Units per Pack', alwaysShow: true },
+                { key: 'packs_per_box', label: 'Packs per Box', showOnlyForBox: true }
+              ]},
+            ].find(c => c.id === category);
+            
+            if (!categoryConfig) return null;
+            
+            const relevantFields = categoryConfig.packagingFields.filter(f => 
+              f.alwaysShow || (f.showOnlyForBox && stockUnit === 'box')
+            );
+            
+            if (relevantFields.length === 0) return null;
+            
+            return relevantFields.map(field => {
+              const value = selectedMedicine ? selectedMedicine[field.key] : null;
+              const displayValue = value !== null && value !== undefined && value !== '' 
+                ? String(value) 
+                : '';
+              
+              return (
+                <div className="field" key={field.key}>
+                  <label>{field.label} {selectedMedicine ? '' : '*'}</label>
+                  <input
+                    type="number"
+                    value={displayValue}
+                    readOnly={selectedMedicine}
+                    disabled={selectedMedicine}
+                    style={selectedMedicine ? {
+                      backgroundColor: '#f3f4f6',
+                      cursor: 'not-allowed',
+                      color: '#374151',
+                      fontWeight: '500'
+                    } : {}}
+                    placeholder={field.placeholder || ''}
+                  />
+                  {selectedMedicine && value && (
+                    <div className="hint" style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>
+                      ✓ Auto-detected from selected medicine
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
 
           <div className="field">
             <label>Quantity ({quantityLabel}) *</label>
