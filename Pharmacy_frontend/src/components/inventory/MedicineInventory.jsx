@@ -4,6 +4,8 @@ import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
+import QuickAddMedicine from "./QuickAddMedicine";
+import { useAlert } from "../ui/alert-provider";
 
 const LS_KEY = "medicines";
 const PAGE_SIZE = 250;
@@ -17,6 +19,7 @@ const API_MEDICINE_DETAIL = (id) => apiUrl(`inventory/medicines/${id}/`);
 
 export default function MedicineInventory() {
   const nav = useNavigate();
+  const { showAlert } = useAlert();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -30,6 +33,7 @@ export default function MedicineInventory() {
   const [rackOptions, setRackOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [manualRefresh, setManualRefresh] = useState(0);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const statusToParam = (value) => {
     if (!value || value === "All") return null;
@@ -228,7 +232,7 @@ export default function MedicineInventory() {
   const goToDetail = (row) => {
     const batchId = resolveBatchId(row);
     if (!batchId) {
-      alert("Unable to open details for this record.");
+      showAlert("Unable to open details for this record.", "Error");
       return;
     }
     nav(`/inventory/medicines/${batchId}`);
@@ -237,7 +241,7 @@ export default function MedicineInventory() {
   const handleEdit = (row) => {
     const batchId = resolveBatchId(row);
     if (!batchId) {
-      alert("Unable to determine batch for editing.");
+      showAlert("Unable to determine batch for editing.", "Error");
       return;
     }
     nav(`/inventory/medicines/${batchId}/edit`);
@@ -245,20 +249,26 @@ export default function MedicineInventory() {
 
   const openAddDrawer = () => nav("/inventory/medicines/add");
 
+  const handleQuickAddSaved = (body) => {
+    triggerRefresh();
+    // Optional: show success message
+    console.log("Medicine added successfully:", body);
+  };
+
   const fetchStockSummaryForProduct = async (row) => {
     try {
       const params = new URLSearchParams();
       if (DEFAULT_LOCATION_ID) params.set("location_id", String(DEFAULT_LOCATION_ID));
       const pid = row.product_id || row.batch_lot__product_id || row.medicine_id;
-      if (!pid) return alert("Product id not available for this row");
+      if (!pid) return showAlert("Product id not available for this row", "Error");
       params.set("product_id", String(pid));
       const res = await authFetch(`${API_STOCK_SUMMARY}?${params}`);
       if (!res.ok) throw new Error(`Failed (${res.status})`);
       const data = await res.json();
-      alert("Stock summary:\n\n" + JSON.stringify(data, null, 2));
+      showAlert("Stock summary:\n\n" + JSON.stringify(data, null, 2), "Stock Summary");
     } catch (err) {
       console.error(err);
-      alert("Failed to load stock summary");
+      showAlert("Failed to load stock summary", "Error");
     }
   };
 
@@ -271,17 +281,28 @@ export default function MedicineInventory() {
 
   return (
     <div className="inv-wrap">
-      <div className="inv-header">
-        <div>
-          <h2>Inventory Management</h2>
-          <p>Manage your medicine inventory and stock levels</p>
+      <div className="inv-container">
+        <div className="inv-header">
+          <div>
+            <h2>Inventory Management</h2>
+            <p>Manage your medicine inventory and stock levels</p>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+            <button
+              className="inv-add"
+              style={{ background: '#06b6d4', marginLeft: 0 }}
+              onClick={() => setQuickAddOpen(true)}
+              disabled={loading || deleting}
+            >
+              Quick Add
+            </button>
+            <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
+              + Add Medicine
+            </button>
+          </div>
         </div>
-        <button className="inv-add" onClick={openAddDrawer} disabled={loading || deleting}>
-          + Add Medicine
-        </button>
-      </div>
 
-      <div className="inv-card">
+        <div className="inv-card">
         {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
 
         <div className="inv-filters">
@@ -337,7 +358,7 @@ export default function MedicineInventory() {
           </select>
 
           <div className="inv-actions">
-            <button className="inv-btn ghost" onClick={() => alert("Import feature not yet implemented")}>
+            <button className="inv-btn ghost" onClick={() => showAlert("Import feature not yet implemented", "Info")}>
               Import
             </button>
             <button
@@ -479,7 +500,13 @@ export default function MedicineInventory() {
         </div>
       </div>
 
-      {/* Drawer removed for full page add/edit */}
+        {/* Quick Add Modal */}
+        <QuickAddMedicine
+          open={quickAddOpen}
+          onClose={() => setQuickAddOpen(false)}
+          onSaved={handleQuickAddSaved}
+        />
+      </div>
     </div>
   );
 }

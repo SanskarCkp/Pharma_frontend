@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import "./expiryalerts.css";
+import styles from "./expiryalerts.module.css";
 import { authFetch } from "../../api/http";
+import { useAlert } from "../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function ExpiryAlerts() {
+  const { showAlert } = useAlert();
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const [activeTab, setActiveTab] = useState("All");
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState({ critical: 0, warning: 0, safe: 0 });
@@ -77,7 +80,7 @@ export default function ExpiryAlerts() {
     );
 
     if (!exportData.length) {
-      alert("⚠ No items to export");
+      showAlert("No items to export", "Warning");
       return;
     }
 
@@ -114,44 +117,47 @@ export default function ExpiryAlerts() {
   // -------------------------------
   if (loading) {
     return (
-      <div className="expiryalerts-page">
-        <p>Loading...</p>
+      <div className={styles["expiryalerts-page"]}>
+        <div className={styles["loading-container"]}>
+          <div className={styles["loading-spinner"]}></div>
+          <p className={styles["loading-text"]}>Loading expiry alerts...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="expiryalerts-page">
-      <h2 className="page-title">Medicine Expiry Alerts</h2>
-      <p className="page-subtitle">Manage medicines nearing expiration</p>
+    <div className={styles["expiryalerts-page"]}>
+      <h2 className={styles["page-title"]}>Medicine Expiry Alerts</h2>
+      <p className={styles["page-subtitle"]}>Manage medicines nearing expiration</p>
 
       {/* KPI CARDS */}
-      <div className="kpi-cards">
-        <div className="kpi-card critical">
+      <div className={styles["kpi-cards"]}>
+        <div className={cx(styles["kpi-card"], styles["critical"])}>
           <h4>Critical (≤ {thresholds.critical} days)</h4>
           <h2>{summary.critical}</h2>
         </div>
 
-        <div className="kpi-card warning">
+        <div className={cx(styles["kpi-card"], styles["warning"])}>
           <h4>
             Warning ({thresholds.critical + 1}–{thresholds.warning} days)
           </h4>
           <h2>{summary.warning}</h2>
         </div>
 
-        <div className="kpi-card safe">
+        <div className={cx(styles["kpi-card"], styles["safe"])}>
           <h4>Safe (&gt; {thresholds.warning} days)</h4>
           <h2>{summary.safe}</h2>
         </div>
       </div>
 
       {/* TABS */}
-      <div className="tabs">
+      <div className={styles["tabs"]}>
         <div>
           {["All", "Critical", "Warning", "Safe"].map((tab) => (
             <button
               key={tab}
-              className={`tab ${activeTab === tab ? "active" : ""}`}
+              className={cx(styles["tab"], activeTab === tab && styles["active"])}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
@@ -159,14 +165,14 @@ export default function ExpiryAlerts() {
           ))}
         </div>
 
-        <button className="export-btn" onClick={handleExportPDF}>
+        <button className={styles["export-btn"]} onClick={handleExportPDF}>
           📄 Export
         </button>
       </div>
 
       {/* TABLE */}
-      <div className="table-container">
-        <table className="expiry-table">
+      <div className={styles["table-container"]}>
+        <table className={styles["expiry-table"]}>
           <thead>
             <tr>
               <th>Product ID</th>
@@ -188,7 +194,10 @@ export default function ExpiryAlerts() {
                   <td>{it.days_left}</td>
                   <td>
                     <span
-                      className={`status-badge ${it.status.toLowerCase()}`}
+                      className={cx(
+                        styles["status-badge"],
+                        styles[it.status.toLowerCase()] || ""
+                      )}
                     >
                       {it.status}
                     </span>

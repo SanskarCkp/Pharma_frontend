@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./transferlines.css";
+import { useAlert } from "../ui/alert-provider";
 
 const TransferLines = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [transferLines, setTransferLines] = useState([]);
 
@@ -33,13 +35,14 @@ const TransferLines = () => {
 
     setTransferLines([...transferLines, newLine]);
 
-    alert(
-      `✅ Transfer Line Created!\n
+    showAlert(
+      `Transfer Line Created!\n
 Transfer Line ID: ${newLine.id}
 Voucher ID: ${newLine.voucherId}
 Batch Lot ID: ${newLine.batchLotId}
 Quantity (Base): ${newLine.qtyBase}
-Created At: ${newLine.createdAt}`
+Created At: ${newLine.createdAt}`,
+      "Success"
     );
 
     // Reset form

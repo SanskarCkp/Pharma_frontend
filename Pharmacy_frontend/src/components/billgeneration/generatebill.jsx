@@ -4,11 +4,22 @@ import "./billgeneration.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
+import { useAlert } from "../ui/alert-provider";
 
 const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
 const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
 const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/`);
 const INVOICES_URL = apiUrl("sales/invoices/");
+
+const HARDCODED_PAYMENT_METHODS = [
+  { id: "cash", name: "Cash", type: "CASH" },
+  { id: "upi", name: "UPI", type: "UPI" },
+  { id: "card_credit", name: "Card - Credit", type: "CARD_CREDIT" },
+  { id: "card_debit", name: "Card - Debit", type: "CARD_DEBIT" },
+  { id: "net_banking", name: "Net Banking", type: "NET_BANKING" },
+  { id: "on_credit", name: "On Credit", type: "CREDIT" },
+  { id: "other", name: "Other", type: "OTHER" },
+];
 
 const numberOrZero = (value, digits = null) => {
   const num = Number(value);
@@ -45,6 +56,7 @@ const deriveUnitsPerPack = (med = {}) => {
 export default function GenerateBill() {
   const navigate = useNavigate();
   const locationId = getDefaultLocationId();
+  const { showAlert } = useAlert();
 
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "" });
   const [products, setProducts] = useState([]);
@@ -58,6 +70,7 @@ export default function GenerateBill() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState("");
+  const [otherPaymentMethod, setOtherPaymentMethod] = useState("");
   const [amountPaying, setAmountPaying] = useState("");
   const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -77,18 +90,7 @@ export default function GenerateBill() {
   }, []);
 
   useEffect(() => {
-    async function loadPaymentMethods() {
-      try {
-        const res = await authFetch(PAYMENT_METHODS_URL);
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.results || [];
-        setPaymentMethods(list);
-      } catch (err) {
-        console.error(err);
-        setPaymentMethods([]);
-      }
-    }
-    loadPaymentMethods();
+    setPaymentMethods(HARDCODED_PAYMENT_METHODS);
   }, []);
 
   useEffect(() => {
@@ -201,7 +203,7 @@ export default function GenerateBill() {
       setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Unable to load medicine details. Please try again.");
+      showAlert(err.message || "Unable to load medicine details. Please try again.", "Error");
     } finally {
       setLoadingDetail(false);
     }
@@ -230,7 +232,7 @@ export default function GenerateBill() {
   const addProductWithUOM = () => {
     if (!selectedProduct || !selectedOption) return;
     if (!maxQtyForSelected || maxQtyForSelected <= 0) {
-      alert("No stock available for this unit.");
+      showAlert("No stock available for this unit.", "Stock Alert");
       return;
     }
     const qty = Math.max(1, Math.min(qtyInput || 1, maxQtyForSelected));
@@ -321,26 +323,30 @@ export default function GenerateBill() {
   const submitInvoice = async () => {
     if (submitting) return;
     if (!customer.name || !customer.phone || !customer.city) {
-      alert("Customer name, phone, and city are required.");
+      showAlert("Customer name, phone, and city are required.", "Validation Error");
       return;
     }
     if (!cart.length) {
-      alert("Cart is empty. Please add medicines.");
+      showAlert("Cart is empty. Please add medicines.", "Validation Error");
       return;
     }
     if (!selectedMethod) {
-      alert("Select a payment method.");
+      showAlert("Select a payment method.", "Validation Error");
+      return;
+    }
+    if (selectedMethod === "other" && !otherPaymentMethod.trim()) {
+      showAlert("Please specify the payment method for 'Other'.", "Validation Error");
       return;
     }
     const amountPaid = parseFloat(amountPaying);
     if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
-      alert("Enter a valid payment amount.");
+      showAlert("Enter a valid payment amount.", "Validation Error");
       return;
     }
 
     const missingBatch = cart.find((item) => !item.batch_id);
     if (missingBatch) {
-      alert("One or more items are missing batch information. Remove them and try again.");
+      showAlert("One or more items are missing batch information. Remove them and try again.", "Validation Error");
       return;
     }
 
@@ -387,141 +393,152 @@ export default function GenerateBill() {
       navigate(`/billgeneration/invoice/${data.id}`);
     } catch (err) {
       console.error(err);
-      alert(err.message || "Unable to submit invoice");
+      showAlert(err.message || "Unable to submit invoice", "Error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const cardStyle = {
-    padding: "1rem",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    backgroundColor: "#ffffff",
-  };
-
   return (
-    <div className="billgeneration-page" style={{ maxWidth: "1200px", margin: "auto", padding: "1rem" }}>
-      <h1 className="page-title" style={{ fontWeight: 600, marginBottom: "1.5rem" }}>
-        Billing & Invoicing
-      </h1>
-
-      <div className="grid-container" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", fontSize: "0.9rem" }}>
-        <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Customer Information</h3>
-          <label>Customer Name *</label>
-          <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="Enter customer name" />
-          <label style={{ marginTop: "0.75rem" }}>Phone *</label>
-          <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone number" />
-          <label style={{ marginTop: "0.75rem" }}>Email</label>
-          <input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Customer email" />
-          <label style={{ marginTop: "0.75rem" }}>City *</label>
-          <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Customer city" />
+    <div className="billgeneration-page bill-shell">
+      <div className="bill-header">
+        <div>
+          <p className="bill-kicker">Billing & Invoicing</p>
+          <h1 className="bill-title">Create Invoice</h1>
+          <p className="bill-subtitle">Add customer info, select medicines, and complete payment.</p>
         </div>
+        <div className="bill-header-meta">
+          <span className="pill success">{products.length || 0} items in stock</span>
+          <span className="pill muted">Cart: {cart.length}</span>
+        </div>
+      </div>
 
-        <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Select Medicines</h3>
-          <input type="text" placeholder="Search medicines..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          <div style={{ maxHeight: "360px", overflowY: "auto", marginTop: "0.75rem" }}>
+      <div className="bill-grid">
+        <section className="bill-card">
+          <header>
+            <h3>Customer Information</h3>
+            <span className="hint">Required for invoice</span>
+          </header>
+          <div className="form-grid">
+            <label>
+              Customer Name *
+              <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="Enter customer name" />
+            </label>
+            <label>
+              Phone *
+              <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone number" />
+            </label>
+            <label>
+              Email
+              <input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Customer email" />
+            </label>
+            <label>
+              City *
+              <input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Customer city" />
+            </label>
+          </div>
+        </section>
+
+        <section className="bill-card">
+          <header>
+            <h3>Select Medicines</h3>
+            <span className="hint">Search & add to cart</span>
+          </header>
+          <input
+            className="input"
+            type="text"
+            placeholder="Search medicines..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <div className="list-scroll">
             {productsLoading && <p>Loading medicines...</p>}
-            {!productsLoading && productsError && <p style={{ color: "#dc2626" }}>{productsError}</p>}
-            {!productsLoading && !productsError && !products.length && <p>No medicines available.</p>}
+            {!productsLoading && productsError && <p className="text-error">{productsError}</p>}
+            {!productsLoading && !productsError && !products.length && <p className="text-muted">No medicines available.</p>}
             {products.map((product) => (
-              <div
-                key={product.batch_id}
-                style={{
-                  marginBottom: "0.5rem",
-                  padding: "0.75rem",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "6px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+              <div key={product.batch_id} className="product-row">
                 <div>
                   <strong>{product.name}</strong>
-                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                  <div className="meta">
                     Batch: {product.batch_number || "-"} | Stock: {product.stock_base} {product.base_uom}
                   </div>
                 </div>
-                <button
-                  onClick={() => openUOMCard(product)}
-                  style={{
-                    backgroundColor: "#22c55e",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "999px",
-                    padding: "0.25rem 0.75rem",
-                    fontSize: "1.3rem",
-                  }}
-                  title="Add to bill"
-                >
+                <button className="btn-chip" onClick={() => openUOMCard(product)} title="Add to bill">
                   +
                 </button>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Cart Items</h3>
+        <section className="bill-card">
+          <header>
+            <h3>Cart Items</h3>
+            <span className="hint">Adjust quantity & remove</span>
+          </header>
+
           {loadingDetail && <p>Loading medicine details...</p>}
+
           {selectedProduct && (
-            <div className="uom-card" style={{ marginBottom: "1rem", border: "1px solid #e5e7eb", padding: "12px", borderRadius: "8px", background: "#f3f4f6" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h4 style={{ margin: 0 }}>Sell {selectedProduct.name}</h4>
-                <button onClick={() => setSelectedProduct(null)} style={{ border: "none", background: "transparent", fontSize: "1.1rem" }}>x</button>
+            <div className="uom-card">
+              <div className="uom-head">
+                <h4>Sell {selectedProduct.name}</h4>
+                <button className="btn-ghost" onClick={() => setSelectedProduct(null)}>×</button>
               </div>
-              <p style={{ fontSize: "0.8rem", color: "#555" }}>
+              <p className="meta">
                 Available: {numberOrZero(selectedProduct.availableBase)} {selectedProduct.baseLabel}
               </p>
-              <label>Unit of Measure</label>
-              <select value={selectedUomKey} onChange={(e) => setSelectedUomKey(e.target.value)}>
-                {selectedProduct.uomOptions.map((opt) => (
-                  <option key={opt.key} value={opt.key}>
-                    {opt.displayLabel}
-                  </option>
-                ))}
-              </select>
-              <label style={{ marginTop: "0.5rem" }}>Quantity</label>
-              <input
-                type="number"
-                min={maxQtyForSelected && maxQtyForSelected > 0 ? 1 : 0}
-                value={qtyInput}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  if (!Number.isFinite(val)) {
-                    setQtyInput(1);
-                    return;
-                  }
-                  const max = maxQtyForSelected;
-                  if (max !== undefined && max > 0) {
-                    setQtyInput(Math.max(1, Math.min(val, max)));
-                  } else {
-                    setQtyInput(Math.max(0, val));
-                  }
-                }}
-              />
+              <label>
+                Unit of Measure
+                <select value={selectedUomKey} onChange={(e) => setSelectedUomKey(e.target.value)}>
+                  {selectedProduct.uomOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.displayLabel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Quantity
+                <input
+                  type="number"
+                  min={maxQtyForSelected && maxQtyForSelected > 0 ? 1 : 0}
+                  value={qtyInput}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    if (!Number.isFinite(val)) {
+                      setQtyInput(1);
+                      return;
+                    }
+                    const max = maxQtyForSelected;
+                    if (max !== undefined && max > 0) {
+                      setQtyInput(Math.max(1, Math.min(val, max)));
+                    } else {
+                      setQtyInput(Math.max(0, val));
+                    }
+                  }}
+                />
+              </label>
               {maxQtyForSelected !== undefined && (
-                <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                <p className="meta">
                   {maxQtyForSelected > 0 ? `Max available: ${maxQtyForSelected}` : "Out of stock for this unit"}
                 </p>
               )}
-              <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-                <button onClick={addProductWithUOM} className="generate-btn" disabled={!maxQtyForSelected || maxQtyForSelected <= 0}>
+              <div className="uom-actions">
+                <button className="btn-primary" onClick={addProductWithUOM} disabled={!maxQtyForSelected || maxQtyForSelected <= 0}>
                   Add to Cart
                 </button>
-                <button onClick={() => setSelectedProduct(null)} style={{ background: "#f87171", color: "#fff", padding: "10px", borderRadius: "6px", border: "none" }}>
+                <button className="btn-secondary" onClick={() => setSelectedProduct(null)}>
                   Cancel
                 </button>
               </div>
             </div>
           )}
+
           {cart.length === 0 ? (
-            <p style={{ color: "#6b7280" }}>No items added.</p>
+            <p className="text-muted">No items added.</p>
           ) : (
-            <table className="cart-table" style={{ width: "100%" }}>
+            <table className="cart-table">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -536,22 +553,19 @@ export default function GenerateBill() {
                   <tr key={item.batch_id}>
                     <td>
                       {item.name}
-                      <br />
-                      <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                        Batch {item.batch_number || "-"} ({item.sold_uom_label})
-                      </span>
+                      <div className="meta">Batch {item.batch_number || "-"} ({item.sold_uom_label})</div>
                     </td>
-                    <td style={{ textAlign: "center" }}>
+                    <td className="qty-cell">
                       <button onClick={() => updateQty(item.batch_id, -1)} disabled={item.qty <= 1}>
                         -
                       </button>
-                      <span style={{ margin: "0 6px" }}>{item.qty}</span>
+                      <span>{item.qty}</span>
                       <button onClick={() => updateQty(item.batch_id, 1)}>+</button>
                     </td>
                     <td>{formatCurrency(item.unitPrice)}</td>
                     <td>{formatCurrency(item.unitPrice * item.qty)}</td>
                     <td>
-                      <button style={{ color: "#dc2626" }} onClick={() => removeItem(item.batch_id)}>
+                      <button className="link-danger" onClick={() => removeItem(item.batch_id)}>
                         Remove
                       </button>
                     </td>
@@ -560,28 +574,30 @@ export default function GenerateBill() {
               </tbody>
             </table>
           )}
-        </div>
+        </section>
 
-        <div className="card" style={cardStyle}>
-          <h3 style={{ marginBottom: "1rem", fontWeight: 600 }}>Bill Summary</h3>
-          <p style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Subtotal:</span> <strong>{formatCurrency(totals.subtotal)}</strong>
-          </p>
-          <p style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>GST:</span> <strong>{formatCurrency(totals.taxAmount)}</strong>
-          </p>
-          <hr />
-          <p style={{ display: "flex", justifyContent: "space-between", fontSize: "1.2rem" }}>
-            <strong>Total:</strong> <strong>{formatCurrency(totals.total)}</strong>
-          </p>
+        <section className="bill-card summary-card">
+          <header>
+            <h3>Bill Summary</h3>
+            <span className="hint">Review & collect payment</span>
+          </header>
+          <div className="summary-row">
+            <span>Subtotal</span>
+            <strong>{formatCurrency(totals.subtotal)}</strong>
+          </div>
+          <div className="summary-row">
+            <span>GST</span>
+            <strong>{formatCurrency(totals.taxAmount)}</strong>
+          </div>
+          <div className="summary-divider" />
+          <div className="summary-row total">
+            <span>Total</span>
+            <strong>{formatCurrency(totals.total)}</strong>
+          </div>
 
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ fontWeight: 600 }}>Payment Method</label>
-            <select
-              style={{ width: "100%", padding: "0.6rem", marginTop: "0.4rem", borderRadius: "8px", border: "1px solid #ccc" }}
-              value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value)}
-            >
+          <label className="summary-field">
+            Payment Method
+            <select value={selectedMethod} onChange={(e) => setSelectedMethod(e.target.value)}>
               <option value="">-- Choose Payment Method --</option>
               {paymentMethods.map((method) => (
                 <option key={method.id} value={method.id}>
@@ -589,28 +605,34 @@ export default function GenerateBill() {
                 </option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ fontWeight: 600 }}>Amount Paying</label>
+          {selectedMethod === "other" && (
+            <label className="summary-field">
+              Specify Payment Method *
+              <input
+                type="text"
+                placeholder="Enter payment method"
+                value={otherPaymentMethod}
+                onChange={(e) => setOtherPaymentMethod(e.target.value)}
+              />
+            </label>
+          )}
+
+          <label className="summary-field">
+            Amount Paying
             <input
               type="number"
               placeholder="Enter Amount"
               value={amountPaying}
               onChange={(e) => setAmountPaying(e.target.value)}
-              style={{ width: "100%", padding: "0.6rem", marginTop: "0.4rem", borderRadius: "8px", border: "1px solid #ccc" }}
             />
-          </div>
+          </label>
 
-          <button
-            className="generate-btn"
-            style={{ width: "100%", marginTop: "1rem" }}
-            onClick={submitInvoice}
-            disabled={submitting || !cart.length}
-          >
+          <button className="btn-primary wide" onClick={submitInvoice} disabled={submitting || !cart.length}>
             {submitting ? "Processing..." : "Complete Payment"}
           </button>
-        </div>
+        </section>
       </div>
     </div>
   );

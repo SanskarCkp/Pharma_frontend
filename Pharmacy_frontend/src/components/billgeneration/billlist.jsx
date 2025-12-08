@@ -66,7 +66,11 @@ export default function BillList() {
   return (
     <div
       className="billgeneration-page"
-      style={{ maxWidth: "1200px", margin: "auto" }}
+      style={{
+        width: "100%",
+        padding: "25px 45px",
+        backgroundColor: "#ffff"
+      }}
     >
       {/* Header Section */}
       <div
@@ -78,20 +82,36 @@ export default function BillList() {
           alignItems: "center",
         }}
       >
-        <h1
-          className="page-title"
-          style={{ fontWeight: "600", color: "#111827" }}
-        >
-          Bill Generation
-        </h1>
+        <div>
+          <h1
+            className="page-title"
+            style={{
+              fontWeight: "700",
+              color: "#111827",
+              fontSize: "2rem",
+              marginBottom: "0.5rem"
+            }}
+          >
+            Bill Generation
+          </h1>
+          <p style={{ color: "#6b7280", fontSize: "0.95rem" }}>
+            Manage and track all your billing transactions
+          </p>
+        </div>
 
         <button
           className="generate-btn"
           style={{
             backgroundColor: "#14b8a6",
-            borderRadius: "999px",
-            padding: "0.5rem 1.2rem",
-            fontWeight: 500,
+            borderRadius: "8px",
+            padding: "0.75rem 1.5rem",
+            fontWeight: 600,
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.95rem",
+            boxShadow: "0 2px 4px rgba(20, 184, 166, 0.3)",
+            transition: "all 0.2s"
           }}
           onClick={() => navigate("/billgeneration/generate")}
         >
@@ -105,31 +125,35 @@ export default function BillList() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "1rem",
-          marginBottom: "2rem",
+          gap: "1.5rem",
+          marginBottom: "2.5rem",
         }}
       >
         <div
           className="kpi-card"
           style={{
-            border: "1px solid #14b8a6",
-            borderRadius: "8px",
-            backgroundColor: "#f0fdfa",
-            textAlign: "center",
-            padding: "1rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "12px",
+            backgroundColor: "#ffffff",
+            padding: "1.75rem",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+            transition: "all 0.2s"
           }}
         >
-          <h4 style={{ color: "#0f766e" }}>Total Bills (This Month)</h4>
+          <h4 style={{ color: "#6b7280", fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            TOTAL BILLS (THIS MONTH)
+          </h4>
           <p
             style={{
-              fontWeight: "600",
-              fontSize: "1.25rem",
-              color: "#115e59",
+              fontWeight: "700",
+              fontSize: "2.25rem",
+              color: "#111827",
+              marginBottom: "0.5rem"
             }}
           >
             {kpis.totalBills}
           </p>
-          <small style={{ color: "#134e4a" }}>
+          <small style={{ color: "#6b7280", fontSize: "0.875rem" }}>
             Total bills generated in{" "}
             {new Date().toLocaleString("default", { month: "long" })}
           </small>
@@ -138,26 +162,28 @@ export default function BillList() {
         <div
           className="kpi-card"
           style={{
-            border: "1px solid #14b8a6",
-            borderRadius: "8px",
-            backgroundColor: "#f0fdfa",
-            textAlign: "center",
-            padding: "1rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "12px",
+            backgroundColor: "#ffffff",
+            padding: "1.75rem",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+            transition: "all 0.2s"
           }}
         >
-          <h4 style={{ color: "#0f766e" }}>
-            Total Products Sold (This Month)
+          <h4 style={{ color: "#6b7280", fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            TOTAL PRODUCTS SOLD (THIS MONTH)
           </h4>
           <p
             style={{
-              fontWeight: "600",
-              fontSize: "1.25rem",
-              color: "#115e59",
+              fontWeight: "700",
+              fontSize: "2.25rem",
+              color: "#111827",
+              marginBottom: "0.5rem"
             }}
           >
             {kpis.totalProducts}
           </p>
-          <small style={{ color: "#134e4a" }}>
+          <small style={{ color: "#6b7280", fontSize: "0.875rem" }}>
             Total items sold this month
           </small>
         </div>
@@ -165,24 +191,28 @@ export default function BillList() {
         <div
           className="kpi-card"
           style={{
-            border: "1px solid #14b8a6",
-            borderRadius: "8px",
-            backgroundColor: "#f0fdfa",
-            textAlign: "center",
-            padding: "1rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "12px",
+            backgroundColor: "#ffffff",
+            padding: "1.75rem",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+            transition: "all 0.2s"
           }}
         >
-          <h4 style={{ color: "#0f766e" }}>Total Revenue (This Month)</h4>
+          <h4 style={{ color: "#6b7280", fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            TOTAL REVENUE (THIS MONTH)
+          </h4>
           <p
             style={{
-              fontWeight: "600",
-              fontSize: "1.25rem",
-              color: "#115e59",
+              fontWeight: "700",
+              fontSize: "2.25rem",
+              color: "#14b8a6",
+              marginBottom: "0.5rem"
             }}
           >
             {formatMoney(kpis.totalRevenue)}
           </p>
-          <small style={{ color: "#134e4a" }}>
+          <small style={{ color: "#6b7280", fontSize: "0.875rem" }}>
             Revenue generated in{" "}
             {new Date().toLocaleString("default", { month: "long" })}
           </small>
@@ -190,87 +220,105 @@ export default function BillList() {
       </div>
 
       {/* Bills Table */}
-      <table
-        className="bill-table"
+      <div
         style={{
-          width: "100%",
-          borderCollapse: "separate",
-          borderSpacing: "0 8px",
+          backgroundColor: "white",
+          borderRadius: "12px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          overflow: "hidden",
+          border: "1px solid #e5e7eb"
         }}
       >
-        <thead
+        <table
+          className="bill-table"
           style={{
-            backgroundColor: "#f3f4f6",
-            textAlign: "left",
-            color: "#6b7280",
+            width: "100%",
+            borderCollapse: "collapse",
           }}
         >
-          <tr>
-            <th style={{ padding: "0.75rem" }}>Bill ID</th>
-            <th style={{ padding: "0.75rem" }}>Transaction Date</th>
-            <th style={{ padding: "0.75rem" }}>Customer Name</th>
-            <th style={{ padding: "0.75rem" }}>Total Amount</th>
-            <th style={{ padding: "0.75rem" }}>Payment</th>
-            <th style={{ padding: "0.75rem", textAlign: "center" }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bills.length === 0 ? (
+          <thead
+            style={{
+              backgroundColor: "#f9fafb",
+              borderBottom: "1px solid #e5e7eb"
+            }}
+          >
             <tr>
-              <td
-                colSpan="6"
-                className="no-data"
-                style={{ padding: "1rem", textAlign: "center" }}
-              >
-                No bills found
-              </td>
+              <th style={{ padding: "1rem", textAlign: "left", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Bill ID</th>
+              <th style={{ padding: "1rem", textAlign: "left", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Transaction Date</th>
+              <th style={{ padding: "1rem", textAlign: "left", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Customer Name</th>
+              <th style={{ padding: "1rem", textAlign: "left", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Total Amount</th>
+              <th style={{ padding: "1rem", textAlign: "left", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Payment</th>
+              <th style={{ padding: "1rem", textAlign: "center", color: "#374151", fontWeight: "600", fontSize: "0.875rem" }}>Actions</th>
             </tr>
-          ) : (
-            bills.map((bill) => (
-              <tr
-                key={bill.id}
-                style={{
-                  backgroundColor: "white",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  borderRadius: "6px",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                <td style={{ padding: "0.75rem" }}>{bill.invoice_no}</td>
-                <td style={{ padding: "0.75rem" }}>
-                  {bill.invoice_date
-                    ? new Date(bill.invoice_date).toLocaleString()
-                    : ""}
-                </td>
-                <td style={{ padding: "0.75rem" }}>
-                  {bill.customer_name || bill.customer?.name || "-"}
-                </td>
-                <td style={{ padding: "0.75rem" }}>
-                  {formatMoney(bill.net_total)}
-                </td>
-                <td style={{ padding: "0.75rem" }}>{bill.payment_status}</td>
-                <td style={{ padding: "0.75rem", textAlign: "center" }}>
-                  <button
-                    onClick={() =>
-                      navigate(`/billgeneration/invoice/${bill.id}`)
-                    }
-                    style={{
-                      backgroundColor: "#14b8a6",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "0.3rem 0.7rem",
-                      cursor: "pointer",
-                    }}
-                  >
-                    View
-                  </button>
+          </thead>
+          <tbody>
+            {bills.length === 0 ? (
+              <tr>
+                <td
+                  colSpan="6"
+                  className="no-data"
+                  style={{
+                    padding: "3rem",
+                    textAlign: "center",
+                    color: "#9ca3af",
+                    fontSize: "0.95rem"
+                  }}
+                >
+                  No bills found
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              bills.map((bill) => (
+                <tr
+                  key={bill.id}
+                  style={{
+                    borderBottom: "1px solid #f3f4f6",
+                    transition: "background-color 0.15s"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                >
+                  <td style={{ padding: "1rem", color: "#111827", fontWeight: "500" }}>{bill.invoice_no}</td>
+                  <td style={{ padding: "1rem", color: "#6b7280" }}>
+                    {bill.invoice_date
+                      ? new Date(bill.invoice_date).toLocaleString()
+                      : ""}
+                  </td>
+                  <td style={{ padding: "1rem", color: "#111827" }}>
+                    {bill.customer_name || bill.customer?.name || "-"}
+                  </td>
+                  <td style={{ padding: "1rem", color: "#111827", fontWeight: "600" }}>
+                    {formatMoney(bill.net_total)}
+                  </td>
+                  <td style={{ padding: "1rem", color: "#6b7280" }}>{bill.payment_status}</td>
+                  <td style={{ padding: "1rem", textAlign: "center" }}>
+                    <button
+                      onClick={() =>
+                        navigate(`/billgeneration/invoice/${bill.id}`)
+                      }
+                      style={{
+                        backgroundColor: "#14b8a6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "0.5rem 1rem",
+                        cursor: "pointer",
+                        fontWeight: "500",
+                        fontSize: "0.875rem",
+                        transition: "all 0.15s"
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0f766e"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#14b8a6"}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

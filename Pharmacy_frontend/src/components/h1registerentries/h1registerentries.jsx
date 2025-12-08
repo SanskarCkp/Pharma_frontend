@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./h1registerentries.css";
+import { useAlert } from "../ui/alert-provider";
 
 const H1RegisterEntries = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [entries, setEntries] = useState([]);
 
@@ -32,14 +34,15 @@ const H1RegisterEntries = () => {
 
     setEntries([...entries, newEntry]);
 
-    alert(
-      `✅ H1 Register Entry Created!\n\n` +
+    showAlert(
+      `H1 Register Entry Created!\n\n` +
         `ID: ${newEntry.id}\n` +
         `Sale Line ID: ${newEntry.saleLineId}\n` +
         `Patient: ${newEntry.patientName}\n` +
         `Prescriber: ${newEntry.prescriberName}\n` +
         `Reg No: ${newEntry.prescriberRegNo}\n` +
-        `Entry Date: ${newEntry.entryDate}`
+        `Entry Date: ${newEntry.entryDate}`,
+      "Success"
     );
 
     // Reset form and increment ID

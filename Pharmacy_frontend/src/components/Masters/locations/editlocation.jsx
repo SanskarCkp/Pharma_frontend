@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import "./addlocations.css";
+import styles from "./addlocations.module.css";
 
 const EditLocation = () => {
+  const cx = (...classes) => classes.filter(Boolean).join(" ");
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -44,25 +45,25 @@ const EditLocation = () => {
   };
 
   return (
-    <div className="customers-container">
-      <h1 className="customers-title">Edit Location</h1>
+    <div className={styles["customers-container"]}>
+      <h1 className={styles["customers-title"]}>Edit Location</h1>
 
-      <div className="customers-form">
+      <div className={styles["customers-form"]}>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Code</label>
             <input name="code" value={formData.code} onChange={handleChange} />
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>Name</label>
             <input name="name" value={formData.name} onChange={handleChange} />
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Type</label>
             <select name="type" value={formData.type} onChange={handleChange}>
               <option value="SHOP">SHOP</option>
@@ -70,27 +71,27 @@ const EditLocation = () => {
             </select>
           </div>
 
-          <div className="form-group">
+          <div className={styles["form-group"]}>
             <label>GSTIN</label>
             <input name="gstin" value={formData.gstin} onChange={handleChange} />
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles["form-row"]}>
+          <div className={styles["form-group"]}>
             <label>Address</label>
             <textarea name="address" value={formData.address} onChange={handleChange}></textarea>
           </div>
         </div>
 
-        <div className="checkbox-group">
+        <div className={styles["checkbox-group"]}>
           <label>Active</label>
           <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleChange} />
         </div>
 
-        <div className="form-actions">
-          <button className="cancel-btn" onClick={() => navigate("/masters/locations")}>Cancel</button>
-          <button className="submit-btn" onClick={handleUpdate}>Update</button>
+        <div className={styles["form-actions"]}>
+          <button className={styles["cancel-btn"]} onClick={() => navigate("/masters/locations")}>Cancel</button>
+          <button className={styles["submit-btn"]} onClick={handleUpdate}>Update</button>
         </div>
 
       </div>
