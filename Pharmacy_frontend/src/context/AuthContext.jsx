@@ -222,10 +222,19 @@ export function AuthProvider({ children }) {
         setUser(nextUser);
         storage.set(USER_STORAGE_KEY, JSON.stringify(nextUser));
 
+        const licensePayload = Array.isArray(response?.license)
+          ? response.license[0]
+          : response?.license;
+
         const daysLeft =
-          response?.license?.days_left ?? response?.license?.daysLeft ?? null;
+          licensePayload?.days_left ?? licensePayload?.daysLeft ?? null;
         const validTo =
-          response?.license?.valid_to ?? response?.license?.validTo ?? null;
+          licensePayload?.valid_to ?? licensePayload?.validTo ?? null;
+        console.log("[AuthContext] License info from login:", {
+          licensePayload,
+          daysLeft,
+          validTo,
+        });
         updateLicenseInfo(daysLeft, validTo);
 
         return response;

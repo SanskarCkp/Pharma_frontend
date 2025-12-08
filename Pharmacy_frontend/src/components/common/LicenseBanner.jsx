@@ -16,6 +16,7 @@ const formatDate = (value) => {
 
 const LicenseBanner = () => {
   const { licenseDaysLeft, licenseValidTo } = useAuth();
+  console.log("[LicenseBanner] licenseDaysLeft:", licenseDaysLeft, "licenseValidTo:", licenseValidTo);
 
   if (licenseDaysLeft === null || licenseDaysLeft === undefined) {
     return null;

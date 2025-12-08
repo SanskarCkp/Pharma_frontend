@@ -58,7 +58,8 @@ export default function Login() {
     setErr("");
     setLoading(true);
     try {
-      await loginWithDevice(form.username, form.password);
+      const loginResponse = await loginWithDevice(form.username, form.password);
+      console.log("[Login] login response", loginResponse);
 
       // small success animation
       setCarouselOn(true);

@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect } from "react";
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Layout
@@ -15,7 +15,6 @@ import ResetPassword from "./components/user/ResetPassword"; // ensure path: src
 import UserList from "./components/users/UserList.jsx";    
 // Guard
 import PrivateRoute from "./components/user/privateroute";
-import { useAuth } from "./context/AuthContext";
 
 // Pages
 import Home from "./pages/Home";
@@ -229,14 +228,6 @@ function AppLayout() {
 }
 
 export default function App() {
-  const { logout } = useAuth();
-  // Clear auth state on startup when running locally so dev sessions always start at /login
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      logout();
-    }
-  }, [logout]);
-
   return (
     <Routes>
       {/* Public routes */}
