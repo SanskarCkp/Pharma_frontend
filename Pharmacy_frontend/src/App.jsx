@@ -32,15 +32,15 @@ import MedicineInventory from "./components/inventory/MedicineInventory.jsx";
 import AddMedicine from "./components/inventory/AddMedicine.jsx";
 
 // Masters
-import Vendorsdashboard from "./components/Masters/Vendors/vendorsdashboard.jsx";
-import VendorDetails from "./components/Masters/Vendors/VendorDetails.jsx";
-import AddVendors from "./components/Masters/Vendors/addvendors.jsx";
-import ViewVendor from "./components/Masters/Vendors/viewvendor.jsx";
-import EditVendor from "./components/Masters/Vendors/editvendor.jsx";
-import AddCustomers from "./components/Masters/Customers/addcustomers.jsx";
-// import CustomerInvoices from "./components/Masters/Customers/CustomerInvoices.jsx";
-import CustomersDashboard from "./components/Masters/Customers/customersdashboard.jsx";
-import CustomerDetails from "./components/Masters/Customers/CustomerDetails.jsx";
+import Vendorsdashboard from "./components/Suppliers/vendorsdashboard.jsx";
+import VendorDetails from "./components/Suppliers/VendorDetails.jsx";
+import AddVendors from "./components/Suppliers/addvendors.jsx";
+import ViewVendor from "./components/Suppliers/viewvendor.jsx";
+import EditVendor from "./components/Suppliers/editvendor.jsx";
+import AddCustomers from "./components/Customers/addcustomers.jsx";
+// import CustomerInvoices from "./components/Customers/CustomerInvoices.jsx";
+import CustomersDashboard from "./components/Customers/customersdashboard.jsx";
+import CustomerDetails from "./components/Customers/CustomerDetails.jsx";
 import RolesDashboard from "./components/Masters/roles/rolesdashboard.jsx";
 import AddRole from "./components/Masters/roles/addroles.jsx";
 import LocationsDashboard from "./components/Masters/locations/locationsdashboard.jsx";
