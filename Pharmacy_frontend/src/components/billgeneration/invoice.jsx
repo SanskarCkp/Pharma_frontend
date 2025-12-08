@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import "./invoice.css";
+import styles from "./invoice.module.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 
@@ -39,33 +39,33 @@ export default function Invoice() {
     load();
   }, [id]);
 
-  if (!invoice && !error) return <p>Loading invoice...</p>;
+  // Second useEffect for auto-print - must be defined before any conditional returns
+  useEffect(() => {
+    const search = new URLSearchParams(location.search);
+    const shouldAutoPrint = search.get("print") === "1";
+
+    if (shouldAutoPrint && invoice && !autoPrintDone && printRef.current) {
+      window.print();
+      setAutoPrintDone(true);
+    }
+  }, [invoice, autoPrintDone, location.search]);
+
+  // Early returns after all hooks
+  if (!invoice && !error) return <p className={styles.loading}>Loading invoice...</p>;
   if (error)
     return (
-      <div className="invoice-container">
-        <p className="error">{error}</p>
-        <button onClick={() => navigate(-1)}>← Back</button>
+      <div className={styles.invoiceContainer}>
+        <p className={styles.error}>{error}</p>
+        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Back</button>
       </div>
     );
 
   const customer = invoice?.customer_detail || {};
-  const payments = invoice?.payments || [];
-  let paidAmount = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  let paymentMode = payments.length > 0 ? payments.map((p) => p.mode).join(", ") : "N/A";
-
-  if (paidAmount === 0 && invoice?.paid_amount > 0) {
-    paidAmount = Number(invoice.paid_amount);
-    paymentMode = "CASH";
-  }
 
   const subtotal = Number(invoice?.gross_total || 0);
   const gstAmount = Number(invoice?.tax_total || 0);
   const total = Number(invoice?.net_total || 0);
-  const balanceAmount = Math.max(total - paidAmount, 0);
-
-  let paymentStatus = "UNPAID";
-  if (paidAmount >= total && total > 0) paymentStatus = "PAID";
-  else if (paidAmount > 0) paymentStatus = "CREDIT";
+  const discount = Number(invoice?.discount || 0);
 
   const handlePrint = () => window.print();
 
@@ -82,121 +82,163 @@ export default function Invoice() {
     pdf.save(`${invoice?.invoice_no || "invoice"}.pdf`);
   };
 
-  const search = new URLSearchParams(location.search);
-  const shouldAutoPrint = search.get("print") === "1";
-
-  useEffect(() => {
-    if (shouldAutoPrint && invoice && !autoPrintDone && printRef.current) {
-      handlePrint();
-      setAutoPrintDone(true);
-    }
-  }, [shouldAutoPrint, invoice, autoPrintDone]);
+  const totalQty = invoice.lines?.reduce((sum, item) => sum + Number(item.qty_base || 0), 0) || 0;
 
   return (
-    <div className="invoice-container">
-      <div className="invoice-action-bar">
-        <button onClick={() => navigate(-1)}>← Back</button>
-        <div>
-          <button onClick={handleDownloadPDF} className="btn">Download</button>
-          <button onClick={handlePrint} className="btn">Print</button>
+    <div className={styles.invoiceContainer}>
+      <div className={styles.invoiceActionBar}>
+        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Back</button>
+        <div className={styles.actionButtons}>
+          <button onClick={handleDownloadPDF} className={styles.btn}>Download PDF</button>
+          <button onClick={handlePrint} className={styles.btn}>Print</button>
         </div>
       </div>
 
-      <div ref={printRef} className="invoice-box">
+      <div ref={printRef} className={styles.invoiceBox}>
         {/* HEADER */}
-        <div className="invoice-header">
-          <img
-            src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
-            alt="logo"
-            className="mobile-logo"
-          />
-          <h2>The Wellness Medicines</h2>
-          <p>(a unit of wellness pharma)</p>
-          <p>
-            Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,
-            Avalahalli, DB Pura Main Road, Bengaluru-560064
-          </p>
-          <p>GST NO: 29BHOPS2215K1ZU | DL No: 20-KA-B52-257125</p>
-          <p>Mob: 9740050075</p>
-        </div>
-
-        {/* CUSTOMER & INVOICE INFO */}
-        <div className="invoice-info-block">
-          <div>
-            <h4>Patient Info</h4>
-            <p><strong>Name:</strong> {customer.name || invoice?.patient_name || "-"}</p>
-            <p><strong>Address:</strong> {customer.address || invoice?.patient_address || "-"}</p>
-            <p><strong>Doctor:</strong> {invoice?.doctor_name || "-"}</p>
+        <div className={styles.invoiceHeader}>
+          <div className={styles.leftSection}>
+            <div className={styles.logoSection}>
+              <img
+                src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
+                alt="logo"
+                className={styles.mobileLogo}
+              />
+            </div>
+            <div className={styles.companyInfo}>
+              <h2 className={styles.companyName}>The Wellness Medicines</h2>
+              <p className={styles.companySubtitle}>(a unit of wellness pharma)</p>
+              <p className={styles.companyAddress}>
+                Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,<br />
+                Avalahalli, DB Pura Main Road, Bengaluru-560064
+              </p>
+              <p className={styles.companyDetails}>
+                GST NO: 29BHOPS2215K1ZU | DL No: 20-KA-B52-257125
+              </p>
+              <p className={styles.companyDetails}>Mob: 9740050075</p>
+            </div>
           </div>
-          <div className="invoice-right">
-            <h4>Invoice Info</h4>
-            <p><strong>Invoice #:</strong> {invoice.invoice_no || invoice.id}</p>
-            <p><strong>Date:</strong>{" "}
-              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleString() : ""}
-            </p>
-            <p><strong>Time:</strong>{" "}
-              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleTimeString() : ""}
-            </p>
+
+          <div className={styles.rightSection}>
+            <div className={styles.patientInfo}>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Patient :</span>
+                <span className={styles.infoValue}>{customer.name || invoice?.patient_name || "John Doe"}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Address :</span>
+                <span className={styles.infoValue}>{customer.address || invoice?.patient_address || "#8164, PRG"}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Doctor :</span>
+                <span className={styles.infoValue}>{invoice?.doctor_name || "DR SPANDANA PEDDAREDDY"}</span>
+              </div>
+            </div>
+            <div className={styles.invoiceInfo}>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Invoice No :</span>
+                <span className={styles.infoValue}>{invoice.invoice_no || `INV-0002`}</span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Date :</span>
+                <span className={styles.infoValue}>
+                  {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-GB') : "11/07/2025"}
+                </span>
+              </div>
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Time :</span>
+                <span className={styles.infoValue}>
+                  {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleTimeString('en-GB', { hour12: false }) : "10:05:00"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ITEMS TABLE */}
-        <table className="invoice-table">
+        <table className={styles.itemsTable}>
           <thead>
             <tr>
-              <th>#</th>
+              <th className={styles.srNo}>Sr.No</th>
               <th>Item Name</th>
-              <th>Batch No</th>
-              <th>Exp Dt</th>
-              <th className="right">Qty</th>
-              <th className="right">MRP</th>
-              <th className="right">Rate</th>
-              <th className="right">GST</th>
-              <th className="right">Amount</th>
-              <th>HSN Code</th>
+              <th className={styles.textCenter}>Batch No.</th>
+              <th className={styles.textCenter}>Exp Dt</th>
+              <th className={styles.textRight}>Qty</th>
+              <th className={styles.textRight}>MRP</th>
+              <th className={styles.textRight}>Rate</th>
+              <th className={styles.textRight}>GST</th>
+              <th className={styles.textRight}>Amount</th>
+              <th className={styles.textCenter}>HSN Code</th>
             </tr>
           </thead>
           <tbody>
             {invoice.lines?.map((item, index) => (
               <tr key={index}>
-                <td>{index + 1}</td>
+                <td className={styles.textCenter}>{index + 1}</td>
                 <td>{item.product_name}</td>
-                <td>{item.batch_no || item.batch_lot}</td>
-                <td>{item.expiry_date || "-"}</td>
-                <td className="right">{item.qty_base}</td>
-                <td className="right">₹{Number(item.mrp || item.rate_per_base).toFixed(2)}</td>
-                <td className="right">₹{Number(item.rate_per_base).toFixed(2)}</td>
-                <td className="right">{Number(item.gst_percent || 0)}%</td>
-                <td className="right">₹{Number(item.line_total).toFixed(2)}</td>
-                <td>{item.hsn_code || "-"}</td>
+                <td className={styles.textCenter}>{item.batch_no || item.batch_lot || "-"}</td>
+                <td className={styles.textCenter}>{item.expiry_date || "-"}</td>
+                <td className={styles.textRight}>{item.qty_base}</td>
+                <td className={styles.textRight}>{Number(item.mrp || item.rate_per_base).toFixed(2)}</td>
+                <td className={styles.textRight}>{Number(item.rate_per_base).toFixed(2)}</td>
+                <td className={styles.textRight}>{Number(item.gst_percent || 0).toFixed(2)}</td>
+                <td className={styles.textRight}>{Number(item.line_total).toFixed(2)}</td>
+                <td className={styles.textCenter}>{item.hsn_code || "-"}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* TAX & SUMMARY */}
-        <div className="invoice-summary">
-          <p><strong>Sub Total:</strong> ₹{subtotal.toFixed(2)}</p>
-          <p><strong>Discount:</strong> ₹{invoice?.discount || 0}</p>
-          <p><strong>GST Amt:</strong> ₹{gstAmount.toFixed(2)}</p>
-          <h3>Inv Total: ₹{total.toFixed(2)}</h3>
+        {/* TOTALS SUMMARY */}
+        <div className={styles.totalsSummarySection}>
+          <div className={styles.totalItemsInfo}>
+            Total Item : {invoice.lines?.length || 0} | Total Qty : {totalQty.toFixed(3)}
+          </div>
+
+          <div className={styles.amountSummary}>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>Sub Total:</span>
+              <span className={styles.summaryValue}>{subtotal.toFixed(2)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>Discount:</span>
+              <span className={styles.summaryValue}>{discount.toFixed(2)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>CGST:</span>
+              <span className={styles.summaryValue}>{(gstAmount / 2).toFixed(2)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>SGST:</span>
+              <span className={styles.summaryValue}>{(gstAmount / 2).toFixed(2)}</span>
+            </div>
+            <div className={`${styles.summaryRow} ${styles.totalRow}`}>
+              <span className={styles.summaryLabel}>Inv Total:</span>
+              <span className={styles.summaryValue}>{total.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
 
-        {/* PAYMENT INFO */}
-        <div className="invoice-payment">
-          <h4>Payment Details</h4>
-          <p><strong>Payment Method:</strong> {paymentMode}</p>
-          <p><strong>Status:</strong> {paymentStatus}</p>
-          <p><strong>Paid Amount:</strong> ₹{paidAmount.toFixed(2)}</p>
-          <p><strong>Balance Amount:</strong> ₹{balanceAmount.toFixed(2)}</p>
-        </div>
+        {/* TERMS AND CONDITIONS + FOOTER IN ONE ROW */}
+        <div className={styles.termsFooterSection}>
+          <div className={styles.termsSection}>
+            <div className={styles.termsTitle}>Terms & Conditions:</div>
+            <ol className={styles.termsList}>
+              <li>Goods Sold Cannot Be Taken Back.</li>
+              <li>Cold storage insulins will not be taken back strictly once sold.</li>
+              <li>Pharmacy Timings: 8:00am to 10:00pm.</li>
+            </ol>
+          </div>
 
-        {/* FOOTER */}
-        <div className="invoice-footer">
-          <p>Goods Sold Cannot Be Taken Back.</p>
-          <p>Cold storage insulins will not be taken back strictly once sold.</p>
-          <p>Pharmacy Timings: 8:00am to 10:00pm</p>
-          <p>This is a computer-generated invoice.</p>
+          <div className={styles.invoiceFooter}>
+            <div className={styles.footerLeft}>
+              <div className={styles.pageInfo}>Page 1 of 1</div>
+            </div>
+            <div className={styles.pharmacistSignature}>
+              <div className={styles.signatureLabel}>For Wellness Pharma</div>
+              <div className={styles.pharmacistLabel}>Pharmacist:</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
