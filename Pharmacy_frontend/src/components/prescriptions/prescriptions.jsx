@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./prescriptions.css";
+import { useAlert } from "../ui/alert-provider";
 
 const Prescriptions = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [prescriptions, setPrescriptions] = useState([]);
 
@@ -37,13 +39,14 @@ const Prescriptions = () => {
 
     setPrescriptions([...prescriptions, newPrescription]);
 
-    alert(
-      `✅ Prescription Created!\n
+    showAlert(
+      `Prescription Created!\n
 Prescription ID: ${newPrescription.id}
 Patient: ${newPrescription.patientName}
 Prescriber: ${newPrescription.prescriberName}
 Invoice ID: ${newPrescription.saleInvoiceId}
-Captured At: ${newPrescription.capturedAt}`
+Captured At: ${newPrescription.capturedAt}`,
+      "Success"
     );
 
     // Reset form

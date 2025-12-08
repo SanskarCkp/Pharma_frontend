@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "./addproducts.css";
 import { authFetch } from "../../../api/http";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -10,6 +11,7 @@ const AddProduct = () => {
   const { id } = useParams();
   const location = useLocation();
   const vendorFromState = location.state?.vendor; // passed vendor
+  const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -67,12 +69,12 @@ const AddProduct = () => {
     });
 
     if (res.ok) {
-      alert(id ? "Product Updated Successfully!" : "Product Added Successfully!");
+      showAlert(id ? "Product Updated Successfully!" : "Product Added Successfully!", "Success");
       navigate("/procurement/orders/create", { state: { vendor: vendorFromState, refresh: true } });
     } else {
       const errText = await res.text();
       console.error(errText);
-      alert("Failed to save product!");
+      showAlert("Failed to save product!", "Error");
     }
   };
 

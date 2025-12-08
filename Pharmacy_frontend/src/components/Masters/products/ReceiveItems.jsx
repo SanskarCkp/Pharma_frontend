@@ -4,6 +4,7 @@ import { CheckCircle, Package, ClipboardList, ArrowLeft } from "lucide-react";
 import "./receiveitems.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -12,6 +13,7 @@ const ReceiveItems = () => {
   const { id } = useParams();
   const location = useLocation();
   const vendor = location.state?.vendor || null;
+  const { showAlert } = useAlert();
 
   const [purchaseOrder, setPurchaseOrder] = useState(null);
   const [receivingDetails, setReceivingDetails] = useState(null);
@@ -309,7 +311,7 @@ const ReceiveItems = () => {
   // Only submit nonzero pack lines
   const handleCompleteReceiving = async () => {
     if (!purchaseOrder || !loggedInUser) {
-      alert("Missing user or PO!");
+      showAlert("Missing user or PO!", "Error");
       return;
     }
     const locationId = purchaseOrder.location_id || purchaseOrder.location;
@@ -342,7 +344,7 @@ const ReceiveItems = () => {
       }));
 
     if (grnLines.length === 0) {
-      alert("No items entered!");
+      showAlert("No items entered!", "Error");
       return;
     }
 
@@ -368,7 +370,7 @@ const ReceiveItems = () => {
       const data = await grnResponse.json().catch(() => null);
 
       if (!grnResponse.ok) {
-        alert("GRN error: " + JSON.stringify(data));
+        showAlert("GRN error: " + JSON.stringify(data), "Error");
         return;
       }
 
@@ -377,7 +379,7 @@ const ReceiveItems = () => {
         method: "POST",
       });
       if (!postRes.ok) {
-        alert("Posting failed");
+        showAlert("Posting failed", "Error");
         return;
       }
 
@@ -412,11 +414,11 @@ const ReceiveItems = () => {
         })
       );
 
-      alert("GRN saved and products updated successfully!");
+      showAlert("GRN saved and products updated successfully!", "Success");
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert("An error occurred.");
+      showAlert("An error occurred.", "Error");
     }
   };
 

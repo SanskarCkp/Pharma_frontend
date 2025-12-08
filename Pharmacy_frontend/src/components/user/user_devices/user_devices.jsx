@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./user_devices.css";
+import { useAlert } from "../../ui/alert-provider";
 
 const API_URL = "http://127.0.0.1:8000/api/user-devices/"; // adjust to your backend route
 
 const UserDevices = () => {
+  const { showAlert } = useAlert();
   const [devices, setDevices] = useState([]);
   const [formData, setFormData] = useState({
     user_id: "",
@@ -26,7 +28,7 @@ const UserDevices = () => {
       setDevices(data);
     } catch (err) {
       console.error("Error fetching devices:", err);
-      alert("❌ Failed to load user device data. Please check your backend API.");
+      showAlert("Failed to load user device data. Please check your backend API.", "Error");
     } finally {
       setLoading(false);
     }
@@ -85,10 +87,10 @@ const UserDevices = () => {
       });
       setEditingId(null);
       fetchDevices();
-      alert(editingId ? "✅ Device updated successfully!" : "✅ Device added successfully!");
+      showAlert(editingId ? "Device updated successfully!" : "Device added successfully!", "Success");
     } catch (err) {
       console.error("Error saving device:", err);
-      alert("❌ Failed to save device. Please try again.");
+      showAlert("Failed to save device. Please try again.", "Error");
     }
   };
 
@@ -111,10 +113,10 @@ const UserDevices = () => {
       const res = await fetch(`${API_URL}${id}/`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete device");
       fetchDevices();
-      alert("🗑️ Device deleted successfully!");
+      showAlert("Device deleted successfully!", "Success");
     } catch (err) {
       console.error("Error deleting device:", err);
-      alert("❌ Failed to delete device.");
+      showAlert("Failed to delete device.", "Error");
     }
   };
 

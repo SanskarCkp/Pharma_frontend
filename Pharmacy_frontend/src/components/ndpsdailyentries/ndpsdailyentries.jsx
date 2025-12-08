@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./ndpsdailyentries.css";
+import { useAlert } from "../ui/alert-provider";
 
 const NdpsDailyEntries = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [entries, setEntries] = useState([]);
 
@@ -43,14 +45,15 @@ const NdpsDailyEntries = () => {
     const newEntry = { ...formData };
     setEntries([...entries, newEntry]);
 
-    alert(
-      `✅ NDPS Daily Entry Created!\n\n` +
+    showAlert(
+      `NDPS Daily Entry Created!\n\n` +
         `ID: ${newEntry.id}\n` +
         `Sale Line ID: ${newEntry.saleLineId}\n` +
         `Opening Balance: ${newEntry.openingBalance}\n` +
         `Qty Issued: ${newEntry.qtyIssued}\n` +
         `Closing Balance: ${newEntry.closingBalance}\n` +
-        `Entry Date: ${newEntry.entryDate}`
+        `Entry Date: ${newEntry.entryDate}`,
+      "Success"
     );
 
     const nextCounter = idCounter + 1;

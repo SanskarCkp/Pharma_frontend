@@ -166,18 +166,18 @@ export default function MedicineCategories() {
   }, [showForm, showView, deleteItem]);
 
   return (
-    <div className="mfWrap">
-      <div className="mfHeader">
-        <button className="mfBack" onClick={() => nav(-1)} disabled={loading}>
+    <div className="mcWrap">
+      <div className="mcHeader">
+        <button className="mcBack" onClick={() => nav(-1)} disabled={loading}>
           ← Back
         </button>
 
-        <div className="mfHeadings">
+        <div className="mcHeadings">
           <h2>Medicine Categories</h2>
           <p>Manage all available medicine categories</p>
         </div>
 
-        <button className="mfAdd" onClick={openAdd} disabled={loading || saving}>
+        <button className="mcAdd" onClick={openAdd} disabled={loading || saving}>
           ＋ Add New
         </button>
       </div>
@@ -187,8 +187,8 @@ export default function MedicineCategories() {
       {loading ? (
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
-        <div className="mfCard">
-          <table className="mfTable">
+        <div className="mcCard">
+          <table className="mcTable">
             <thead>
               <tr>
                 <th className="slno-col">SL No</th>
@@ -204,11 +204,11 @@ export default function MedicineCategories() {
                   <tr key={r.id}>
                     <td className="slno-col">{i + 1}</td>
                     <td>{r.name}</td>
-                    <td className="mfMuted">{r.description || "-"}</td>
-                    <td className="mfActions">
-                      <button className="mfIcon" onClick={() => openView(r)}>👁️</button>
-                      <button className="mfIcon" onClick={() => openEdit(r)}>✎</button>
-                      <button className="mfIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
+                    <td className="mcMuted">{r.description || "-"}</td>
+                    <td className="mcActions">
+                      <button className="mcIcon" onClick={() => openView(r)}>👁️</button>
+                      <button className="mcIcon" onClick={() => openEdit(r)}>✎</button>
+                      <button className="mcIcon danger" onClick={() => confirmDelete(r)}>🗑️</button>
                     </td>
                   </tr>
                 ))
@@ -226,31 +226,31 @@ export default function MedicineCategories() {
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="mfModalBackdrop" onMouseDown={closeForm}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className="mcModalBackdrop" onMouseDown={closeForm}>
+          <div className="mcModal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="mcModalHeader">
               <h3>{editingId ? "Edit Category" : "Add New Category"}</h3>
-              <button className="mfClose" onClick={closeForm}>✕</button>
+              <button className="mcClose" onClick={closeForm}>✕</button>
             </div>
 
-            <form className="mfForm" onSubmit={handleSubmit}>
-              <label className="mfLabel">
-                Name <span className="mfReq">*</span>
+            <form className="mcForm" onSubmit={handleSubmit}>
+              <label className="mcLabel">
+                Name <span className="mcReq">*</span>
                 <input
-                  className={`mfInput ${errors.name ? "mfInputError" : ""}`}
+                  className={`mcInput ${errors.name ? "mcInputError" : ""}`}
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Enter name"
                   autoFocus
                 />
-                {errors.name && <div className="mfError">{errors.name}</div>}
+                {errors.name && <div className="mcError">{errors.name}</div>}
               </label>
 
-              <label className="mfLabel">
+              <label className="mcLabel">
                 Description
                 <input
-                  className="mfInput"
+                  className="mcInput"
                   name="description"
                   value={form.description}
                   onChange={handleChange}
@@ -258,11 +258,11 @@ export default function MedicineCategories() {
                 />
               </label>
 
-              <div className="mfBtnRow">
-                <button type="button" className="mfBtn" onClick={closeForm}>
+              <div className="mcBtnRow">
+                <button type="button" className="mcBtn" onClick={closeForm}>
                   Cancel
                 </button>
-                <button type="submit" className="mfBtn primary">
+                <button type="submit" className="mcBtn primary">
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Add Item"}
                 </button>
               </div>
@@ -273,40 +273,40 @@ export default function MedicineCategories() {
 
       {/* View Modal */}
       {showView && (
-        <div className="mfModalBackdrop" onMouseDown={() => setShowView(null)}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className="mcModalBackdrop" onMouseDown={() => setShowView(null)}>
+          <div className="mcModal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="mcModalHeader">
               <h3>View Category</h3>
-              <button className="mfClose" onClick={() => setShowView(null)}>✕</button>
+              <button className="mcClose" onClick={() => setShowView(null)}>✕</button>
             </div>
 
-            <div className="mfViewTable">
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Name</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">{showView.name}</span>
+            <div className="mcViewTable">
+              <div className="mcViewRow">
+                <span className="mcViewLabel">Name</span>
+                <span className="mcViewColon">:</span>
+                <span className="mcViewValue">{showView.name}</span>
               </div>
 
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Description</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">{showView.description || "-"}</span>
+              <div className="mcViewRow">
+                <span className="mcViewLabel">Description</span>
+                <span className="mcViewColon">:</span>
+                <span className="mcViewValue">{showView.description || "-"}</span>
               </div>
 
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Created</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">
+              <div className="mcViewRow">
+                <span className="mcViewLabel">Created</span>
+                <span className="mcViewColon">:</span>
+                <span className="mcViewValue">
                   {showView.created_at
                     ? new Date(showView.created_at).toLocaleString()
                     : "-"}
                 </span>
               </div>
 
-              <div className="mfViewRow">
-                <span className="mfViewLabel">Updated</span>
-                <span className="mfViewColon">:</span>
-                <span className="mfViewValue">
+              <div className="mcViewRow">
+                <span className="mcViewLabel">Updated</span>
+                <span className="mcViewColon">:</span>
+                <span className="mcViewValue">
                   {showView.updated_at
                     ? new Date(showView.updated_at).toLocaleString()
                     : "-"}
@@ -314,8 +314,8 @@ export default function MedicineCategories() {
               </div>
             </div>
 
-            <div className="mfBtnRow center">
-              <button className="mfBtn" onClick={() => setShowView(null)}>
+            <div className="mcBtnRow center">
+              <button className="mcBtn" onClick={() => setShowView(null)}>
                 Close
               </button>
             </div>
@@ -325,22 +325,22 @@ export default function MedicineCategories() {
 
       {/* Delete Modal */}
       {deleteItem && (
-        <div className="mfModalBackdrop" onMouseDown={() => setDeleteItem(null)}>
-          <div className="mfModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="mfModalHeader">
+        <div className="mcModalBackdrop" onMouseDown={() => setDeleteItem(null)}>
+          <div className="mcModal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="mcModalHeader">
               <h3>Confirm Delete</h3>
-              <button className="mfClose" onClick={() => setDeleteItem(null)}>✕</button>
+              <button className="mcClose" onClick={() => setDeleteItem(null)}>✕</button>
             </div>
 
             <div style={{ padding: 20 }}>
               Are you sure you want to delete <strong>{deleteItem.name}</strong> category?
             </div>
 
-            <div className="mfBtnRow">
-              <button className="mfBtn" onClick={() => setDeleteItem(null)}>
+            <div className="mcBtnRow">
+              <button className="mcBtn" onClick={() => setDeleteItem(null)}>
                 Cancel
               </button>
-              <button className="mfBtn danger" onClick={handleDelete}>
+              <button className="mcBtn danger" onClick={handleDelete}>
                 {saving ? "Deleting..." : "Delete"}
               </button>
             </div>

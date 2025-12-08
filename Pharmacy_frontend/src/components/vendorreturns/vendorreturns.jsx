@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import "./vendorreturns.css";
+import { useAlert } from "../ui/alert-provider";
 
 const VendorReturns = () => {
+  const { showAlert } = useAlert();
   const [idCounter, setIdCounter] = useState(1);
   const [returns, setReturns] = useState([]);
 
@@ -36,8 +38,8 @@ const VendorReturns = () => {
 
     setReturns([...returns, newReturn]);
 
-    alert(
-      `✅ Vendor Return Created!\n
+    showAlert(
+      `Vendor Return Created!\n
 Return ID: ${newReturn.id}
 Vendor ID: ${newReturn.vendorId}
 Purchase Line ID: ${newReturn.purchaseLineId}
@@ -47,7 +49,8 @@ Reason: ${newReturn.reason}
 Credit Note No: ${newReturn.creditNoteNo}
 Credit Note Date: ${newReturn.creditNoteDate}
 Status: ${newReturn.status}
-Created At: ${newReturn.createdAt}`
+Created At: ${newReturn.createdAt}`,
+      "Success"
     );
 
     // Reset form
