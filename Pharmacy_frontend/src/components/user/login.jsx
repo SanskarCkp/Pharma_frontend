@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../common/logo";
 import MedicalCarousel from "../common/MedicalCarousel";
-import { login as apiLogin, storeTokens } from "../../api/auth";
 import { fetchUsersFromBackend } from "../../api/users";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
@@ -15,6 +15,7 @@ export default function Login() {
   const [userList, setUserList] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login: loginWithDevice } = useAuth();
 
   useEffect(() => {
     async function load() {
@@ -57,24 +58,7 @@ export default function Login() {
     setErr("");
     setLoading(true);
     try {
-      // Call backend login
-      const data = await apiLogin(form.username, form.password);
-
-      // Defensive token extraction (support multiple response shapes)
-      const access = data?.access ?? data?.access_token ?? data?.token ?? null;
-      const refresh = data?.refresh ?? data?.refresh_token ?? null;
-
-      if (access || refresh) {
-        try {
-          // storeTokens writes to localStorage using your keys
-          storeTokens({ access, refresh });
-        } catch (e) {
-          console.warn("Failed to store tokens:", e);
-        }
-      } else {
-        // If no tokens returned, throw so UI shows error
-        throw new Error("Login succeeded but server did not return tokens.");
-      }
+      await loginWithDevice(form.username, form.password);
 
       // small success animation
       setCarouselOn(true);

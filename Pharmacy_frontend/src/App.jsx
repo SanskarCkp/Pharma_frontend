@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 // Layout
 import Sidebar from "./components/sidebar";
 import Footer from "./components/Footer";
+import LicenseBanner from "./components/common/LicenseBanner";
 
 // Public
 import Login from "./components/user/login";
@@ -14,6 +15,7 @@ import ResetPassword from "./components/user/ResetPassword"; // ensure path: src
 import UserList from "./components/users/UserList.jsx";    
 // Guard
 import PrivateRoute from "./components/user/privateroute";
+import { useAuth } from "./context/AuthContext";
 
 // Pages
 import Home from "./pages/Home";
@@ -116,6 +118,7 @@ function AppLayout() {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-col flex-grow ml-0 lg:ml-64">
+        <LicenseBanner />
         <main className="flex-grow p-6">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -226,18 +229,13 @@ function AppLayout() {
 }
 
 export default function App() {
-  // Clear tokens on startup so login page always appears when you launch the app.
-  // This runs once on mount. It's guarded to run only in development by default.
+  const { logout } = useAuth();
+  // Clear auth state on startup when running locally so dev sessions always start at /login
   useEffect(() => {
-    try {
-      if (import.meta.env.DEV) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-      }
-    } catch (err) {
-      // ignore
+    if (import.meta.env.DEV) {
+      logout();
     }
-  }, []);
+  }, [logout]);
 
   return (
     <Routes>

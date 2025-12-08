@@ -1,23 +1,18 @@
 // src/components/TopNav.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { fullLogout, getAccessToken } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function TopNav() {
   const navigate = useNavigate();
+  const { logout, isAuthenticated } = useAuth();
 
-  const handleLogout = async () => {
-    try {
-      await fullLogout();
-    } catch (err) {
-      console.error("Logout failed:", err);
-      // still navigate away
-    }
+  const handleLogout = () => {
+    logout();
     navigate("/login");
   };
 
-  // optional: use token presence to conditionally show logout (should be visible only for authenticated pages)
-  const isLoggedIn = Boolean(getAccessToken());
+  const isLoggedIn = Boolean(isAuthenticated);
 
   return (
     <header className="w-full bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
