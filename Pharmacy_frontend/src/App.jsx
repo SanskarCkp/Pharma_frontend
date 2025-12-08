@@ -32,15 +32,15 @@ import MedicineInventory from "./components/inventory/MedicineInventory.jsx";
 import AddMedicine from "./components/inventory/AddMedicine.jsx";
 
 // Masters
-
-import Vendorsdashboard from "./components/Suppliers/vendorsdashboard.jsx";
-import VendorDetails from "./components/Suppliers/VendorDetails.jsx";
-import AddVendors from "./components/Suppliers/addvendors.jsx";
-import ViewVendor from "./components/Suppliers/viewvendor.jsx";
-import EditVendor from "./components/Suppliers/editvendor.jsx";
-import AddCustomers from "./components/Customers/addcustomers.jsx";
-import CustomersDashboard from "./components/Customers/customersdashboard.jsx";
-import CustomerDetails from "./components/Customers/CustomerDetails.jsx";
+import Vendorsdashboard from "./components/Masters/Vendors/vendorsdashboard.jsx";
+import VendorDetails from "./components/Masters/Vendors/VendorDetails.jsx";
+import AddVendors from "./components/Masters/Vendors/addvendors.jsx";
+import ViewVendor from "./components/Masters/Vendors/viewvendor.jsx";
+import EditVendor from "./components/Masters/Vendors/editvendor.jsx";
+import AddCustomers from "./components/Masters/Customers/addcustomers.jsx";
+// import CustomerInvoices from "./components/Masters/Customers/CustomerInvoices.jsx";
+import CustomersDashboard from "./components/Masters/Customers/customersdashboard.jsx";
+import CustomerDetails from "./components/Masters/Customers/CustomerDetails.jsx";
 import RolesDashboard from "./components/Masters/roles/rolesdashboard.jsx";
 import AddRole from "./components/Masters/roles/addroles.jsx";
 import LocationsDashboard from "./components/Masters/locations/locationsdashboard.jsx";
@@ -54,6 +54,7 @@ import ProductCatalog from "./components/Masters/products/ProductCatalog.jsx";
 import AddProduct from "./components/Masters/products/addproducts.jsx";
 import ViewProduct from "./components/Masters/products/ViewProduct.jsx";
 import EditProduct from "./components/Masters/products/EditProduct.jsx";
+import PaymentMethods from "./components/Masters/Payment_Methods/Payment_Methods.jsx";
 import PaymentTerms from "./components/Masters/payment_terms/payment_terms.jsx";
 import RackLocations from "./components/Masters/rack_locations/rack_locations.jsx";
 
@@ -90,6 +91,7 @@ import AddRetention from "./components/retention_policies/addretention.jsx";
 
 // Other modules
 import Rackrules from "./components/Rackrules/Rackrules.jsx";
+import Batchlots from "./components/batchlots/batchlots.jsx";
 import Purchases from "./components/purchases/purchases.jsx";
 import ConsentLedger from "./components/consentledger/consentledger.jsx";
 import Vendorreturns from "./components/vendorreturns/vendorreturns.jsx";
@@ -107,7 +109,7 @@ import ExpiryReport from "./components/reports/ExpiryReport.jsx";
 /** Shell for authenticated pages */
 function AppLayout() {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-col flex-grow ml-0 lg:ml-[240px]">
         <Topbar />
@@ -124,15 +126,28 @@ function AppLayout() {
             {/* Masters */}
             <Route path="/masters" element={<MastersDashboard />} />
 
-            <Route path="/suppliers" element={<Vendorsdashboard />} />
-            <Route path="/suppliers/add" element={<AddVendors />} />
-            <Route path="/suppliers/view/:id" element={<ViewVendor />} />
-            <Route path="/suppliers/edit/:id" element={<EditVendor />} />
-            <Route path="/suppliers/viewdetails/:id" element={<VendorDetails />} />
+            <Route path="/masters/vendors" element={<Vendorsdashboard />} />
+            <Route path="/masters/vendors/add" element={<AddVendors />} />
+            <Route path="/masters/vendors/view/:id" element={<ViewVendor />} />
+            <Route path="/masters/vendors/edit/:id" element={<EditVendor />} />
+            <Route
+              path="/masters/vendors/viewdetails/:id"
+              element={<VendorDetails />}
+            />
 
-            <Route path="/customers" element={<CustomersDashboard />} />
-            <Route path="/customers/add" element={<AddCustomers />} />
-            <Route path="/customers/:id" element={<CustomerDetails />} />
+            <Route
+              path="/masters/customers"
+              element={<CustomersDashboard />}
+            />
+            <Route path="/masters/customers/add" element={<AddCustomers />} />
+            <Route
+              path="/masters/customers/:id"
+              element={<CustomerDetails />}
+            />
+            {/* <Route
+              path="/customers/:id/invoices"
+              element={<CustomerInvoices />}
+            /> */}
 
             <Route path="/masters/roles" element={<RolesDashboard />} />
             <Route path="/masters/roles/add" element={<AddRole />} />
@@ -173,6 +188,10 @@ function AppLayout() {
               element={<ProductCatalog />}
             />
 
+            <Route
+              path="/masters/payment-methods"
+              element={<PaymentMethods />}
+            />
             <Route path="/masters/payment-terms" element={<PaymentTerms />} />
             <Route
               path="/masters/rack-locations"
@@ -243,6 +262,7 @@ function AppLayout() {
 
             {/* Others */}
             <Route path="/rackrules" element={<Rackrules />} />
+            <Route path="/batchlots" element={<Batchlots />} />
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/consentledger" element={<ConsentLedger />} />
             <Route path="/vendorreturns" element={<Vendorreturns />} />

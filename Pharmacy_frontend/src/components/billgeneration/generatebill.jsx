@@ -150,81 +150,64 @@ export default function GenerateBill() {
     return res.json();
   };
 
-const openUOMCard = async (product) => {
-  if (!product?.batch_id) return;
-  setLoadingDetail(true);
-  setSelectedProduct(null);
-  try {
-    // Fetch batch details
-    const detail = await fetchBatchDetail(product.batch_id);
-    const medicine = detail.medicine || {};
-    const inventory = detail.inventory || {};
-
-    // Fetch product info from catalog to get MRP & GST
-    let productInfo = {};
+  const openUOMCard = async (product) => {
+    if (!product?.batch_id) return;
+    setLoadingDetail(true);
+    setSelectedProduct(null);
     try {
-      const res = await authFetch(`${PRODUCTS_API_URL}${product.product_id}/`);
-      if (res.ok) {
-        productInfo = await res.json();
+      const detail = await fetchBatchDetail(product.batch_id);
+      const medicine = detail.medicine || {};
+      const inventory = detail.inventory || {};
+      const baseLabel = medicine.base_uom?.name || product.base_uom || "Units";
+      const sellingLabel = medicine.selling_uom?.name || "";
+      const gstPercent = numberOrZero(medicine.gst_percent);
+      const packPrice = numberOrZero(medicine.mrp || product.mrp, 2);
+      const unitsPerPack = Math.max(1, deriveUnitsPerPack(medicine));
+      const ratePerBase = unitsPerPack > 0 ? packPrice / unitsPerPack : packPrice;
+      const availableBase = numberOrZero(inventory.stock_on_hand_base || product.stock_base || 0);
+
+      const options = [];
+      if (unitsPerPack > 0) {
+        const packLabelText = sellingLabel?.trim()
+          ? sellingLabel.trim()
+          : `${baseLabel} Pack`;
+        options.push({
+          key: "PACK",
+          code: "PACK",
+          displayLabel: `${packLabelText} (${unitsPerPack} ${baseLabel})`,
+          factor: unitsPerPack,
+        });
       }
-    } catch (err) {
-      console.warn("Could not fetch product info:", err);
-    }
-
-    const baseLabel = medicine.base_uom?.name || product.base_uom || "Units";
-    const sellingLabel = medicine.selling_uom?.name || "";
-    // Prefer catalog MRP/GST if available
-    const gstPercent = numberOrZero(productInfo.gst_percent || medicine.gst_percent);
-    const packPrice = numberOrZero(productInfo.mrp || medicine.mrp || product.mrp, 2);
-
-    const unitsPerPack = Math.max(1, deriveUnitsPerPack(medicine));
-    const ratePerBase = unitsPerPack > 0 ? packPrice / unitsPerPack : packPrice;
-    const availableBase = numberOrZero(inventory.stock_on_hand_base || product.stock_base || 0);
-
-    const options = [];
-    if (unitsPerPack > 0) {
-      const packLabelText = sellingLabel?.trim()
-        ? sellingLabel.trim()
-        : `${baseLabel} Pack`;
       options.push({
-        key: "PACK",
-        code: "PACK",
-        displayLabel: `${packLabelText} (${unitsPerPack} ${baseLabel})`,
-        factor: unitsPerPack,
+        key: "BASE",
+        code: "BASE",
+        displayLabel: `${baseLabel} (base)`,
+        factor: 1,
       });
+
+      const detailData = {
+        batch_id: product.batch_id,
+        batch_number: product.batch_number,
+        product_id: product.product_id,
+        name: medicine.name || product.name,
+        gstPercent,
+        packPrice,
+        ratePerBase,
+        availableBase,
+        baseLabel,
+        uomOptions: options,
+      };
+
+      setSelectedProduct(detailData);
+      setSelectedUomKey(options[0]?.key || "BASE");
+      setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
+    } catch (err) {
+      console.error(err);
+      showAlert(err.message || "Unable to load medicine details. Please try again.", "Error");
+    } finally {
+      setLoadingDetail(false);
     }
-    options.push({
-      key: "BASE",
-      code: "BASE",
-      displayLabel: `${baseLabel} (base)`,
-      factor: 1,
-    });
-
-    const detailData = {
-      batch_id: product.batch_id,
-      batch_number: product.batch_number,
-      product_id: product.product_id,
-      name: medicine.name || product.name,
-      gstPercent,
-      packPrice,
-      ratePerBase,
-      availableBase,
-      baseLabel,
-      uomOptions: options,
-    };
-
-    setSelectedProduct(detailData);
-    setSelectedUomKey(options[0]?.key || "BASE");
-    setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
-
-  } catch (err) {
-    console.error(err);
-    showAlert(err.message || "Unable to load medicine details. Please try again.", "Error");
-  } finally {
-    setLoadingDetail(false);
-  }
-};
-
+  };
 
   const selectedOption = selectedProduct?.uomOptions?.find((o) => o.key === selectedUomKey) || null;
   const maxQtyForSelected = useMemo(() => {
@@ -313,35 +296,16 @@ const openUOMCard = async (product) => {
   };
 
   const totals = useMemo(() => {
-  let subtotal = 0;
-  let cgstPercent = 0;
-  let sgstPercent = 0;
-  let cgstAmount = 0;
-  let sgstAmount = 0;
-
-  cart.forEach((item) => {
-    const lineSubtotal = numberOrZero(item.unitPrice) * numberOrZero(item.qty);
-    subtotal += lineSubtotal;
-
-    const gstPercent = numberOrZero(item.gstPercent);
-    const lineCgst = lineSubtotal * (gstPercent / 2 / 100); // 50% CGST
-    const lineSgst = lineSubtotal * (gstPercent / 2 / 100); // 50% SGST
-
-    cgstAmount += lineCgst;
-    sgstAmount += lineSgst;
-    cgstPercent = gstPercent / 2; // for display
-    sgstPercent = gstPercent / 2; // for display
-  });
-
-  return {
-    subtotal,
-    cgstPercent,
-    sgstPercent,
-    cgstAmount,
-    sgstAmount,
-    total: subtotal + cgstAmount + sgstAmount,
-  };
-}, [cart]);
+    let subtotal = 0;
+    let taxAmount = 0;
+    cart.forEach((item) => {
+      const lineSubtotal = numberOrZero(item.unitPrice) * numberOrZero(item.qty);
+      subtotal += lineSubtotal;
+      const pct = numberOrZero(item.gstPercent);
+      taxAmount += lineSubtotal * (pct / 100);
+    });
+    return { subtotal, taxAmount, total: subtotal + taxAmount };
+  }, [cart]);
 
   useEffect(() => {
     if (!cart.length) {
@@ -489,7 +453,7 @@ const openUOMCard = async (product) => {
             </label>
              <label>
               Consulting Doctor*
-              <input value={customer.name} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Consulting Doctor" />
+              <input value={customer.name} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Consulting" />
             </label>
           </div>
         </section>
@@ -641,19 +605,9 @@ const openUOMCard = async (product) => {
             <strong>{formatCurrency(totals.subtotal)}</strong>
           </div>
           <div className="summary-row">
-  <span>CGST ({totals.cgstPercent}%)</span>
-  <strong>{formatCurrency(totals.cgstAmount)}</strong>
-</div>
-<div className="summary-row">
-  <span>SGST ({totals.sgstPercent}%)</span>
-  <strong>{formatCurrency(totals.sgstAmount)}</strong>
-</div>
-<div className="summary-divider" />
-<div className="summary-row total">
-  <span>Total</span>
-  <strong>{formatCurrency(totals.total)}</strong>
-</div>
-
+            <span>GST</span>
+            <strong>{formatCurrency(totals.taxAmount)}</strong>
+          </div>
           <div className="summary-divider" />
           <div className="summary-row total">
             <span>Total</span>
