@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Phone, Mail, MapPin, UserCheck } from "lucide-react";
+import { Phone, Mail, MapPin, UserCheck, ArrowLeft, X } from "lucide-react";
 import "./customerdetails.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
@@ -44,28 +44,28 @@ const CustomerDetails = () => {
     fetchCustomer();
   }, [id]);
 
-  // Load invoices
+  // Load invoices and open modal
   const loadInvoices = async () => {
-    if (!showInvoices) {
-      setShowInvoices(true);
-      setInvoiceLoading(true);
-      try {
-        const res = await authFetch(`${CUSTOMER_URL}${id}/invoices/`);
-        if (res.ok) {
-          const data = await res.json();
-          setInvoices(Array.isArray(data) ? data : data.results || []);
-        } else {
-          setInvoices([]);
-        }
-      } catch (err) {
-        console.error("Invoice fetch error:", err);
+    setShowInvoices(true);
+    setInvoiceLoading(true);
+    try {
+      const res = await authFetch(`${CUSTOMER_URL}${id}/invoices/`);
+      if (res.ok) {
+        const data = await res.json();
+        setInvoices(Array.isArray(data) ? data : data.results || []);
+      } else {
         setInvoices([]);
-      } finally {
-        setInvoiceLoading(false);
       }
-    } else {
-      setShowInvoices(false);
+    } catch (err) {
+      console.error("Invoice fetch error:", err);
+      setInvoices([]);
+    } finally {
+      setInvoiceLoading(false);
     }
+  };
+
+  const closeInvoiceModal = () => {
+    setShowInvoices(false);
   };
 
   if (loading) return <p>Loading customer details...</p>;
@@ -75,11 +75,18 @@ const CustomerDetails = () => {
 
   return (
     <div className="customer-details-container">
-      <div className="customer-header">
+      <div className="customer-header-section">
         <button className="back-btn" onClick={() => navigate(-1)}>
-          &lt; Back
+          <ArrowLeft size={18} />
+          Back
         </button>
-        <h1 className="customer-name">{customer?.name}</h1>
+      </div>
+      
+      <div className="customer-header-card">
+        <div>
+          <h1 className="customer-name">{customer?.name}</h1>
+          <p className="customer-subtitle">Customer details and information</p>
+        </div>
       </div>
 
       <div className="customer-kpi-container">
@@ -106,10 +113,44 @@ const CustomerDetails = () => {
             </button>
           </div>
 
-          {showInvoices && (
-            <div className="invoice-table-wrapper">
+        </div>
+
+        {/* Customer Status */}
+        <div className="kpi-card customer-status small-card">
+          <h3>Customer Status</h3>
+          <UserCheck size={30} />
+          <p>{active?.is_active ? "Active" : "Inactive"}</p>
+          <p>Total Bills: {active?.total_bills || 0}</p>
+        </div>
+
+        {/* Purchase Stats */}
+        <div className="kpi-card purchase-stats">
+          <h3>Purchase Stats</h3>
+          <p>Total Purchases: Rs {purchase_status?.total_purchases || 0}</p>
+          <p>Avg Bill: Rs {purchase_status?.avg_bill_value || 0}</p>
+        </div>
+
+        {/* This Month */}
+        <div className="kpi-card this-month">
+          <h3>This Month</h3>
+          <p>Visits: {this_month?.visits || 0}</p>
+          <p>Amount Spent: Rs {this_month?.amount_spent || 0}</p>
+        </div>
+      </div>
+
+      {/* Invoice Modal Popup */}
+      {showInvoices && (
+        <div className="invoice-modal-overlay" onClick={closeInvoiceModal}>
+          <div className="invoice-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="invoice-modal-header">
+              <h2>Bills & Invoices</h2>
+              <button className="invoice-modal-close" onClick={closeInvoiceModal}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="invoice-modal-body">
               {invoiceLoading ? (
-                <p>Loading invoices...</p>
+                <p style={{ textAlign: "center", padding: "20px" }}>Loading invoices...</p>
               ) : (
                 <table className="invoice-table">
                   <thead>
@@ -136,15 +177,16 @@ const CustomerDetails = () => {
                           <td>{inv.invoice_no || inv.id}</td>
                           <td>{inv.date?.slice(0, 10) || "-"}</td>
                           <td>{inv.items || 0}</td>
-                          <td>Rs {inv.amount || 0}</td>
+                          <td>₹{inv.amount || 0}</td>
                           <td>{inv.payment_status || "-"}</td>
                           <td>{inv.payment_status || "-"}</td>
                           <td>
                             <button
                               className="view-btn"
-                              onClick={() =>
-                                navigate(`/billgeneration/invoice/${inv.id}`)
-                              }
+                              onClick={() => {
+                                navigate(`/billgeneration/invoice/${inv.id}`);
+                                closeInvoiceModal();
+                              }}
                             >
                               View
                             </button>
@@ -156,31 +198,9 @@ const CustomerDetails = () => {
                 </table>
               )}
             </div>
-          )}
+          </div>
         </div>
-
-        {/* Customer Status */}
-        <div className="kpi-card customer-status small-card">
-          <h3>Customer Status</h3>
-          <UserCheck size={30} />
-          <p>{active?.is_active ? "Active" : "Inactive"}</p>
-          <p>Total Bills: {active?.total_bills || 0}</p>
-        </div>
-
-        {/* Purchase Stats */}
-        <div className="kpi-card purchase-stats">
-          <h3>Purchase Stats</h3>
-          <p>Total Purchases: Rs {purchase_status?.total_purchases || 0}</p>
-          <p>Avg Bill: Rs {purchase_status?.avg_bill_value || 0}</p>
-        </div>
-
-        {/* This Month */}
-        <div className="kpi-card this-month">
-          <h3>This Month</h3>
-          <p>Visits: {this_month?.visits || 0}</p>
-          <p>Amount Spent: Rs {this_month?.amount_spent || 0}</p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

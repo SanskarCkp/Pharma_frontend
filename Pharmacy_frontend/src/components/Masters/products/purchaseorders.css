@@ -1,68 +1,89 @@
 .purchaseorders-container {
-  padding: 20px;
+  width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
+  padding: 25px 45px;
+  min-height: calc(100vh - 70px - 60px - 48px);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Section - Back button */
+.purchaseorders-header-section {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.purchaseorders-container .back-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  background: #10b981 !important;
+  color: white !important;
+  padding: 10px 16px;
+  border: 1px solid #059669 !important;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.purchaseorders-container .back-btn:hover {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.purchaseorders-container .back-btn:active {
+  transform: translateY(0);
+}
+
+/* Header Card */
+.purchaseorders-header-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 30px;
+  box-shadow: none;
+  margin-bottom: 2rem;
 }
 
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  margin: 0;
+  margin: 0 0 8px 0;
   color: #111827;
 }
 
 .Supplier-name {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 20px;
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0;
 }
 
 .orders-table-card {
   background: #fff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.orders-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.orders-table th, .orders-table td {
-  text-align: left;
-  padding: 12px 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.orders-table th {
-  background-color: #f5f5f5;
-  font-weight: 600;
-}
-
-.orders-table tbody tr:hover {
-  background-color: #fafafa;
-}
-
-.actions-cell {
-  display: flex;
-  gap: 10px;
-}
-
-.action-icon {
-  cursor: pointer;
-  color: #555;
-  transition: color 0.2s;
-}
-
-.action-icon:hover {
-  color: #2ecc71;
-}
+/* Actions cell uses inv-actions-cell from inventory.css */
 
 .no-orders {
   text-align: center;
-  padding: 20px;
-  color: #777;
-  font-size: 16px;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .receive-items-text {
@@ -77,44 +98,47 @@
   color: #2ecc71;
 }
 
-.receive-items-btn {
-  background-color: #2ecc71;
-  color: #fff;
-  padding: 6px 12px;
+.receive-btn {
+  background: #10b981;
+  color: white;
+  padding: 8px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
   font-size: 14px;
-  margin-left: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
-.receive-items-btn:hover {
-  background-color: #2ecc71;
+.receive-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
 }
 
-/* --- Back button styling --- */
-.purchaseorders-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+/* Badge styles for status */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  cursor: pointer;
-  padding: 4px 8px;
-  transition: 0.2s ease;
+.badge.yellow {
+  background: #fef3c7;
+  color: #92400e;
 }
 
-.back-btn:hover {
-  opacity: 0.7;
+.badge.green {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge.blue {
+  background: #dbeafe;
+  color: #1e40af;
 }
 

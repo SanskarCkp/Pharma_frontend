@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { authFetch } from "../../api/http";
 import { useAlert } from "../ui/alert-provider";
@@ -12,7 +12,9 @@ const VendorsDashboard = () => {
   const [Suppliers, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
+  const ITEMS_PER_PAGE = 15;
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   const VENDORS_API = `${API_BASE_URL}/api/v1/procurement/vendors/`;
@@ -67,18 +69,32 @@ const VendorsDashboard = () => {
   }, []);
 
   // Filter Suppliers
-  const filtered = Suppliers.filter((v) => {
-    const name = v.vendor_name ?? v.name ?? v.company_name ?? "";
-    const contactPerson =
-      v.vendor_contact_person ?? v.contact_person ?? v.person_name ?? "";
-    const phone = v.vendor_contact ?? v.contact_phone ?? v.phone ?? "";
+  const filtered = useMemo(() => {
+    return Suppliers.filter((v) => {
+      const name = v.vendor_name ?? v.name ?? v.company_name ?? "";
+      const contactPerson =
+        v.vendor_contact_person ?? v.contact_person ?? v.person_name ?? "";
+      const phone = v.vendor_contact ?? v.contact_phone ?? v.phone ?? "";
 
-    return (
-      name.toLowerCase().includes(search.toLowerCase()) ||
-      contactPerson.toLowerCase().includes(search.toLowerCase()) ||
-      phone.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+      return (
+        name.toLowerCase().includes(search.toLowerCase()) ||
+        contactPerson.toLowerCase().includes(search.toLowerCase()) ||
+        phone.toLowerCase().includes(search.toLowerCase())
+      );
+    });
+  }, [Suppliers, search]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedSuppliers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   // Navigation
   const openVendor = (id) => navigate(`/suppliers/viewdetails/${id}`);
@@ -139,8 +155,9 @@ const VendorsDashboard = () => {
           <p>No Suppliers found.</p>
         </div>
       ) : (
-        <div className={styles["cards-grid"]}>
-          {filtered.map((Supplier) => {
+        <>
+          <div className={styles["cards-grid"]}>
+            {paginatedSuppliers.map((Supplier) => {
             const id = Supplier.id;
             const name =
               Supplier.vendor_name ?? Supplier.name ?? Supplier.company_name ?? "Untitled Supplier";
@@ -209,7 +226,31 @@ const VendorsDashboard = () => {
               </div>
             );
           })}
-        </div>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className={styles["pagination"]}>
+              <button
+                className={styles["pagination-btn"]}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+              <span className={styles["page-info"]}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className={styles["pagination-btn"]}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

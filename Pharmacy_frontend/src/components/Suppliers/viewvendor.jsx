@@ -61,10 +61,6 @@ const ViewVendor = () => {
             <p>{Supplier.contact_person}</p>
           </div>
 
-          <div className="form-group">
-            <label>Payment Terms:</label>
-            <p>{Supplier.payment_terms}</p>
-          </div>
         </div>
 
         <div className="form-row">

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Trash2, Search } from "lucide-react";
+import { Eye, Pencil, Trash2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
@@ -111,7 +111,7 @@ export default function MedicineInventory() {
       } catch (err) {
         if (cancelled) return;
         console.error("Inventory fetch failed", err);
-        setServerError("Backend offline → Showing saved data");
+        setServerError("Backend offline â†’ Showing saved data");
         try {
           const cached = localStorage.getItem(LS_KEY);
           setRows(cached ? JSON.parse(cached) : []);
@@ -336,11 +336,14 @@ export default function MedicineInventory() {
   }, [sortedRows, currentPage]);
 
   const SortIndicator = ({ column }) => {
-    return (
-      <span className="sort-indicator">
-        {sortBy === column ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-      </span>
-    );
+    if (sortBy === column) {
+      return sortDir === "asc" ? (
+        <ChevronUp size={14} className="sort-indicator" />
+      ) : (
+        <ChevronDown size={14} className="sort-indicator" />
+      );
+    }
+    return <ChevronsUpDown size={14} className="sort-indicator" />;
   };
 
   return (
@@ -519,7 +522,7 @@ export default function MedicineInventory() {
                     Expiry <SortIndicator column="expiry" />
                   </th>
                   <th>Status</th>
-                  <th style={{ width: 180, textAlign: "center" }}>Actions</th>
+                  <th style={{ width: 140, textAlign: "center" }}>Actions</th>
                   <th>HSN code</th>
                 </tr>
               </thead>
@@ -621,4 +624,5 @@ export default function MedicineInventory() {
     </div>
   );
 }
+
 

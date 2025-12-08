@@ -178,14 +178,17 @@ const VendorDetails = () => {
       />
 
       {/* Page Header */}
-      <div className="Supplier-details-header">
+      <div className="Supplier-header-section">
         <button className="back-btn" onClick={() => navigate("/suppliers")}>
           <ArrowLeft size={18} />
-          <span>Back</span>
+          Back
         </button>
+      </div>
+      
+      <div className="Supplier-details-header">
         <div>
           <h2>{Supplier.name || "Supplier Details"}</h2>
-          <p>Supplier Details & KPIs</p>
+          <p>Supplier Details </p>
         </div>
       </div>
 
@@ -225,10 +228,6 @@ const VendorDetails = () => {
                 {Supplier.is_active ? "Active" : "Inactive"}
               </span>
             </span>
-          </div>
-          <div className="Supplier-info-row">
-            <span className="Supplier-info-label">Payment Terms:</span>
-            <span className="Supplier-info-value">{Supplier.payment_terms || "-"}</span>
           </div>
           <div className="Supplier-info-row">
             <span className="Supplier-info-label">Rating:</span>

@@ -150,9 +150,24 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px", width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px", width: "100%" }}>
         {cards.map((card, index) => (
-          <div key={index} className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100">
+          <div
+            key={index}
+            className="dashboard-stat-card shadow bg-white p-4 rounded-xl border border-gray-100"
+            style={{ cursor: "pointer" }}
+            onClick={() => {
+              if (card.title.includes("Low Stock")) {
+                window.location.href = "/inventory/medicines?tab=low";
+              } else if (card.title.includes("Medicines")) {
+                window.location.href = "/inventory/medicines";
+              } else if (card.title.includes("Sales")) {
+                window.location.href = "/reports/sales";
+              } else if (card.title.includes("Profit")) {
+                window.location.href = "/reports/sales";
+              }
+            }}
+          >
             <div className="font-medium text-gray-600">{card.title}</div>
             <div className="text-2xl font-bold mt-1">{card.value}</div>
             <div className="text-sm mt-1" style={{ color: card.color }}>
@@ -170,6 +185,7 @@ const Dashboard = () => {
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
+              <Legend />
               <Bar dataKey="sales" fill="#3498DB" radius={[6, 6, 0, 0]} />
               <Bar dataKey="purchase" fill="#2ECC71" radius={[6, 6, 0, 0]} />
             </BarChart>

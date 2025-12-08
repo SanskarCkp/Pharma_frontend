@@ -1,35 +1,67 @@
 /* Page Container */
 .Suppliers-container {
   width: 100%;
-  padding: 25px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
+  padding: 25px 45px;
+  min-height: calc(100vh - 70px - 60px - 48px);
 }
 
-/* Page Header: Back button + Title */
-.page-header {
+/* Header Section - Back button */
+.page-header-section {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 16px; /* space between button and title */
-  margin-bottom: 20px; /* spacing before cards */
+  margin-bottom: 1rem;
 }
 
 /* Back Button */
-.back-btn {
-  display: flex;
+.Suppliers-container .back-btn {
+  display: inline-flex !important;
   align-items: center;
-  gap: 4px; /* icon & text spacing */
-  padding: 6px 12px;
-  border: none;
-  background-color: #f0f0f0;
-  border-radius: 4px;
+  gap: 8px;
+  background: #10b981 !important;
+  color: white !important;
+  padding: 10px 16px;
+  border: 1px solid #059669 !important;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.Suppliers-container .back-btn:hover {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.Suppliers-container .back-btn:active {
+  transform: translateY(0);
+}
+
+/* Header Card */
+.page-header-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 30px;
+  box-shadow: none;
+  margin-bottom: 2rem;
 }
 
 /* Title */
 .Suppliers-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0; /* remove default margin */
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
 }
 
 /* Section Card */
@@ -79,13 +111,28 @@
 
 /* Inputs */
 .field input,
-.field select,
 .field textarea {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
-  background: #f9fafb;
+  background: #fff;
   font-size: 14px;
+}
+
+.field select {
+  padding: 10px 32px 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  cursor: pointer;
 }
 
 .field textarea {

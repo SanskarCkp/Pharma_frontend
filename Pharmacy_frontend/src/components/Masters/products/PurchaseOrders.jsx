@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, Trash2, ArrowLeft } from "lucide-react";
 import "./purchaseorders.css";
+import "../../inventory/inventory.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
 import { useAlert } from "../../ui/alert-provider";
@@ -108,24 +109,29 @@ const PurchaseOrders = () => {
 
   return (
     <div className="purchaseorders-container">
-      <div className="purchaseorders-header">
+      {/* Header Section - Back button */}
+      <div className="purchaseorders-header-section">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
-          <span>Back</span>
+          Back
         </button>
-        <h1 className="page-title">Purchase Orders</h1>
       </div>
 
-      {Supplier ? (
-        <p className="Supplier-name">Supplier: {Supplier.name}</p>
-      ) : (
-        <p className="Supplier-name" style={{ color: "red" }}>
-          Supplier not selected. Please select a Supplier to view orders.
-        </p>
-      )}
+      {/* Header Card */}
+      <div className="purchaseorders-header-card">
+        <h1 className="page-title">Purchase Orders</h1>
+        {Supplier ? (
+          <p className="Supplier-name">Supplier: {Supplier.name}</p>
+        ) : (
+          <p className="Supplier-name" style={{ color: "#ef4444" }}>
+            Supplier not selected. Please select a Supplier to view orders.
+          </p>
+        )}
+      </div>
 
       <div className="orders-table-card">
-        <table className="orders-table">
+        <div className="inv-table-wrap">
+        <table className="inv-table">
           <thead>
             <tr>
               <th>PO Number</th>
@@ -154,25 +160,32 @@ const PurchaseOrders = () => {
                   <td>{formatDateDDMMYYYY(order.order_date)}</td>
                   <td>{formatDateDDMMYYYY(order.expected_date)}</td>
                   <td>{order.total_items}</td>
-                  <td>{order.status}</td>
-                  <td className="actions-cell">
+                  <td>
+                    <span className={`badge ${order.status === 'DRAFT' ? 'yellow' : order.status === 'RECEIVED' ? 'green' : 'blue'}`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="inv-actions-cell">
                     <button
                       className="receive-btn"
                       onClick={() => handleReceiveItems(order.id)}
                     >
                       Receive Items
                     </button>
-
-                    <Trash2
-                      className="action-icon delete-icon"
+                    <button
+                      className="inv-icon danger"
+                      title="Delete"
                       onClick={() => handleDelete(order.id)}
-                    />
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

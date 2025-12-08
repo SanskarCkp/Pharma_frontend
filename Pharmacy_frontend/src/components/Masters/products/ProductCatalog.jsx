@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import "./productcatalog.css";
+import "../../inventory/inventory.css";
 import { authFetch } from "../../../api/http";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -77,13 +78,17 @@ const ProductCatalog = () => {
 
   return (
     <div className="catalog-container">
-      {/* Header */}
-      <div className="catalog-header">
+      {/* Header Section - Back button */}
+      <div className="catalog-header-section">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
-          <span>Back</span>
+          Back
         </button>
-        <div className="catalog-header-text">
+      </div>
+
+      {/* Header Card */}
+      <div className="catalog-header-card">
+        <div>
           <h1 className="catalog-title">Product Catalog</h1>
           <p className="Supplier-subtitle">{Supplier?.name || "Unknown Supplier"}</p>
         </div>
@@ -101,11 +106,13 @@ const ProductCatalog = () => {
               placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="catalog-search-input"
             />
 
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
+              className="catalog-select"
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
@@ -118,7 +125,8 @@ const ProductCatalog = () => {
         </div>
 
         {/* Product Table */}
-        <table className="catalog-table">
+        <div className="inv-table-wrap">
+          <table className="inv-table">
           <thead>
             <tr>
               <th>Product Name</th>
@@ -149,6 +157,7 @@ const ProductCatalog = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
