@@ -186,7 +186,20 @@ export default function Invoice() {
               </div>
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Address :</span>
-                <span className={styles.infoValue}>{customer.address || invoice?.patient_address || "#8164, PRG"}</span>
+                <span className={styles.infoValue}>
+                  {(() => {
+                    const address = customer.billing_address || customer.address || invoice?.patient_address || "";
+                    const city = customer.city || "";
+                    if (address && city) {
+                      return `${address}, ${city}`;
+                    } else if (address) {
+                      return address;
+                    } else if (city) {
+                      return city;
+                    }
+                    return "#8164, PRG";
+                  })()}
+                </span>
               </div>
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Doctor :</span>

@@ -434,7 +434,7 @@ export default function BillList() {
                           ? new Date(bill.invoice_date).toLocaleString()
                           : "-"}
                       </td>
-                      <td>{bill.customer_name || bill.customer?.name || "-"}</td>
+                      <td>{bill.customer_name_display || bill.customer_name || bill.customer?.name || bill.customer_detail?.name || "-"}</td>
                       <td>{formatMoney(bill.net_total)}</td>
                       <td>
                         <span

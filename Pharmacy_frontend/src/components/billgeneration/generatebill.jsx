@@ -10,6 +10,8 @@ const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
 const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
 const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/`);
 const INVOICES_URL = apiUrl("sales/invoices/");
+const CUSTOMERS_URL = apiUrl("customers/");
+const CUSTOMER_SEARCH_URL = apiUrl("customers/search-by-phone/");
 
 const HARDCODED_PAYMENT_METHODS = [
   { id: "cash", name: "Cash", type: "CASH" },
@@ -59,6 +61,10 @@ export default function GenerateBill() {
   const { showAlert } = useAlert();
 
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", city: "", doctor: "" });
+  const [customerSuggestions, setCustomerSuggestions] = useState([]);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [searchingCustomer, setSearchingCustomer] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
@@ -92,6 +98,45 @@ export default function GenerateBill() {
   useEffect(() => {
     setPaymentMethods(HARDCODED_PAYMENT_METHODS);
   }, []);
+
+  // Search customers by phone number
+  useEffect(() => {
+    const phone = customer.phone.trim();
+    if (phone.length < 3) {
+      setCustomerSuggestions([]);
+      setShowCustomerSuggestions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setSearchingCustomer(true);
+      try {
+        const res = await authFetch(`${CUSTOMER_SEARCH_URL}?phone=${encodeURIComponent(phone)}`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCustomerSuggestions(Array.isArray(data) ? data : []);
+          setShowCustomerSuggestions(true);
+        } else {
+          setCustomerSuggestions([]);
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.warn("Customer search failed", err);
+          setCustomerSuggestions([]);
+        }
+      } finally {
+        setSearchingCustomer(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [customer.phone]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -360,13 +405,16 @@ export default function GenerateBill() {
       tax_percent: numberOrZero(item.gstPercent, 2).toFixed(2),
     }));
 
+    // If customer is selected, use customer_id, otherwise use inline fields
     const payload = {
       location: locationId,
       invoice_date: new Date().toISOString(),
+      ...(selectedCustomer ? { customer: selectedCustomer.id } : {}),
       customer_name: customer.name,
       customer_phone: customer.phone,
       customer_email: customer.email || "",
       customer_city: customer.city || "",
+      doctor_name: customer.doctor || "",
       lines,
       payment_method: selectedMethod,
       amount_paid: amountPaid,
@@ -439,9 +487,77 @@ export default function GenerateBill() {
               Customer Name *
               <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="Enter customer name" />
             </label>
-            <label>
+            <label style={{ position: "relative" }}>
               Phone *
-              <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone number" />
+              <input 
+                value={customer.phone} 
+                onChange={(e) => {
+                  setCustomer({ ...customer, phone: e.target.value });
+                  setSelectedCustomer(null);
+                }} 
+                onFocus={() => {
+                  if (customerSuggestions.length > 0) {
+                    setShowCustomerSuggestions(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow click
+                  setTimeout(() => setShowCustomerSuggestions(false), 200);
+                }}
+                placeholder="Type phone number to search existing customer" 
+              />
+              {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  backgroundColor: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  zIndex: 1000,
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  marginTop: "4px"
+                }}>
+                  {searchingCustomer && <div style={{ padding: "8px", color: "#666" }}>Searching...</div>}
+                  {customerSuggestions.map((cust) => (
+                    <div
+                      key={cust.id}
+                      onClick={() => {
+                        setSelectedCustomer(cust);
+                        setCustomer({
+                          name: cust.name || "",
+                          phone: cust.phone || "",
+                          email: cust.email || "",
+                          city: cust.city || "",
+                          doctor: "",
+                        });
+                        setShowCustomerSuggestions(false);
+                      }}
+                      style={{
+                        padding: "10px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #eee",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = "#f5f5f5"}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = "white"}
+                    >
+                      <div>
+                        <div style={{ fontWeight: "500" }}>{cust.name}</div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>{cust.phone}</div>
+                      </div>
+                      {cust.city && (
+                        <div style={{ fontSize: "12px", color: "#999" }}>{cust.city}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </label>
             <label>
               Email
