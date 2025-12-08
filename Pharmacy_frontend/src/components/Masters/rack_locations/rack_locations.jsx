@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Pencil, Trash2, ArrowLeft, Plus } from "lucide-react";
-import "./rack_locations.css";
+import styles from "./rack_locations.module.css";
 import "../../inventory/inventory.css";
 import { authFetch } from "../../../api/http";
 
@@ -196,23 +196,23 @@ export default function RackLocations() {
   };
 
   return (
-    <div className="pm-wrap">
+    <div className={styles.pmWrap}>
       {/* Header Section - Back button */}
-      <div className="pm-header-section">
-        <button className="back-btn" onClick={() => nav(-1)} disabled={loading}>
+      <div className={styles.pmHeaderSection}>
+        <button className={styles.backBtn} onClick={() => nav(-1)} disabled={loading}>
           <ArrowLeft size={18} />
           Back
         </button>
       </div>
 
       {/* Header */}
-      <div className="pm-header-card">
+      <div className={styles.pmHeaderCard}>
         <div>
           <h2>Rack Locations</h2>
           <p>Manage all rack locations and storage</p>
         </div>
         <button
-          className="pm-add"
+          className={styles.pmAdd}
           onClick={openAdd}
           disabled={loading || saving}
         >
@@ -228,7 +228,7 @@ export default function RackLocations() {
       {loading ? (
         <div style={{ padding: 20 }}>Loading...</div>
       ) : (
-        <div className="pm-card">
+        <div className={styles.pmCard}>
           <div className="inv-table-wrap">
           <table className="inv-table">
             <thead>
@@ -247,14 +247,14 @@ export default function RackLocations() {
                 rows.map((r, i) => (
                   <tr key={r.id || i}>
                     <td>{r.name}</td>
-                    <td className="pm-muted">{r.description}</td>
+                    <td className={styles.pmMuted}>{r.description}</td>
                     <td>{r.max_capacity ?? "-"}</td>
                     <td>{r.current_capacity ?? "-"}</td>
                     <td>{r.is_active ? "Active" : "Inactive"}</td>
 
-                    <td className="pm-actions">
+                    <td className={styles.pmActions}>
                       <button
-                        className="pm-icon"
+                        className={styles.pmIcon}
                         title="View"
                         onClick={() => openView(r)}
                         disabled={saving}
@@ -262,7 +262,7 @@ export default function RackLocations() {
                         <Eye size={16} />
                       </button>
                       <button
-                        className="pm-icon"
+                        className={styles.pmIcon}
                         title="Edit"
                         onClick={() => openEdit(r)}
                         disabled={saving}
@@ -270,7 +270,7 @@ export default function RackLocations() {
                         <Pencil size={16} />
                       </button>
                       <button
-                        className="pm-icon danger"
+                        className={`${styles.pmIcon} ${styles.danger}`}
                         title="Delete"
                         onClick={() => handleDelete(r.id)}
                         disabled={saving}
@@ -295,29 +295,29 @@ export default function RackLocations() {
 
       {/* Add / Edit Modal */}
       {showForm && (
-        <div className="pm-modal-backdrop" onMouseDown={closeForm}>
+        <div className={styles.pmModalBackdrop} onMouseDown={closeForm}>
           <div
-            className="pm-modal"
+            className={styles.pmModal}
             onMouseDown={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <div className="pm-modal-header">
+            <div className={styles.pmModalHeader}>
               <h3>
                 {editingId ? "Edit Rack Location" : "Add New Rack Location"}
               </h3>
-              <button className="pm-close" onClick={closeForm}>
+              <button className={styles.pmClose} onClick={closeForm}>
                 ✕
               </button>
             </div>
 
-            <form className="pm-form" onSubmit={handleSubmit}>
+            <form className={styles.pmForm} onSubmit={handleSubmit}>
               {/* Name */}
-              <label className="pm-label">
-                <span style={{ whiteSpace: "nowrap" }}>Name <span className="pm-req">*</span></span>
+              <label className={styles.pmLabel}>
+                <span style={{ whiteSpace: "nowrap" }}>Name <span className={styles.pmReq}>*</span></span>
                 <input
-                  className={`pm-input ${
-                    errors.name ? "pm-input-error" : ""
+                  className={`${styles.pmInput} ${
+                    errors.name ? styles.pmInputError : ""
                   }`}
                   type="text"
                   name="name"
@@ -326,14 +326,14 @@ export default function RackLocations() {
                   onChange={handleChange}
                   autoFocus
                 />
-                {errors.name && <div className="pm-error">{errors.name}</div>}
+                {errors.name && <div className={styles.pmError}>{errors.name}</div>}
               </label>
 
               {/* Description */}
-              <label className="pm-label">
+              <label className={styles.pmLabel}>
                 Description
                 <input
-                  className="pm-input"
+                  className={styles.pmInput}
                   type="text"
                   name="description"
                   placeholder="Enter description"
@@ -343,10 +343,10 @@ export default function RackLocations() {
               </label>
 
               {/* Max Capacity */}
-              <label className="pm-label">
+              <label className={styles.pmLabel}>
                 Max Capacity
                 <input
-                  className="pm-input"
+                  className={styles.pmInput}
                   type="number"
                   name="max_capacity"
                   value={form.max_capacity}
@@ -356,10 +356,10 @@ export default function RackLocations() {
               </label>
 
               {/* Current Capacity */}
-              <label className="pm-label">
+              <label className={styles.pmLabel}>
                 Current Capacity
                 <input
-                  className="pm-input"
+                  className={styles.pmInput}
                   type="number"
                   name="current_capacity"
                   value={form.current_capacity}
@@ -369,7 +369,7 @@ export default function RackLocations() {
               </label>
 
               {/* Is Active */}
-              <label className="pm-label">
+              <label className={styles.pmLabel}>
                 <input
                   type="checkbox"
                   name="is_active"
@@ -379,16 +379,16 @@ export default function RackLocations() {
                 Active
               </label>
 
-              <div className="pm-btn-row">
+              <div className={styles.pmBtnRow}>
                 <button
                   type="button"
-                  className="pm-btn ghost"
+                  className={`${styles.pmBtn} ${styles.ghost}`}
                   onClick={closeForm}
                   disabled={saving}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="pm-btn primary" disabled={saving}>
+                <button type="submit" className={`${styles.pmBtn} ${styles.primary}`} disabled={saving}>
                   {saving
                     ? editingId
                       ? "Saving..."
@@ -406,65 +406,65 @@ export default function RackLocations() {
       {/* View Modal */}
       {showView && (
         <div
-          className="pm-modal-backdrop"
+          className={styles.pmModalBackdrop}
           onMouseDown={() => setShowView(null)}
         >
-          <div className="pm-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="pm-modal-header">
+          <div className={styles.pmModal} onMouseDown={(e) => e.stopPropagation()}>
+            <div className={styles.pmModalHeader}>
               <h3>View Rack Location</h3>
-              <button className="pm-close" onClick={() => setShowView(null)}>
+              <button className={styles.pmClose} onClick={() => setShowView(null)}>
                 ✕
               </button>
             </div>
 
-            <div className="pm-view">
-              <div className="pm-view-row">
-                <span className="pm-view-label">Name</span>
-                <span className="pm-view-value">
+            <div className={styles.pmView}>
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Name</span>
+                <span className={styles.pmViewValue}>
                   {showView.name || "-"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Description</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Description</span>
+                <span className={styles.pmViewValue}>
                   {showView.description || "-"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Max Capacity</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Max Capacity</span>
+                <span className={styles.pmViewValue}>
                   {showView.max_capacity ?? "-"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Current Capacity</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Current Capacity</span>
+                <span className={styles.pmViewValue}>
                   {showView.current_capacity ?? "-"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Status</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Status</span>
+                <span className={styles.pmViewValue}>
                   {showView.is_active ? "Active" : "Inactive"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Created</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Created</span>
+                <span className={styles.pmViewValue}>
                   {showView.created_at
                     ? new Date(showView.created_at).toLocaleString()
                     : "-"}
                 </span>
               </div>
 
-              <div className="pm-view-row">
-                <span className="pm-view-label">Updated</span>
-                <span className="pm-view-value">
+              <div className={styles.pmViewRow}>
+                <span className={styles.pmViewLabel}>Updated</span>
+                <span className={styles.pmViewValue}>
                   {showView.updated_at
                     ? new Date(showView.updated_at).toLocaleString()
                     : "-"}
@@ -472,8 +472,8 @@ export default function RackLocations() {
               </div>
             </div>
 
-            <div className="pm-btn-row">
-              <button className="pm-btn ghost" onClick={() => setShowView(null)}>
+            <div className={styles.pmBtnRow}>
+              <button className={`${styles.pmBtn} ${styles.ghost}`} onClick={() => setShowView(null)}>
                 Close
               </button>
             </div>
