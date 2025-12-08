@@ -1,6 +1,12 @@
 // src/App.jsx
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 
 // Layout
 import Sidebar from "./components/sidebar";
@@ -264,6 +270,23 @@ function AppLayout() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 👇 This runs once whenever the app is loaded (including refresh)
+  useEffect(() => {
+    const path = location.pathname;
+
+    // If we are NOT already on a public route, force redirect to /login
+    if (
+      !path.startsWith("/login") &&
+      !path.startsWith("/reset-password")
+    ) {
+      navigate("/login", { replace: true });
+    }
+    // ⚠️ empty dependency array = only on first mount (page load / refresh)
+  }, []); 
+
   return (
     <Routes>
       {/* Public routes */}
