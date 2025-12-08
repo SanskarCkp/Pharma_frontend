@@ -81,10 +81,10 @@ export default function MastersDashboard() {
 
     // run them in parallel
     fetchCount(ENDPOINTS.Users, setUsersTotal, setUsersError);
-    fetchCount(ENDPOINTS.MedicineCategories, setmcTotal, setmcError);
+    // fetchCount(ENDPOINTS.MedicineCategories, setmcTotal, setmcError);
     fetchCount(ENDPOINTS.MedicineForms, setmfTotal, setmfError);
-    fetchCount(ENDPOINTS.UnitsOfMeasurement, setumTotal, setumError);
-    fetchCount(ENDPOINTS.paymentTerms, setPtTotal, setPtError);
+    // fetchCount(ENDPOINTS.UnitsOfMeasurement, setumTotal, setumError);
+    // fetchCount(ENDPOINTS.paymentTerms, setPtTotal, setPtError);
     fetchCount(ENDPOINTS.rackLocations, setRlTotal, setRlError);
 
     return () => controller.abort();

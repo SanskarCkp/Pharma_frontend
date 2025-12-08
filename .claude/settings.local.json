@@ -6,7 +6,8 @@
       "Bash(ls:*)",
       "Bash(npx shadcn@latest add alert-dialog:*)",
       "Bash(npm run build:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
