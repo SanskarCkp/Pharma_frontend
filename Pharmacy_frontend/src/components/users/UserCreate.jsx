@@ -57,10 +57,6 @@ export default function UserCreate({
   async function handleSubmit(e) {
     e.preventDefault();
 
-<<<<<<< HEAD
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
-=======
     if (!isEdit) {
       if (formData.password !== formData.confirmPassword) {
         showAlert("Passwords do not match!", "Validation Error");
@@ -68,29 +64,12 @@ export default function UserCreate({
       }
     } else if (formData.password && formData.password !== formData.confirmPassword) {
       showAlert("Passwords do not match!", "Validation Error");
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
       return;
     }
 
     const payload = {
       email: formData.email,
       full_name: formData.fullName,
-<<<<<<< HEAD
-      password: formData.password,
-      is_active: formData.isActive,
-    };
-
-    try {
-      await createUserOnBackend(payload);
-      alert("User created!");
-      if (onCreated) onCreated();
-    } catch (err) {
-      console.error("Create user failed:", err);
-      alert("Failed to create user on server. Please try again.");
-    }
-  }
-
-=======
       is_active: formData.isActive,
     };
     if (!isEdit || formData.password) {
@@ -126,20 +105,13 @@ export default function UserCreate({
     [formData.createdAt]
   );
 
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
   return (
     <div className="user-modal-overlay">
       <div className="user-modal">
         <div className="user-modal-header">
-<<<<<<< HEAD
-          <h3>Add New User</h3>
-          <button className="user-modal-close" onClick={onClose}>
-            ×
-=======
           <h3>{isEdit ? "Edit User" : "Add New User"}</h3>
           <button className="user-modal-close" onClick={onClose}>
             X
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
           </button>
         </div>
 
@@ -177,11 +149,7 @@ export default function UserCreate({
               name="password"
               value={formData.password}
               onChange={handleChange}
-<<<<<<< HEAD
-              required
-=======
               required={!isEdit}
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
             />
           </div>
 
@@ -192,12 +160,6 @@ export default function UserCreate({
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-<<<<<<< HEAD
-              required
-            />
-          </div>
-
-=======
               required={!isEdit}
             />
           </div>
@@ -207,7 +169,6 @@ export default function UserCreate({
             <input type="text" value={createdAtValue} readOnly />
           </div>
 
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
           <div className="formGroup checkboxGroup">
             <label>
               <input
@@ -228,11 +189,7 @@ export default function UserCreate({
               Cancel
             </button>
             <button type="submit" className="user-btn-submit">
-<<<<<<< HEAD
-              Create User
-=======
               {isEdit ? "Update User" : "Create User"}
->>>>>>> 0c793b6c4be6821799b5169066cf22fa8f448f01
             </button>
           </div>
         </form>
