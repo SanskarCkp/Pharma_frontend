@@ -10,9 +10,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   gap: 1rem;
-  padding: 0 1.5rem;
+  padding: 0;
+  flex-wrap: wrap;
 }
 
 .actionButtons {
@@ -36,18 +37,29 @@
 }
 
 .backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 16px;
   border: 1px solid #d1d5db;
   background: white;
   color: #374151;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 14px;
   transition: all 0.2s;
 }
 
 .backBtn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.backBtn:active {
   background: #f3f4f6;
+  transform: translateY(1px);
 }
 
 /* Invoice Box - Main Container */
@@ -55,8 +67,34 @@
   background: white;
   border: 1px solid #000;
   padding: 0;
+  margin: 0;
   position: relative;
   width: 100%;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  min-height: fit-content;
+}
+
+.invoiceBox * {
+  box-sizing: border-box;
+}
+
+/* Remove default margins and padding from all elements inside invoice */
+.invoiceBox h2,
+.invoiceBox p,
+.invoiceBox div,
+.invoiceBox span {
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure images render properly */
+.invoiceBox img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 /* Header Section with Logo and Company Info */
@@ -71,9 +109,9 @@
 
 .leftSection {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex: 1;
-  padding: 8px 12px;
+  padding: 6px 10px;
 }
 
 .logoSection {
@@ -88,36 +126,42 @@
 
 .companyInfo {
   flex: 1;
-  padding-top: 0;
-  padding-right: 0;
+  padding: 0;
 }
 
 .companyName {
   color: #059669;
   font-size: 20px;
   font-weight: bold;
-  margin: 0 0 2px 0;
+  margin: 0;
+  padding: 0;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  line-height: 1.2;
 }
 
 .companySubtitle {
   font-size: 10px;
   color: #666;
-  margin: 0 0 3px 0;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .companyAddress {
   font-size: 9px;
-  line-height: 1.25;
+  line-height: 1.2;
   color: #333;
-  margin: 1px 0;
+  margin: 0;
+  padding: 0;
 }
 
 .companyDetails {
   font-size: 9px;
   color: #333;
-  margin: 1px 0;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .rightSection {
@@ -126,38 +170,40 @@
   gap: 0;
   min-width: 300px;
   border-left: 1px solid #000;
-  padding: 8px 12px;
+  padding: 6px 10px;
 }
 
 .patientInfo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  gap: 0;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
   border-bottom: 1px solid #000;
 }
 
 .invoiceInfo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .infoTitle {
   font-weight: bold;
   font-size: 10px;
-  margin-bottom: 3px;
+  margin: 0;
+  padding: 0;
   color: #111;
+  line-height: 1.2;
 }
 
 .infoRow {
   font-size: 9px;
-  margin: 1px 0;
+  margin: 0;
   display: flex;
   align-items: baseline;
-  line-height: 1.3;
-  padding: 1px 0;
+  line-height: 1.2;
+  padding: 0;
 }
 
 .infoLabel {
@@ -180,6 +226,10 @@
   font-size: 9px;
   border: none;
   border-top: 1px solid #000;
+  margin: 0;
+  padding: 0;
+  border-spacing: 0;
+  vertical-align: top;
 }
 
 .itemsTable thead {
@@ -187,13 +237,15 @@
 }
 
 .itemsTable th {
-  padding: 6px 8px;
+  padding: 4px 6px;
   text-align: left;
   font-weight: 600;
   border: 1px solid #000;
   border-left: none;
   border-top: none;
   font-size: 9px;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .itemsTable th:first-child {
@@ -201,11 +253,13 @@
 }
 
 .itemsTable td {
-  padding: 6px 8px;
+  padding: 4px 6px;
   border: 1px solid #000;
   border-left: none;
   border-top: none;
   font-size: 9px;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .itemsTable td:first-child {
@@ -236,7 +290,8 @@
   align-items: flex-start;
   border-bottom: 1px solid #000;
   border-top: none;
-  padding: 8px 12px;
+  padding: 6px 10px;
+  margin: 0;
 }
 
 .totalItemsInfo {
@@ -244,36 +299,45 @@
   font-weight: 600;
   color: #111;
   align-self: flex-end;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .amountSummary {
   min-width: 250px;
   text-align: right;
   border-left: 1px solid #000;
-  padding-left: 12px;
+  padding-left: 10px;
 }
 
 .summaryRow {
   display: flex;
   justify-content: space-between;
-  padding: 2px 0;
+  padding: 0;
+  margin: 0;
   font-size: 9px;
+  line-height: 1.3;
 }
 
 .summaryLabel {
   font-weight: 600;
+  margin: 0;
+  padding: 0;
 }
 
 .summaryValue {
   font-weight: 600;
   min-width: 80px;
   text-align: right;
+  margin: 0;
+  padding: 0;
 }
 
 .totalRow {
   border-top: 1px solid #000;
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 4px;
+  padding-top: 4px;
 }
 
 .totalRow .summaryLabel,
@@ -288,18 +352,23 @@
   border-bottom: none;
   min-height: 60px;
   border-top: none;
+  margin: 0;
+  padding: 0;
 }
 
 .termsSection {
   flex: 1;
-  padding: 10px 12px;
+  padding: 6px 10px;
   border-right: 1px solid #000;
+  margin: 0;
 }
 
 .termsTitle {
   font-weight: bold;
   font-size: 9px;
-  margin-bottom: 6px;
+  margin: 0 0 4px 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .termsList {
@@ -309,27 +378,33 @@
 
 .termsList li {
   font-size: 8px;
-  line-height: 1.5;
-  margin: 2px 0;
+  line-height: 1.3;
+  margin: 0;
+  padding: 0;
 }
 
 /* Footer with Pharmacist Signature */
 .invoiceFooter {
   flex: 1;
-  padding: 10px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  margin: 0;
 }
 
 .footerLeft {
   font-size: 8px;
-  line-height: 1.5;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
 }
 
 .pageInfo {
   font-size: 8px;
   color: #666;
+  margin: 0;
+  padding: 0;
 }
 
 .pharmacistSignature {
@@ -340,7 +415,9 @@
 .signatureLabel {
   font-size: 9px;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin: 0 0 12px 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
 .pharmacistLabel {
@@ -348,6 +425,8 @@
   border-top: 1px solid #000;
   padding-top: 4px;
   min-width: 120px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 /* Error Message */
@@ -370,28 +449,67 @@
 
 /* Print Styling */
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .invoiceActionBar {
     display: none !important;
   }
 
   .invoiceContainer {
-    max-width: 100%;
-    padding: 0;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .invoiceBox {
-    border: 2px solid #000;
-    box-shadow: none;
-    padding: 0;
+    border: 2px solid #000 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
   }
 
   body {
-    background: white;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
   @page {
-    margin: 0.2cm;
+    margin: 0.2cm !important;
+    size: A4;
+  }
+
+  /* Ensure no gaps in print */
+  .invoiceHeader,
+  .itemsTable,
+  .totalsSummarySection,
+  .termsFooterSection {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Remove all gaps between sections */
+  .invoiceBox > * {
+    margin: 0 !important;
+  }
+
+  /* Prevent page breaks inside sections */
+  .invoiceHeader,
+  .itemsTable,
+  .totalsSummarySection {
+    page-break-inside: avoid !important;
+  }
+
+  /* Ensure table borders connect properly */
+  .itemsTable {
+    border-spacing: 0 !important;
   }
 }

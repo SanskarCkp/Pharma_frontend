@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import styles from "./invoice.module.css";
@@ -56,7 +57,10 @@ export default function Invoice() {
     return (
       <div className={styles.invoiceContainer}>
         <p className={styles.error}>{error}</p>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Back</button>
+        <button className={styles.backBtn} onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} />
+          Back
+        </button>
       </div>
     );
 
@@ -72,42 +76,65 @@ export default function Invoice() {
   const handleDownloadPDF = async () => {
     try {
       if (!printRef.current) return;
+      
       const element = printRef.current;
+      const actionBar = document.querySelector(`.${styles.invoiceActionBar}`);
+      
+      // Hide action bar
+      if (actionBar) {
+        actionBar.style.display = 'none';
+      }
 
+      // Ensure element is in view
+      element.scrollIntoView({ behavior: 'instant', block: 'start' });
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Capture with minimal options for reliability
       const canvas = await html2canvas(element, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: "#fff",
-        scrollX: 0,
-        scrollY: -window.scrollY,
+        backgroundColor: "#ffffff",
+        removeContainer: false,
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      // Restore action bar
+      if (actionBar) {
+        actionBar.style.display = '';
+      }
+
+      // Convert to PDF
+      const imgData = canvas.toDataURL("image/png", 1.0);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 2; // mm
-      const imgWidth = pageWidth - margin * 2;
+      const margin = 2;
+      const imgWidth = pageWidth - (margin * 2);
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
+      // Handle multi-page
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = margin;
 
       pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      heightLeft -= (pageHeight - margin * 2);
 
       while (heightLeft > 0) {
-        position -= pageHeight;
+        position = margin - (imgHeight - heightLeft);
         pdf.addPage();
         pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        heightLeft -= (pageHeight - margin * 2);
       }
 
       pdf.save(`${invoice?.invoice_no || "invoice"}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      alert("Failed to generate PDF: " + error.message);
     }
   };
 
@@ -116,7 +143,10 @@ export default function Invoice() {
   return (
     <div className={styles.invoiceContainer}>
       <div className={styles.invoiceActionBar}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Back</button>
+        <button className={styles.backBtn} onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} />
+          Back
+        </button>
         <div className={styles.actionButtons}>
           <button onClick={handleDownloadPDF} className={styles.btn}>Download PDF</button>
           <button onClick={handlePrint} className={styles.btn}>Print</button>

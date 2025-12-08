@@ -4,9 +4,10 @@
 }
 
 .page-title {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 5px;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
 }
 
 .Supplier-name {

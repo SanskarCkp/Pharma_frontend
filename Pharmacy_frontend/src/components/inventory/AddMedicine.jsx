@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
@@ -613,6 +614,7 @@ export default function AddMedicine({
   const header = (
     <div className="inv-form-header">
       <button className="btn-secondary" type="button" onClick={handleClose}>
+        <ArrowLeft size={18} />
         {isDrawer ? "Close" : "Back"}
       </button>
       <h2>{isEdit ? "Edit Medicine" : "Add New Medicine"}</h2>

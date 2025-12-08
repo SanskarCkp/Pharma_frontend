@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Search } from "lucide-react";
 import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
@@ -9,7 +9,8 @@ import QuickAddMedicine from "./QuickAddMedicine";
 import { useAlert } from "../ui/alert-provider";
 
 const LS_KEY = "medicines";
-const PAGE_SIZE = 250;
+const PAGE_SIZE = 500; // fetch size
+const VISIBLE_PAGE_SIZE = 20; // rows shown per page
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
 const API_GLOBAL = apiUrl("inventory/medicines/global/");
@@ -35,6 +36,9 @@ export default function MedicineInventory() {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [manualRefresh, setManualRefresh] = useState(0);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("batch_number");
+  const [sortDir, setSortDir] = useState("asc");
 
   const statusToParam = (value) => {
     if (!value || value === "All") return null;
@@ -100,6 +104,7 @@ export default function MedicineInventory() {
         if (cancelled) return;
         const list = Array.isArray(data) ? data : data?.results || data?.items || [];
         setRows(list);
+        setPage(1);
         try {
           localStorage.setItem(LS_KEY, JSON.stringify(list));
         } catch {}
@@ -278,6 +283,64 @@ export default function MedicineInventory() {
     if (next !== "all") {
       setStatusFilter("All");
     }
+    setPage(1);
+  };
+
+  const handleSort = (key) => {
+    if (sortBy === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    const list = [...rows];
+    const getter = (row, key) => {
+      switch (key) {
+        case "batch_number":
+          return row.batch_number || row.batch_lot__batch_no || "";
+        case "medicine_name":
+          return row.medicine_name || row.batch_lot__product__name || "";
+        case "category":
+          return getCategoryLabel(row);
+        case "stock":
+          return getBaseQuantity(row);
+        case "price":
+          return Number(row.mrp ?? row.batch_lot__product__mrp ?? 0);
+        case "expiry":
+          return row.expiry_date || "";
+        default:
+          return "";
+      }
+    };
+    list.sort((a, b) => {
+      const av = getter(a, sortBy);
+      const bv = getter(b, sortBy);
+      if (typeof av === "number" && typeof bv === "number") {
+        return sortDir === "asc" ? av - bv : bv - av;
+      }
+      return sortDir === "asc"
+        ? String(av).localeCompare(String(bv))
+        : String(bv).localeCompare(String(av));
+    });
+    return list;
+  }, [rows, sortBy, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / VISIBLE_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * VISIBLE_PAGE_SIZE;
+    return sortedRows.slice(start, start + VISIBLE_PAGE_SIZE);
+  }, [sortedRows, currentPage]);
+
+  const SortIndicator = ({ column }) => {
+    return (
+      <span className="sort-indicator">
+        {sortBy === column ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+      </span>
+    );
   };
 
   return (
@@ -306,89 +369,112 @@ export default function MedicineInventory() {
         <div className="inv-card">
         {serverError && <div style={{ color: "crimson", padding: 8 }}>{serverError}</div>}
 
-        <div className="inv-filters">
-          <div className="inv-search">
-            <span className="inv-search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search by medicine, batch or supplier..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+        <div className="inv-filters-compact">
+          <div className="inv-filter-group" style={{ flex: 1, minWidth: "250px" }}>
+            <label className="inv-filter-label-compact">Search</label>
+            <div className="inv-search-compact">
+              <Search className="inv-search-icon" size={18} />
+              <input
+                type="text"
+                placeholder="Search by medicine, batch or supplier..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
           </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="inv-select"
-          >
-            <option value="All">All Categories</option>
-            {categoriesForSelect.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="inv-select"
-            disabled={tab !== "all"}
-          >
-            {[
-              ["All", "All"],
-              ["In Stock", "In Stock"],
-              ["Low Stock", "Low Stock"],
-              ["Out of Stock", "Out of Stock"],
-              ["Expiring", "Expiring"],
-            ].map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <select value={rackFilter} onChange={(e) => setRackFilter(e.target.value)} className="inv-select">
-            <option value="All">All Racks</option>
-            {rackOptions.map((rack) => (
-              <option key={rack.id} value={rack.id}>
-                {rack.name}
-              </option>
-            ))}
-          </select>
-
-          <div className="inv-actions">
-            <button
-              className="inv-btn brown"
-              onClick={() => {
-                const csvRows = [
-                  ["Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
-                  ...rows.map((r) => [
-                    r.batch_number,
-                    r.medicine_name,
-                    getCategoryLabel(r),
-                    getBaseQuantity(r),
-                    r.mrp,
-                    r.expiry_date,
-                    getStatus(r),
-                  ]),
-                ];
-                const csv = csvRows
-                  .map((cols) => cols.map((c) => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(","))
-                  .join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "inventory_export.csv";
-                a.click();
-                URL.revokeObjectURL(url);
+          <div className="inv-filter-group">
+            <label className="inv-filter-label-compact">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(1);
               }}
+              className="inv-select-compact"
             >
-              Export
-            </button>
+              <option value="All">--- Select Category ---</option>
+              {categoriesForSelect.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div className="inv-filter-group">
+            <label className="inv-filter-label-compact">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="inv-select-compact"
+              disabled={tab !== "all"}
+            >
+              {[
+                ["All", "--- Select Status ---"],
+                ["In Stock", "In Stock"],
+                ["Low Stock", "Low Stock"],
+                ["Out of Stock", "Out of Stock"],
+                ["Expiring", "Expiring"],
+              ].map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="inv-filter-group">
+            <label className="inv-filter-label-compact">Rack</label>
+            <select
+              value={rackFilter}
+              onChange={(e) => {
+                setRackFilter(e.target.value);
+                setPage(1);
+              }}
+              className="inv-select-compact"
+            >
+              <option value="All">--- Select Rack ---</option>
+              {rackOptions.map((rack) => (
+                <option key={rack.id} value={rack.id}>
+                  {rack.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="inv-btn brown"
+            onClick={() => {
+              const csvRows = [
+                ["Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
+                ...rows.map((r) => [
+                  r.batch_number,
+                  r.medicine_name,
+                  getCategoryLabel(r),
+                  getBaseQuantity(r),
+                  r.mrp,
+                  r.expiry_date,
+                  getStatus(r),
+                ]),
+              ];
+              const csv = csvRows
+                .map((cols) => cols.map((c) => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(","))
+                .join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "inventory_export.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export CSV
+          </button>
         </div>
 
         <div className="inv-tabs">
@@ -413,22 +499,33 @@ export default function MedicineInventory() {
             <table className="inv-table">
               <thead>
                 <tr>
-                  
-                  <th>Batch Number</th>
-                  <th>Medicine Name</th>
-                  <th>Category</th>
-                  <th>Stock</th>
-                  <th>UOM / Rack</th>
-                  <th>Price (₹)</th>
-                  <th>Expiry</th>
+                  <th onClick={() => handleSort("batch_number")} className="sortable">
+                    Batch Number <SortIndicator column="batch_number" />
+                  </th>
+                  <th onClick={() => handleSort("medicine_name")} className="sortable">
+                    Medicine Name <SortIndicator column="medicine_name" />
+                  </th>
+                  <th onClick={() => handleSort("category")} className="sortable">
+                    Category <SortIndicator column="category" />
+                  </th>
+                  <th onClick={() => handleSort("stock")} className="sortable">
+                    Stock <SortIndicator column="stock" />
+                  </th>
+                  <th>Rack</th>
+                  <th onClick={() => handleSort("price")} className="sortable">
+                    Price (₹) <SortIndicator column="price" />
+                  </th>
+                  <th onClick={() => handleSort("expiry")} className="sortable">
+                    Expiry <SortIndicator column="expiry" />
+                  </th>
                   <th>Status</th>
                   <th style={{ width: 180, textAlign: "center" }}>Actions</th>
                   <th>HSN code</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.length ? (
-                  rows.map((r) => {
+                {pagedRows.length ? (
+                  pagedRows.map((r) => {
                     const status = getStatus(r);
                     const categoryLabel = getCategoryLabel(r);
                     const rowKey =
@@ -464,10 +561,10 @@ export default function MedicineInventory() {
                         </td>
                         <td className="inv-actions-cell">
                           <button className="inv-icon" title="View details" onClick={() => goToDetail(r)}>
-                            View
+                            <Eye size={16} />
                           </button>
                           <button className="inv-icon" title="Edit" onClick={() => handleEdit(r)}>
-                            Edit
+                            <Pencil size={16} />
                           </button>
                           <button
                             className="inv-icon danger"
@@ -475,7 +572,7 @@ export default function MedicineInventory() {
                             onClick={() => handleDelete(r)}
                             disabled={deleting}
                           >
-                            Del
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
@@ -492,6 +589,26 @@ export default function MedicineInventory() {
             </table>
           )}
         </div>
+
+        <div className="inv-pagination">
+          <button
+            className="inv-btn ghost"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+          <span className="page-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="inv-btn ghost"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
         {/* Quick Add Modal */}
@@ -504,3 +621,4 @@ export default function MedicineInventory() {
     </div>
   );
 }
+

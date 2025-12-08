@@ -1,7 +1,7 @@
 // src/components/settings/SettingsDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Home, AlertCircle, CreditCard, Database, Bell, Edit2, X } from "lucide-react";
+import { Home, AlertCircle, Database, Bell, Edit2, X } from "lucide-react";
 import styles from "./settingsdashboard.module.css";
 import { authFetch } from "../../api/http";
 import { useAlert } from "../ui/alert-provider";
@@ -22,7 +22,6 @@ const SettingsDashboard = () => {
   const settingsSections = [
     { name: "Business Details", icon: <Home size={24} /> },
     { name: "Alert Thresholds", icon: <AlertCircle size={24} /> },
-    { name: "Tax & Billing", icon: <CreditCard size={24} /> },
     // { name: "Backup & Restore", icon: <Database size={24} /> },
     { name: "Notifications", icon: <Bell size={24} /> },
   ];
@@ -481,17 +480,6 @@ const SettingsDashboard = () => {
                 </button>
               )}
             </div>
-          </div>
-        )}
-
-        {/* --------------------------------------------- */}
-        {/* COMING SOON SECTIONS */}
-        {/* --------------------------------------------- */}
-        {activeSection === "Tax & Billing" && (
-          <div className={styles["coming-soon-section"]}>
-            <CreditCard size={64} className={styles["coming-soon-icon"]} />
-            <h2>Tax & Billing</h2>
-            <p>Feature Coming Soon</p>
           </div>
         )}
 
