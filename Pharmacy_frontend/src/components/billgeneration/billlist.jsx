@@ -293,9 +293,11 @@ export default function BillList() {
                   <td style={{ padding: "1rem", color: "#6b7280" }}>{bill.payment_status}</td>
                   <td style={{ padding: "1rem", textAlign: "center" }}>
                     <button
-                      onClick={() =>
-                        navigate(`/billgeneration/invoice/${bill.id}`)
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log("Navigating to invoice:", bill.id);
+                        navigate(`/billgeneration/invoice/${bill.id}`);
+                      }}
                       style={{
                         backgroundColor: "#14b8a6",
                         color: "white",
