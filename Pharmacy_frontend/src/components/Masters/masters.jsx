@@ -22,10 +22,10 @@ const API_BASE = normalizeBase(rawBase);
 
 const ENDPOINTS = {
   Users: `${API_BASE}/api/v1/accounts/users/`,
-  MedicineCategories: `${API_BASE}/api/v1/catalog/categories/`,
+  // MedicineCategories: `${API_BASE}/api/v1/catalog/categories/`,
   MedicineForms: `${API_BASE}/api/v1/catalog/forms/`,
-  UnitsOfMeasurement: `${API_BASE}/api/v1/catalog/uoms/`,
-  paymentTerms: `${API_BASE}/api/v1/settings/payment-terms/`,
+  // UnitsOfMeasurement: `${API_BASE}/api/v1/catalog/uoms/`,
+  // paymentTerms: `${API_BASE}/api/v1/settings/payment-terms/`,
   rackLocations: `${API_BASE}/api/v1/inventory/rack-locations/`,
 };
 
@@ -98,35 +98,34 @@ export default function MastersDashboard() {
       total: usersTotal,
       accent: "blue",
     },
-
+    // {
+    //   path: "/medicinecategories",
+    //   label: "Medicine Categories",
+    //   icon: <Pill size={16} />,
+    //   total: mcTotal,
+    //   accent: "teal",
+    // },
     {
-      path: "/medicinecategories",
-      label: "Medicine Categories",
-      icon: <Pill size={16} />,
-      total: mcTotal,
-      accent: "teal",
-    },
-    {
-      path: "/medicineforms",
-      label: "Medicine Forms",
+      path: "/hsncode",
+      label: "HSN Code",
       icon: <Pill size={16} />,
       total: mfTotal,
       accent: "orange",
     },
-    {
-      path: "/unitofmeasurement",
-      label: "Units of Measurement",
-      icon: <Ruler size={16} />,
-      total: umTotal,
-      accent: "blue",
-    },
-    {
-      path: "/masters/payment-terms",
-      label: "Payment Terms",
-      icon: <Calendar size={16} />,
-      total: ptTotal,
-      accent: "orange",
-    },
+    // {
+    //   path: "/unitofmeasurement",
+    //   label: "Units of Measurement",
+    //   icon: <Ruler size={16} />,
+    //   total: umTotal,
+    //   accent: "blue",
+    // },
+    // {
+    //   path: "/masters/payment-terms",
+    //   label: "Payment Terms",
+    //   icon: <Calendar size={16} />,
+    //   total: ptTotal,
+    //   accent: "orange",
+    // },
     {
       path: "/masters/rack-locations",
       label: "Rack Locations",
@@ -210,11 +209,11 @@ export default function MastersDashboard() {
       {/* optional debug errors */}
       <div className="mt-4 text-sm text-rose-600">
         {usersError && <div>Users load error: {usersError}</div>}
-        {ptError && <div>Payment terms load error: {ptError}</div>}
+        {/* {ptError && <div>Payment terms load error: {ptError}</div>} */}
         {rlError && <div>Rack locations load error: {rlError}</div>}
-        {mcError && <div>Medicine categories load error: {mcError}</div>}
+        {/* {mcError && <div>Medicine categories load error: {mcError}</div>} */}
         {mfError && <div>Medicine forms load error: {mfError}</div>}
-        {umError && <div>Units load error: {umError}</div>}
+        {/* {umError && <div>Units load error: {umError}</div>} */}
       </div>
     </div>
   );

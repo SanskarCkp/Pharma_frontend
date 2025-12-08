@@ -107,8 +107,8 @@ const AddVendor = () => {
     required
   >
     <option value="">-- Select Supplier Type --</option>
-    <option value="OFFLINE">Manual Order in ERP</option>
-    <option value="ONLINE">External Website (PDF Import)</option>
+    <option value="OFFLINE">Create</option>
+    <option value="ONLINE">Import</option>
   </select>
 </div>
             <div className="field">
@@ -163,7 +163,7 @@ const AddVendor = () => {
           </div>
         </div>
 
-        {/* PAYMENT TERMS */}
+        {/* PAYMENT TERMS
         <div className="section-card">
           <h2 className="section-heading">Business Terms</h2>
           <div className="row">
@@ -180,7 +180,7 @@ const AddVendor = () => {
 
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* BANK DETAILS */}
         <div className="section-card">
