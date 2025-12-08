@@ -167,19 +167,34 @@ export default function MedicineInventory() {
     return "In Stock";
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this medicine?")) return;
+  const handleDelete = async (row) => {
+    const batchId = resolveBatchId(row);
+    if (!batchId) {
+      alert("Unable to determine batch to delete.");
+      return;
+    }
+    if (!window.confirm("Delete this medicine batch? This cannot be undone.")) return;
     setDeleting(true);
     setServerError(null);
     try {
-      const next = rows.filter((r) => r.id !== id && r.batch_id !== id);
+      const res = await authFetch(API_MEDICINE_DETAIL(batchId), {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok && res.status !== 204) {
+        const text = await res.text();
+        throw new Error(text || `Delete failed (${res.status})`);
+      }
+      const next = rows.filter((r) => resolveBatchId(r) !== batchId);
       setRows(next);
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(next));
       } catch {}
+      window.dispatchEvent(new CustomEvent("inventory:refresh"));
     } catch (err) {
       console.error(err);
-      setServerError("Delete failed");
+      setServerError(err.message || "Delete failed");
+      alert(err.message || "Delete failed");
     } finally {
       setDeleting(false);
     }
@@ -442,7 +457,7 @@ export default function MedicineInventory() {
                           <button
                             className="inv-icon danger"
                             title="Delete"
-                            onClick={() => handleDelete(r.id)}
+                            onClick={() => handleDelete(r)}
                             disabled={deleting}
                           >
                             Del

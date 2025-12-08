@@ -106,6 +106,32 @@ const PACKAGING_FORMS = {
   ointment: { form: /OINTMENT|CREAM|GEL/i, base: /GM|GRAM/i },
 };
 
+const UOM_CODE_MATCHERS = {
+  tabletBase: ["TAB", "TABLET", "TABLETS", "CAP", "CAPS", "CAPSULE", "CAPSULES"],
+  strip: ["STRIP", "STRIPS"],
+  pack: ["BOX", "BOXES", "PACK", "PACKS", "CASE", "CASES", "CARTON", "CARTONS"],
+  ml: ["ML", "MILLILITER", "MILLILITRE"],
+  bottle: ["BOTTLE", "BOTTLES", "BTL", "BOT"],
+  vial: ["VIAL", "VIALS", "AMP", "AMPOULE", "AMPOULES"],
+  gm: ["GM", "GRAM", "GRAMS", "GMS", "GRM"],
+  tube: ["TUBE", "TUBES"],
+};
+
+const normalizeUomCode = (value) => {
+  if (!value && value !== 0) return "";
+  if (typeof value === "string") return value.toUpperCase();
+  if (typeof value === "object") {
+    return (value.code || value.name || "").toUpperCase();
+  }
+  return String(value).toUpperCase();
+};
+
+const codeMatches = (value, patterns = []) => {
+  const code = normalizeUomCode(value);
+  if (!code) return false;
+  return patterns.some((pattern) => code.includes(pattern));
+};
+
 const detectPackagingType = (formName = "", baseUom = "") => {
   const f = (formName || "").toUpperCase();
   const b = (baseUom || "").toUpperCase();
@@ -122,34 +148,64 @@ const numberVal = (value) => {
   return Number.isFinite(num) && num > 0 ? num : null;
 };
 
-const computeUnitsPerPack = (packagingType, medicine) => {
+const formatNumber = (value, fractionDigits = 3) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits,
+  });
+};
+
+const computeBaseUnitsForTarget = (packagingType, targetCode, medicine) => {
+  const normalized = normalizeUomCode(targetCode);
+  if (!normalized) return null;
   switch (packagingType) {
     case "tablets": {
       const tablets = numberVal(medicine.tablets_per_strip);
-      if (!tablets) return null;
-      const strips = numberVal(medicine.strips_per_box) || 1;
-      return tablets * strips;
+      const strips = numberVal(medicine.strips_per_box);
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.tabletBase)) return 1;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.strip)) return tablets || null;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.pack)) {
+        if (!tablets) return null;
+        return tablets * (strips || 1);
+      }
+      return null;
     }
     case "syrup": {
       const mlPerBottle = numberVal(medicine.ml_per_bottle);
-      if (!mlPerBottle) return null;
-      const bottles = numberVal(medicine.bottles_per_box) || 1;
-      return mlPerBottle * bottles;
+      const bottles = numberVal(medicine.bottles_per_box);
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.ml)) return 1;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.bottle)) return mlPerBottle || null;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.pack)) {
+        if (!mlPerBottle) return null;
+        return mlPerBottle * (bottles || 1);
+      }
+      return null;
     }
     case "injection": {
       const vials = numberVal(medicine.vials_per_box);
-      return vials || null;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.vial)) return 1;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.pack)) return vials || null;
+      return null;
     }
     case "ointment": {
       const grams = numberVal(medicine.grams_per_tube);
-      if (!grams) return null;
-      const tubes = numberVal(medicine.tubes_per_box) || 1;
-      return grams * tubes;
+      const tubes = numberVal(medicine.tubes_per_box);
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.gm)) return 1;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.tube)) return grams || null;
+      if (codeMatches(normalized, UOM_CODE_MATCHERS.pack)) {
+        if (!grams) return null;
+        return grams * (tubes || 1);
+      }
+      return null;
     }
     default:
       return null;
   }
 };
+
+const computeUnitsPerPack = (packagingType, sellingCode, medicine) =>
+  computeBaseUnitsForTarget(packagingType, sellingCode, medicine);
 
 async function tryRefreshToken() {
   try {
@@ -224,6 +280,18 @@ export default function AddMedicine({
     return <div className="err">{message}</div>;
   };
 
+  const findUomEntry = useCallback(
+    (value) => {
+      if (value === undefined || value === null || value === "") return undefined;
+      return uoms.find(
+        (u) =>
+          String(u.id) === String(value) ||
+          (u.code && String(u.code).toUpperCase() === String(value).toUpperCase())
+      );
+    },
+    [uoms]
+  );
+
   const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
@@ -286,6 +354,12 @@ export default function AddMedicine({
       gst_percent: med.gst_percent || "",
       tablets_per_strip: med.tablets_per_strip ?? "",
       strips_per_box: med.strips_per_box ?? "",
+      ml_per_bottle: med.ml_per_bottle ?? "",
+      bottles_per_box: med.bottles_per_box ?? "",
+      vials_per_box: med.vials_per_box ?? "",
+      ml_per_vial: med.ml_per_vial ?? "",
+      grams_per_tube: med.grams_per_tube ?? "",
+      tubes_per_box: med.tubes_per_box ?? "",
       units_per_pack: med.units_per_pack ?? "",
       mrp: med.mrp ?? "",
     });
@@ -381,39 +455,118 @@ export default function AddMedicine({
     return form?.name || "";
   }, [forms, medicine.form]);
 
-  const selectedBaseUomLabel = useMemo(() => {
-    const entry = uoms.find(
-      (u) => String(u.id) === String(medicine.base_uom) || String(u.code) === String(medicine.base_uom)
-    );
-    return entry?.code || entry?.name || "";
-  }, [uoms, medicine.base_uom]);
+  const selectedBaseUom = useMemo(
+    () => findUomEntry(medicine.base_uom),
+    [findUomEntry, medicine.base_uom]
+  );
+  const selectedSellingUom = useMemo(
+    () => findUomEntry(medicine.selling_uom),
+    [findUomEntry, medicine.selling_uom]
+  );
+  const selectedQuantityUom = useMemo(() => {
+    if (batch.quantity_uom) return findUomEntry(batch.quantity_uom);
+    return selectedSellingUom || undefined;
+  }, [batch.quantity_uom, findUomEntry, selectedSellingUom]);
+
+  const selectedBaseUomLabel = selectedBaseUom?.code || selectedBaseUom?.name || "";
+  const selectedSellingUomLabel = selectedSellingUom?.code || selectedSellingUom?.name || "";
+  const selectedQuantityUomLabel =
+    selectedQuantityUom?.code || selectedQuantityUom?.name || selectedSellingUomLabel || "";
+  const selectedBaseCode = useMemo(() => normalizeUomCode(selectedBaseUom), [selectedBaseUom]);
+  const selectedSellingCode = useMemo(() => normalizeUomCode(selectedSellingUom), [selectedSellingUom]);
+  const selectedQuantityCode = useMemo(
+    () => normalizeUomCode(selectedQuantityUom),
+    [selectedQuantityUom]
+  );
 
   const packagingType = useMemo(
     () => detectPackagingType(selectedFormName, selectedBaseUomLabel),
     [selectedFormName, selectedBaseUomLabel]
   );
 
-  const autoUnitsPerPack = useMemo(
-    () =>
-      computeUnitsPerPack(packagingType, medicine),
-    [
-      packagingType,
-      medicine.tablets_per_strip,
-      medicine.strips_per_box,
-      medicine.ml_per_bottle,
-      medicine.bottles_per_box,
-      medicine.vials_per_box,
-      medicine.grams_per_tube,
-      medicine.tubes_per_box,
-    ]
+  const autoUnitsPerPack = useMemo(() => {
+    if (!packagingType || !selectedSellingCode) return null;
+    return computeUnitsPerPack(packagingType, selectedSellingCode, medicine);
+  }, [
+    packagingType,
+    selectedSellingCode,
+    medicine.tablets_per_strip,
+    medicine.strips_per_box,
+    medicine.ml_per_bottle,
+    medicine.bottles_per_box,
+    medicine.vials_per_box,
+    medicine.grams_per_tube,
+    medicine.tubes_per_box,
+  ]);
+  const manualUnitsPerPack = useMemo(
+    () => numberVal(medicine.units_per_pack),
+    [medicine.units_per_pack]
   );
+
+  const perQuantityUnit = useMemo(() => {
+    const code = selectedQuantityCode;
+    const manual = manualUnitsPerPack;
+    const auto = autoUnitsPerPack;
+    const computed =
+      packagingType && code
+        ? computeBaseUnitsForTarget(packagingType, code, medicine)
+        : null;
+    if (computed != null) return computed;
+    if (selectedBaseCode && code && code === selectedBaseCode) return 1;
+    if (selectedSellingCode && code && code === selectedSellingCode) {
+      return auto ?? manual ?? null;
+    }
+    if (!packagingType && manual) return manual;
+    return auto ?? manual ?? null;
+  }, [
+    packagingType,
+    selectedQuantityCode,
+    selectedBaseCode,
+    selectedSellingCode,
+    autoUnitsPerPack,
+    manualUnitsPerPack,
+    medicine.tablets_per_strip,
+    medicine.strips_per_box,
+    medicine.ml_per_bottle,
+    medicine.bottles_per_box,
+    medicine.vials_per_box,
+    medicine.grams_per_tube,
+    medicine.tubes_per_box,
+  ]);
 
   const totalBaseUnits = useMemo(() => {
     const qty = Number(batch.quantity);
-    const units = autoUnitsPerPack ?? numberVal(medicine.units_per_pack);
-    if (!qty || !units) return null;
-    return qty * units;
-  }, [batch.quantity, autoUnitsPerPack, medicine.units_per_pack]);
+    if (!qty) return null;
+    if (!perQuantityUnit) return null;
+    return qty * perQuantityUnit;
+  }, [batch.quantity, perQuantityUnit]);
+
+  useEffect(() => {
+    if (isEdit || !packagingType || !uoms.length) return;
+    setMedicine((prev) => {
+      const updates = {};
+      const setIfMissing = (field, matcher) => {
+        if (prev[field]) return;
+        const entry = uoms.find((u) => codeMatches(u, matcher));
+        if (entry) updates[field] = String(entry.id);
+      };
+      if (packagingType === "tablets") {
+        setIfMissing("base_uom", UOM_CODE_MATCHERS.tabletBase);
+        setIfMissing("selling_uom", UOM_CODE_MATCHERS.strip);
+      } else if (packagingType === "syrup") {
+        setIfMissing("base_uom", UOM_CODE_MATCHERS.ml);
+        setIfMissing("selling_uom", UOM_CODE_MATCHERS.bottle);
+      } else if (packagingType === "injection") {
+        setIfMissing("base_uom", UOM_CODE_MATCHERS.vial);
+        setIfMissing("selling_uom", UOM_CODE_MATCHERS.vial);
+      } else if (packagingType === "ointment") {
+        setIfMissing("base_uom", UOM_CODE_MATCHERS.gm);
+        setIfMissing("selling_uom", UOM_CODE_MATCHERS.tube);
+      }
+      if (Object.keys(updates).length === 0) return prev;
+      return { ...prev, ...updates };
+    });
+  }, [isEdit, packagingType, uoms]);
 
   const handleMedicineChange = (e) => {
     const { name, value } = e.target;
@@ -448,22 +601,44 @@ export default function AddMedicine({
     if (!medicine.mrp) localErrors.mrp = "Required";
     if (!batch.batch_number.trim()) localErrors.batch_number = "Required";
     if (!batch.quantity) localErrors.quantity = "Required";
-    if (!batch.quantity_uom) localErrors.quantity_uom = "Required";
     if (!batch.purchase_price) localErrors.purchase_price = "Required";
     if (!batch.expiry_date) localErrors.expiry_date = "Required";
+    const matchesNeeds = (patterns) =>
+      codeMatches(selectedSellingCode, patterns) || codeMatches(selectedQuantityCode, patterns);
     if (packagingType === "tablets") {
-      if (!medicine.tablets_per_strip) localErrors.tablets_per_strip = "Required";
-      if (!medicine.strips_per_box) localErrors.strips_per_box = "Required";
+      if (matchesNeeds([UOM_CODE_MATCHERS.strip, UOM_CODE_MATCHERS.pack]) && !medicine.tablets_per_strip) {
+        localErrors.tablets_per_strip = "Required";
+      }
+      if (matchesNeeds([UOM_CODE_MATCHERS.pack]) && !medicine.strips_per_box) {
+        localErrors.strips_per_box = "Required";
+      }
     } else if (packagingType === "syrup") {
-      if (!medicine.ml_per_bottle) localErrors.ml_per_bottle = "Required";
-      if (!medicine.bottles_per_box) localErrors.bottles_per_box = "Required";
+      if (
+        matchesNeeds([UOM_CODE_MATCHERS.bottle, UOM_CODE_MATCHERS.pack]) &&
+        !medicine.ml_per_bottle
+      ) {
+        localErrors.ml_per_bottle = "Required";
+      }
+      if (matchesNeeds([UOM_CODE_MATCHERS.pack]) && !medicine.bottles_per_box) {
+        localErrors.bottles_per_box = "Required";
+      }
     } else if (packagingType === "injection") {
-      if (!medicine.vials_per_box) localErrors.vials_per_box = "Required";
+      if (matchesNeeds([UOM_CODE_MATCHERS.pack]) && !medicine.vials_per_box) {
+        localErrors.vials_per_box = "Required";
+      }
     } else if (packagingType === "ointment") {
-      if (!medicine.grams_per_tube) localErrors.grams_per_tube = "Required";
-      if (!medicine.tubes_per_box) localErrors.tubes_per_box = "Required";
-    } else if (!medicine.units_per_pack) {
-      localErrors.units_per_pack = "Units per pack is required for this form.";
+      if (
+        matchesNeeds([UOM_CODE_MATCHERS.tube, UOM_CODE_MATCHERS.pack]) &&
+        !medicine.grams_per_tube
+      ) {
+        localErrors.grams_per_tube = "Required";
+      }
+      if (matchesNeeds([UOM_CODE_MATCHERS.pack]) && !medicine.tubes_per_box) {
+        localErrors.tubes_per_box = "Required";
+      }
+    }
+    if ((!packagingType || !selectedSellingCode) && !medicine.units_per_pack) {
+      localErrors.units_per_pack = "Base units per selling unit is required.";
     }
     return localErrors;
   };
@@ -484,7 +659,7 @@ export default function AddMedicine({
       </div>
     );
 
-    const packagingAuto = Boolean(packagingType);
+    const packagingAuto = Boolean(packagingType && selectedSellingCode);
     const unitsValue = packagingAuto
       ? autoUnitsPerPack != null
         ? Number(autoUnitsPerPack)
@@ -493,7 +668,7 @@ export default function AddMedicine({
     const unitsField = (
       <div className="field">
         <label>
-          Units per Pack{" "}
+          Base units per {selectedSellingUomLabel || "selling unit"}{" "}
           {packagingAuto ? "(auto)" : "(enter manually)"}
         </label>
         <input
@@ -507,10 +682,14 @@ export default function AddMedicine({
         />
         {packagingAuto ? (
           <div className="hint">
-            Based on packaging inputs. Fill those fields to see the computed value.
+            Fill the packaging fields to automatically derive how many {selectedBaseUomLabel || "base units"}
+            equal 1 {selectedSellingUomLabel || "selling unit"}.
           </div>
         ) : (
-          <div className="hint">Enter base units per selling pack.</div>
+          <div className="hint">
+            Enter how many {selectedBaseUomLabel || "base units"} equal 1{" "}
+            {selectedSellingUomLabel || "selling unit"} so sales and stock adjustments remain accurate.
+          </div>
         )}
         {renderFieldError("units_per_pack")}
       </div>
@@ -560,13 +739,14 @@ export default function AddMedicine({
     const previewUnits =
       autoUnitsPerPack != null
         ? Number(autoUnitsPerPack)
-        : numberVal(medicine.units_per_pack);
+        : manualUnitsPerPack;
     return (
       <>
         {fields}
         {previewUnits ? (
           <div className="hint">
-            Units per pack: {previewUnits} {selectedBaseUomLabel || "base units"}
+            Base units per {selectedSellingUomLabel || "selling unit"}:{" "}
+            {formatNumber(previewUnits)} {selectedBaseUomLabel || "base units"}
           </div>
         ) : null}
       </>
@@ -605,15 +785,23 @@ export default function AddMedicine({
     };
 
     const resolvedQuantityUom = batch.quantity_uom || medicine.selling_uom;
+    const openingStock = numberOrUndefined(batch.quantity) ?? 0;
+    const purchasePrice = decimalStringOrUndefined(batch.purchase_price);
     const batchPayload = {
       ...(batch.id ? { id: batch.id } : {}),
       batch_number: batch.batch_number.trim(),
       mfg_date: batch.mfg_date || undefined,
       expiry_date: batch.expiry_date,
-      quantity: Number(batch.quantity),
       quantity_uom: resolvedQuantityUom ? Number(resolvedQuantityUom) : undefined,
-      purchase_price: decimalStringOrUndefined(batch.purchase_price),
     };
+
+    if (batch.id) {
+      batchPayload.quantity = openingStock;
+      batchPayload.purchase_price = purchasePrice;
+    } else {
+      batchPayload.opening_stock_selling_uom = openingStock;
+      batchPayload.purchase_price_per_selling_uom = purchasePrice;
+    }
     return {
       location_id: location,
       medicine: medPayload,
@@ -722,7 +910,7 @@ export default function AddMedicine({
   const formContent = (
     <div className="inv-form-card">
       {serverError && <div className="inv-error-banner">{serverError}</div>}
-      {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data…</div>}
+      {loadingMasters && <div style={{ marginBottom: 12 }}>Loading master data...</div>}
 
       <form className="grid2" onSubmit={handleSubmit}>
           <div className="field">
@@ -853,7 +1041,9 @@ export default function AddMedicine({
           {renderPackagingFields()}
 
           <div className="field">
-            <label>MRP *</label>
+            <label>
+              MRP (per {selectedSellingUomLabel || "selling unit"}) *
+            </label>
             <input
               name="mrp"
               type="number"
@@ -863,6 +1053,9 @@ export default function AddMedicine({
               onChange={handleMedicineChange}
               className={errors.mrp ? "error" : ""}
             />
+            <div className="hint">
+              Enter the price charged to the customer for 1 {selectedSellingUomLabel || "selling unit"}.
+            </div>
             {renderFieldError("mrp")}
           </div>
 
@@ -883,49 +1076,7 @@ export default function AddMedicine({
           </div>
 
           <div className="field">
-            <label>Quantity *</label>
-            <input
-              name="quantity"
-              type="number"
-              min="0"
-              value={batch.quantity}
-              onChange={handleBatchChange}
-              className={errors.quantity ? "error" : ""}
-              readOnly={isEdit}
-              disabled={isEdit}
-            />
-            {renderFieldError("quantity")}
-            {totalBaseUnits != null && (
-              <div className="hint">
-                ≈ {totalBaseUnits} base units ({batch.quantity || 0} packs ×{" "}
-                {autoUnitsPerPack != null
-                  ? autoUnitsPerPack
-                  : medicine.units_per_pack || "?"}
-                )
-              </div>
-            )}
-          </div>
-
-          <div className="field">
-            <label>Quantity UOM *</label>
-            <select
-              name="quantity_uom"
-              value={batch.quantity_uom}
-              onChange={handleBatchChange}
-              className={errors.quantity_uom ? "error" : ""}
-            >
-              <option value="">Select</option>
-              {uoms.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {renderFieldError("quantity_uom")}
-          </div>
-
-          <div className="field">
-            <label>Purchase Price *</label>
+            <label>Purchase Price per {selectedSellingUomLabel || "selling unit"} *</label>
             <input
               name="purchase_price"
               type="number"
@@ -935,6 +1086,9 @@ export default function AddMedicine({
               onChange={handleBatchChange}
               className={errors.purchase_price ? "error" : ""}
             />
+            <div className="hint">
+              Cost paid for one {selectedSellingUomLabel || "selling unit"} in this batch.
+            </div>
             {renderFieldError("purchase_price")}
           </div>
 
