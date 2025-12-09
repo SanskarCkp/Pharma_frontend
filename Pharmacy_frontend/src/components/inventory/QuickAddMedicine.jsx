@@ -3,6 +3,7 @@ import "./inventory.css";
 import { authFetch } from "../../api/http";
 import { getAccessToken, getRefreshToken, storeTokens } from "../../api/auth";
 import { getDefaultLocationId } from "../../config/location";
+import { MEDICINE_CATEGORIES as BASE_CATEGORIES } from "../../constants/medicineCategories";
 
 const rawBase = import.meta.env.VITE_API_URL || "";
 const normalizeBase = (u) => u.trim().replace(/\/+$/g, "").replace(/\/api\/v1$/i, "");
@@ -16,7 +17,7 @@ const MEDICINE_DETAIL_API = (batchId) => `${API_BASE}/api/v1/inventory/medicines
 
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
-// Predefined categories matching AddMedicine.jsx
+// Extended categories with QuickAddMedicine-specific fields
 const MEDICINE_CATEGORIES = [
   { id: 'tablet', name: 'Tablet', looseLabel: 'Strips', boxLabel: 'Boxes', perBoxLabel: 'Strips per Box', perBoxDefault: 10, perBoxField: 'strips_per_box' },
   { id: 'capsule', name: 'Capsule', looseLabel: 'Strips', boxLabel: 'Boxes', perBoxLabel: 'Strips per Box', perBoxDefault: 10, perBoxField: 'strips_per_box' },

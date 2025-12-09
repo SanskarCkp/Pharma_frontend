@@ -7,6 +7,7 @@ import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
 import QuickAddMedicine from "./QuickAddMedicine";
 import { useAlert } from "../ui/alert-provider";
+import { MEDICINE_CATEGORIES_SIMPLE } from "../../constants/medicineCategories";
 
 const LS_KEY = "medicines";
 const PAGE_SIZE = 500; // fetch size
@@ -16,7 +17,6 @@ const DEFAULT_LOCATION_ID = getDefaultLocationId();
 const API_GLOBAL = apiUrl("inventory/medicines/global/");
 const API_STOCK_SUMMARY = apiUrl("inventory/stock-summary/");
 const API_RACKS = apiUrl("inventory/rack-locations/");
-const API_CATEGORIES = apiUrl("catalog/categories/");
 const API_MEDICINE_DETAIL = (id) => apiUrl(`inventory/medicines/${id}/`);
 
 export default function MedicineInventory() {
@@ -60,16 +60,13 @@ export default function MedicineInventory() {
   useEffect(() => {
     async function loadMasters() {
       try {
-        const [racksRes, catRes] = await Promise.all([
-          authFetch(API_RACKS),
-          authFetch(API_CATEGORIES),
-        ]);
+        const racksRes = await authFetch(API_RACKS);
         const rackJson = await racksRes.json().catch(() => null);
-        const catJson = await catRes.json().catch(() => null);
         setRackOptions(Array.isArray(rackJson) ? rackJson : rackJson?.results || []);
-        setCategoryOptions(Array.isArray(catJson) ? catJson : catJson?.results || []);
+        // Use shared constant for categories instead of API
+        setCategoryOptions(MEDICINE_CATEGORIES_SIMPLE);
       } catch (err) {
-        console.warn("Failed to load rack/category masters", err);
+        console.warn("Failed to load rack masters", err);
       }
     }
     loadMasters();

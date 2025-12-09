@@ -6,25 +6,7 @@ import "../../inventory/inventory.css";
 import { authFetch } from "../../../api/http";
 import { getDefaultLocationId } from "../../../config/location";
 import { useAlert } from "../../ui/alert-provider";
-
-// Same categories as in AddMedicine component
-const MEDICINE_CATEGORIES = [
-  { id: 'tablet', name: 'Tablet' },
-  { id: 'capsule', name: 'Capsule' },
-  { id: 'syrup', name: 'Syrup/Suspension' },
-  { id: 'injection', name: 'Injection/Vial' },
-  { id: 'ointment', name: 'Ointment/Cream' },
-  { id: 'drops', name: 'Drops (Eye/Ear/Nasal)' },
-  { id: 'inhaler', name: 'Inhaler' },
-  { id: 'powder', name: 'Powder/Sachet' },
-  { id: 'gel', name: 'Gel' },
-  { id: 'spray', name: 'Spray' },
-  { id: 'lotion', name: 'Lotion/Solution' },
-  { id: 'shampoo', name: 'Shampoo' },
-  { id: 'soap', name: 'Soap/Bar' },
-  { id: 'bandage', name: 'Bandage/Dressing' },
-  { id: 'mask', name: 'Mask (Surgical/N95)' },
-];
+import { MEDICINE_CATEGORIES_SIMPLE as MEDICINE_CATEGORIES } from "../../../constants/medicineCategories";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 const DEFAULT_LOCATION_ID = getDefaultLocationId();

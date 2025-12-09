@@ -5,6 +5,7 @@ import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
 import { useAlert } from "../ui/alert-provider";
+import { MEDICINE_CATEGORIES_SIMPLE as MEDICINE_CATEGORIES } from "../../constants/medicineCategories";
 
 const PAYMENT_METHODS_URL = apiUrl("settings/payment-methods/");
 const INVENTORY_GLOBAL_URL = apiUrl("inventory/medicines/global/");
@@ -12,31 +13,6 @@ const MEDICINE_DETAIL_URL = (batchId) => apiUrl(`inventory/medicines/${batchId}/
 const INVOICES_URL = apiUrl("sales/invoices/");
 const CUSTOMERS_URL = apiUrl("customers/");
 const CUSTOMER_SEARCH_URL = apiUrl("customers/search-by-phone/");
-
-// Same categories as in AddMedicine component
-const MEDICINE_CATEGORIES = [
-  { id: 'tablet', name: 'Tablet' },
-  { id: 'capsule', name: 'Capsule' },
-  { id: 'syrup', name: 'Syrup/Suspension' },
-  { id: 'injection', name: 'Injection/Vial' },
-  { id: 'ointment', name: 'Ointment/Cream' },
-  { id: 'drops', name: 'Drops (Eye/Ear/Nasal)' },
-  { id: 'inhaler', name: 'Inhaler' },
-  { id: 'powder', name: 'Powder/Sachet' },
-  { id: 'gel', name: 'Gel' },
-  { id: 'spray', name: 'Spray' },
-  { id: 'lotion', name: 'Lotion/Solution' },
-  { id: 'shampoo', name: 'Shampoo' },
-  { id: 'soap', name: 'Soap/Bar' },
-  { id: 'bandage', name: 'Bandage/Dressing' },
-  { id: 'mask', name: 'Mask (Surgical/N95)' },
-  { id: 'gloves', name: 'Gloves' },
-  { id: 'cotton', name: 'Cotton/Gauze' },
-  { id: 'sanitizer', name: 'Hand Sanitizer' },
-  { id: 'thermometer', name: 'Thermometer' },
-  { id: 'supplement', name: 'Supplement/Vitamin' },
-  { id: 'other', name: 'Other/Miscellaneous' },
-];
 
 const HARDCODED_PAYMENT_METHODS = [
   { id: "cash", name: "Cash", type: "CASH" },

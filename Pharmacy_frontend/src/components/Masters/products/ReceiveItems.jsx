@@ -6,6 +6,7 @@ import "../../inventory/inventory.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
 import { useAlert } from "../../ui/alert-provider";
+import { MEDICINE_CATEGORIES_SIMPLE } from "../../../constants/medicineCategories";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -62,14 +63,8 @@ const ReceiveItems = () => {
           linesData = Array.isArray(linesJson) ? linesJson : linesJson?.lines || [];
         }
 
-        // 4️⃣ Categories
-        const categoryRes = await authFetch(
-          `${API_BASE_URL}/api/v1/catalog/categories/`
-        );
-        const categoryData = categoryRes.ok ? await categoryRes.json() : [];
-        setCategory(
-          Array.isArray(categoryData) ? categoryData : categoryData.results || []
-        );
+        // 4️⃣ Categories - Use shared constant instead of API
+        setCategory(MEDICINE_CATEGORIES_SIMPLE);
 
         // 5️⃣ Rack Locations
         const rackRes = await authFetch(
