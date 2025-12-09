@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Pill, Store, User, Bell } from "lucide-react";
+import { ArrowRight, Pill, Store, User, Bell, X } from "lucide-react";
 import { authFetch } from "../api/http";
 import "./topbar.css";
 
@@ -22,6 +22,7 @@ export default function Topbar() {
   const [expiryAlerts, setExpiryAlerts] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState(null);
+  const [dismissedNotifs, setDismissedNotifs] = useState(new Set());
 
   const searchRef = useRef(null);
   const notifRef = useRef(null);
@@ -225,7 +226,27 @@ export default function Topbar() {
     }
   };
 
-  const badgeCount = expiryAlerts.length;
+  const handleDismissNotif = (e, item) => {
+    e.stopPropagation();
+    const key = item.batch_lot_id || `${item.product_id}-${item.batch_no}`;
+    setDismissedNotifs((prev) => new Set([...prev, key]));
+  };
+
+  const handleNotifClick = (item) => {
+    if (item.batch_lot_id) {
+      navigate(`/inventory/medicines/${item.batch_lot_id}`);
+    } else if (item.product_id) {
+      navigate(`/inventory/medicines?product_id=${item.product_id}`);
+    }
+    setShowNotifications(false);
+  };
+
+  const visibleAlerts = expiryAlerts.filter((item) => {
+    const key = item.batch_lot_id || `${item.product_id}-${item.batch_no}`;
+    return !dismissedNotifs.has(key);
+  });
+
+  const badgeCount = visibleAlerts.length;
 
   // ========================================================================
 
@@ -369,54 +390,51 @@ export default function Topbar() {
                 <div className="notif-empty">⚠ {notifError}</div>
               )}
 
-              {!notifLoading && !notifError && expiryAlerts.length === 0 && (
+              {!notifLoading && !notifError && visibleAlerts.length === 0 && (
                 <div className="notif-empty">No expiry alerts</div>
               )}
 
-              {!notifLoading && !notifError && expiryAlerts.length > 0 && (
+              {!notifLoading && !notifError && visibleAlerts.length > 0 && (
                 <ul className="notif-list">
-                  {expiryAlerts.map((item) => (
-                    <li
-                      key={
-                        item.batch_lot_id ||
-                        `${item.product_id}-${item.batch_no}`
-                      }
-                      className={`notif-item notif-item--${(item.status || "")
-                        .toLowerCase()}`}
-                    >
-                      <div className="notif-title">
-                        {item.status === "CRITICAL"
-                          ? "Critical expiry"
-                          : item.status === "WARNING"
-                          ? "Expiry warning"
-                          : "Expiry"}
-                      </div>
-                      <div className="notif-body">
-                        {item.product_name ? (
-                          <>
-                            <strong>{item.product_name}</strong> –{" "}
-                          </>
-                        ) : (
-                          <>
-                            Product ID:{" "}
-                            <strong>{item.product_id}</strong> –{" "}
-                          </>
-                        )}
-                        Batch <strong>{item.batch_no}</strong> expires on{" "}
-                        <strong>{formatDate(item.expiry_date)}</strong>
-                        {item.days_left != null && (
-                          <>
-                            {" "}
-                            ({item.days_left} day
-                            {item.days_left === 1 ? "" : "s"} left)
-                          </>
-                        )}
-                      </div>
-                      <div className="notif-meta">
-                        Qty: {item.quantity_base}
-                      </div>
-                    </li>
-                  ))}
+                  {visibleAlerts.map((item) => {
+                    const statusLabel = item.status === "CRITICAL"
+                      ? "Critical"
+                      : item.status === "WARNING"
+                      ? "Warning"
+                      : "Expiry";
+                    const productName = item.product_name || `Product ${item.product_id}`;
+                    const daysText = item.days_left != null 
+                      ? `${item.days_left} day${item.days_left === 1 ? "" : "s"} left`
+                      : "";
+                    const expiryDate = formatDate(item.expiry_date);
+                    
+                    return (
+                      <li
+                        key={
+                          item.batch_lot_id ||
+                          `${item.product_id}-${item.batch_no}`
+                        }
+                        className={`notif-item notif-item--${(item.status || "")
+                          .toLowerCase()}`}
+                        onClick={() => handleNotifClick(item)}
+                      >
+                        <div className="notif-content">
+                          <div className="notif-text">
+                            <span className="notif-status">{statusLabel}:</span>{" "}
+                            <strong>{productName}</strong> - Batch {item.batch_no} expires {expiryDate}
+                            {daysText && ` (${daysText})`}
+                          </div>
+                        </div>
+                        <button
+                          className="notif-close"
+                          onClick={(e) => handleDismissNotif(e, item)}
+                          aria-label="Dismiss notification"
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

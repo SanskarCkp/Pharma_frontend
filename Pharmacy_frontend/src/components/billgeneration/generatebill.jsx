@@ -13,6 +13,31 @@ const INVOICES_URL = apiUrl("sales/invoices/");
 const CUSTOMERS_URL = apiUrl("customers/");
 const CUSTOMER_SEARCH_URL = apiUrl("customers/search-by-phone/");
 
+// Same categories as in AddMedicine component
+const MEDICINE_CATEGORIES = [
+  { id: 'tablet', name: 'Tablet' },
+  { id: 'capsule', name: 'Capsule' },
+  { id: 'syrup', name: 'Syrup/Suspension' },
+  { id: 'injection', name: 'Injection/Vial' },
+  { id: 'ointment', name: 'Ointment/Cream' },
+  { id: 'drops', name: 'Drops (Eye/Ear/Nasal)' },
+  { id: 'inhaler', name: 'Inhaler' },
+  { id: 'powder', name: 'Powder/Sachet' },
+  { id: 'gel', name: 'Gel' },
+  { id: 'spray', name: 'Spray' },
+  { id: 'lotion', name: 'Lotion/Solution' },
+  { id: 'shampoo', name: 'Shampoo' },
+  { id: 'soap', name: 'Soap/Bar' },
+  { id: 'bandage', name: 'Bandage/Dressing' },
+  { id: 'mask', name: 'Mask (Surgical/N95)' },
+  { id: 'gloves', name: 'Gloves' },
+  { id: 'cotton', name: 'Cotton/Gauze' },
+  { id: 'sanitizer', name: 'Hand Sanitizer' },
+  { id: 'thermometer', name: 'Thermometer' },
+  { id: 'supplement', name: 'Supplement/Vitamin' },
+  { id: 'other', name: 'Other/Miscellaneous' },
+];
+
 const HARDCODED_PAYMENT_METHODS = [
   { id: "cash", name: "Cash", type: "CASH" },
   { id: "upi", name: "UPI", type: "UPI" },
@@ -69,6 +94,8 @@ export default function GenerateBill() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedUomKey, setSelectedUomKey] = useState("BASE");
@@ -98,6 +125,14 @@ export default function GenerateBill() {
   useEffect(() => {
     setPaymentMethods(HARDCODED_PAYMENT_METHODS);
   }, []);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Search customers by phone number
   useEffect(() => {
@@ -147,8 +182,11 @@ export default function GenerateBill() {
       try {
         const params = new URLSearchParams();
         if (locationId) params.set("location_id", String(locationId));
-        if (searchTerm) params.set("q", searchTerm.trim());
-        params.set("status", "IN_STOCK");
+        if (debouncedSearchTerm) params.set("q", debouncedSearchTerm);
+        if (categoryFilter && categoryFilter !== "All") {
+          params.set("category_id", categoryFilter);
+        }
+        // Remove status filter to show all medicines from inventory
         const res = await authFetch(`${INVENTORY_GLOBAL_URL}?${params.toString()}`, { signal: controller.signal });
         if (!res.ok) {
           throw new Error(`Failed to load inventory (${res.status})`);
@@ -166,6 +204,7 @@ export default function GenerateBill() {
             base_uom: row.uom || "units",
             rack: row.rack || "",
             status: row.status,
+            category: row.category?.name || row.category_name || "",
           }))
         );
       } catch (err) {
@@ -180,7 +219,7 @@ export default function GenerateBill() {
 
     fetchProducts();
     return () => controller.abort();
-  }, [searchTerm, inventoryRefreshTick, locationId]);
+  }, [debouncedSearchTerm, categoryFilter, inventoryRefreshTick, locationId]);
 
   const fetchBatchDetail = async (batchId) => {
     const params = new URLSearchParams();
@@ -579,13 +618,39 @@ export default function GenerateBill() {
             <h3>Select Medicines</h3>
             <span className="hint">Search & add to cart</span>
           </header>
-          <input
-            className="input"
-            type="text"
-            placeholder="Search medicines..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <div style={{ display: "flex", gap: "12px", marginBottom: "12px", flexWrap: "wrap" }}>
+            <div style={{ flex: "2", minWidth: "250px" }}>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "500", color: "#374151" }}>
+                Search Medicines
+              </label>
+              <input
+                className="input"
+                type="text"
+                placeholder="Search medicines..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: "1", minWidth: "200px" }}>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", fontWeight: "500", color: "#374151" }}>
+                Category Filter
+              </label>
+              <select
+                className="input"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={{ width: "100%" }}
+              >
+                <option value="All">All Categories</option>
+                {MEDICINE_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="list-scroll">
             {productsLoading && <p>Loading medicines...</p>}
             {!productsLoading && productsError && <p className="text-error">{productsError}</p>}
@@ -671,7 +736,7 @@ export default function GenerateBill() {
           )}
 
           {cart.length === 0 ? (
-            <p className="text-muted">No items added.</p>
+            <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", padding: "20px", textAlign: "center" }}>No items added.</p>
           ) : (
             <table className="cart-table">
               <thead>

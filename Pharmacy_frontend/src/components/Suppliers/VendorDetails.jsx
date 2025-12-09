@@ -255,12 +255,6 @@ const VendorDetails = () => {
             >
               Create Order
             </button>
-            <button
-              className="Supplier-action-btn"
-              onClick={() => navigate(`/masters/products/Supplier-catalog/${id}`, { state: { Supplier } })}
-            >
-              View Catalog
-            </button>
             {Supplier.supplier_type === "ONLINE" && (
               <button
                 className="Supplier-action-btn"

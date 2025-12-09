@@ -49,10 +49,6 @@ const CreateOrder = () => {
 
   const [totalItems, setTotalItems] = useState(0);
 
-  // ⭐ Popup state
-  const [popupMessage, setPopupMessage] = useState("");
-  const [showPopup, setShowPopup] = useState(false);
-
   useEffect(() => {
     if (!Supplier) {
       navigate("/suppliers");
@@ -135,7 +131,7 @@ const CreateOrder = () => {
   );
 
     const payload = {
-      Supplier: Number(vendorData.id),
+      vendor: Number(vendorData.id),
       location: DEFAULT_LOCATION_ID,
       order_date: orderDate,
       expected_date: expectedDate || null,
@@ -154,17 +150,18 @@ const CreateOrder = () => {
       if (!res.ok) {
         const err = await res.json();
         console.log("❌ PO Create Failed:", err);   // Print full backend error
-        alert(JSON.stringify(err, null, 2));        // Show full error in popup
+        showAlert(JSON.stringify(err, null, 2), "Error");
         return;
       }
 
-
-      setPopupMessage("Order created successfully!");
-      setShowPopup(true);
+      // Order created successfully - navigate to purchase orders page with supplier info
+      showAlert("Order created successfully!", "Success");
+      navigate("/masters/products/purchase-orders", {
+        state: { Supplier: vendorData }
+      });
     } catch (err) {
       console.error("Order error:", err);
-      setPopupMessage("Error creating order");
-      setShowPopup(true);
+      showAlert("Error creating order", "Error");
     }
   };
   
@@ -330,21 +327,6 @@ const CreateOrder = () => {
           </div>
         </div>
       </div>
-
-      {/* ⭐ Popup */}
-      {showPopup && (
-        <div className="custom-popup-overlay">
-          <div className="custom-popup-box">
-            <h3>{popupMessage}</h3>
-            <button
-              className="submit-btn"
-              onClick={() => setShowPopup(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
