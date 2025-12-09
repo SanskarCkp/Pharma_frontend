@@ -16,7 +16,6 @@ const EditProduct = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    hsn: "",
     schedule: "",
     pack_size: "",
     manufacturer: "",
@@ -88,16 +87,6 @@ const EditProduct = () => {
               value={formData.name}
               onChange={handleChange}
               required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>HSN:</label>
-            <input
-              type="text"
-              name="hsn"
-              value={formData.hsn}
-              onChange={handleChange}
             />
           </div>
         </div>

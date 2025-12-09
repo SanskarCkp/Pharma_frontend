@@ -15,7 +15,6 @@ const AddProduct = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    hsn: "",
     schedule: "",
     pack_size: "",
     manufacturer: "",
@@ -86,10 +85,6 @@ const AddProduct = () => {
           <div className="form-group">
             <label>Name:</label>
             <input type="text" name="name" value={formData.name} onChange={handleChange} required />
-          </div>
-          <div className="form-group">
-            <label>HSN:</label>
-            <input type="text" name="hsn" value={formData.hsn} onChange={handleChange} />
           </div>
         </div>
 

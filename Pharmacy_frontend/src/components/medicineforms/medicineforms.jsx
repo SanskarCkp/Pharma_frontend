@@ -172,8 +172,8 @@ export default function MedicineForms() {
       {/* Header */}
       <div className={styles.mfHeaderCard}>
         <div>
-          <h2>HSN Code</h2>
-          <p>Manage all available HSN Code</p>
+          <h2>Medicine Forms</h2>
+          <p>Manage all available Medicine Forms</p>
         </div>
         <button className={styles.mfAdd} onClick={openAdd} disabled={loading || saving}>
           <Plus size={18} />

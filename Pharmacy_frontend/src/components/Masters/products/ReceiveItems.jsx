@@ -108,7 +108,6 @@ const ReceiveItems = () => {
                 units_per_pack: p.units_per_pack || "",
                 base_uom: p.base_uom || "",
                 selling_uom: p.selling_uom || "",
-                hsn_code: p.hsn_code || "",
                 gst_percentage: p.gst_percentage || "",
                 mrp: p.mrp || "",
                 ptr: p.ptr || "",
@@ -164,7 +163,6 @@ const ReceiveItems = () => {
               batch: line.batch_no || "",
               medicine_form: line.medicine_form || "",
               strength: line.strength || "",
-              hsn_code: line.hsn_code || "",
               gst_percentage: line.gst_percentage || "",
               grn_received_at: line.grn_received_at,
             };
@@ -208,7 +206,6 @@ const ReceiveItems = () => {
             strength: last?.strength || prodMaster.strength || "",
             quantity: last?.quantity || prodMaster.quantity || "",
             units_per_pack: last?.units_per_pack || prodMaster.units_per_pack || "",
-            hsn_code: last?.hsn_code || prodMaster.hsn_code || "",
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
             category: last?.category || "",
             mfg_date: last?.mfg_date || "",
@@ -326,7 +323,6 @@ const ReceiveItems = () => {
         medicine_form: item.medicine_form || "",
         strength: item.strength || "",
         quantity: item.quantity || "",
-        hsn_code: item.hsn_code || "",
         gst_percentage: item.gst_percentage || "",
       }));
 
@@ -371,7 +367,7 @@ const ReceiveItems = () => {
       }
 
       // Update catalog product master for each received line (PATCH product)
-      // This ensures the product master gets medicine_form, base_uom, selling_uom, hsn, gst, mrp updates
+      // This ensures the product master gets medicine_form, base_uom, selling_uom, gst, mrp updates
       await Promise.all(
         grnLines.map(async (line) => {
           try {
@@ -381,7 +377,6 @@ const ReceiveItems = () => {
               ...(line.medicine_form ? { medicine_form: line.medicine_form } : {}),
               ...(line.strength ? { strength: line.strength } : {}),
               ...(line.quantity ? { quantity: line.quantity } : {}),
-              ...(line.hsn_code ? { hsn_code: line.hsn_code } : {}),
               ...(line.gst_percentage ? { gst_percentage: line.gst_percentage } : {}),
               ...(line.mrp ? { mrp: line.mrp } : {}),
             };
@@ -563,7 +558,6 @@ const ReceiveItems = () => {
                 <th>Strength</th>
                 <th>Quantity</th>
                 <th>Units / Pack</th>
-                <th>HSN Code</th>
                 <th>GST %</th>
 
                 <th>Category</th>
@@ -664,15 +658,6 @@ const ReceiveItems = () => {
                         min="0"
                         value={item.units_per_pack || ""}
                         onChange={(e) => handleItemEdit(idx, "units_per_pack", e.target.value)}
-                      />
-                    </td>
-
-                    {/* HSN */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.hsn_code || ""}
-                        onChange={(e) => handleItemEdit(idx, "hsn_code", e.target.value)}
                       />
                     </td>
 

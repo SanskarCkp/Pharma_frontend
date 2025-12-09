@@ -74,7 +74,6 @@
   cursor: pointer;
 }
 
-/* Orange Gradient for HSN Code */
 .master-card.orange {
   background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);

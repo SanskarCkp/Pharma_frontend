@@ -237,7 +237,6 @@ function AppLayout() {
               path="/unitofmeasurement"
               element={<UnitOfMeasurement />}
             />
-            <Route path="/hsncode" element={<MedicineForms />} />
             <Route path="/medicineforms" element={<MedicineForms />} />
             <Route
               path="/medicinecategories"
