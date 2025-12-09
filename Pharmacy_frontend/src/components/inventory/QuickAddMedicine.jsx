@@ -711,21 +711,101 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
           const batchDetail = await batchDetailRes.json().catch(() => null);
           
           if (batchDetail && batchDetail.batch) {
-          // Calculate new quantity: add the entered quantity to current quantity
-          // Use current_stock_base to calculate current quantity in UI units
-          // This ensures we're adding to actual stock, not initial quantity
+          // Calculate new quantity: add the entered quantity to CURRENT stock, not initial quantity
+          // Get current stock on hand in base units
           const currentStockBase = parseFloat(batchDetail.inventory?.stock_on_hand_base || batchDetail.batch.current_stock_base || 0);
-          const currentQty = parseFloat(batchDetail.batch.quantity) || 0; // Fallback to initial quantity
           const currentStockUnit = batchDetail.batch.stock_unit || "loose";
           const qtyChange = Number(quantity);
           
+          // Calculate current quantity in UI units from current stock base
+          // This ensures we're adding to actual stock, not initial quantity
+          let currentQtyUI = 0;
+          if (currentStockBase > 0 && stockUnit === currentStockUnit) {
+            // Try to convert current stock base back to UI units
+            // Get packaging info from selected medicine, form state, or batch detail
+            const med = selectedMedicine || {};
+            let factor = 1;
+            
+            if (stockUnit === "box") {
+              // For box: base = quantity * tablets_per_strip * strips_per_box
+              const tabletsPerStrip = med.tablets_per_strip || med.capsules_per_strip || packagingFields.tablets_per_strip || packagingFields.capsules_per_strip || 1;
+              const stripsPerBox = med.strips_per_box || packagingFields.strips_per_box || 1;
+              factor = Number(tabletsPerStrip) * Number(stripsPerBox);
+            } else if (stockUnit === "loose") {
+              // For loose: base = quantity * tablets_per_strip (or similar per-unit field)
+              // Check category to determine the right field
+              const cat = category || med.category;
+              if (cat === "tablet" || cat === "capsule" || cat === "supplement") {
+                factor = med.tablets_per_strip || med.capsules_per_strip || packagingFields.tablets_per_strip || packagingFields.capsules_per_strip || 1;
+              } else if (cat === "syrup" || cat === "drops" || cat === "spray" || cat === "lotion" || cat === "shampoo" || cat === "sanitizer") {
+                factor = med.ml_per_bottle || packagingFields.ml_per_bottle || 1;
+              } else if (cat === "injection") {
+                factor = med.ml_per_vial || packagingFields.ml_per_vial || 1;
+              } else if (cat === "ointment" || cat === "gel") {
+                factor = med.grams_per_tube || packagingFields.grams_per_tube || 1;
+              } else if (cat === "powder") {
+                factor = med.grams_per_sachet || packagingFields.grams_per_sachet || 1;
+              } else if (cat === "soap") {
+                factor = med.grams_per_bar || packagingFields.grams_per_bar || 1;
+              } else if (cat === "inhaler") {
+                factor = med.doses_per_inhaler || packagingFields.doses_per_inhaler || 1;
+              } else {
+                // Default fallback
+                factor = med.pieces_per_pack || packagingFields.pieces_per_pack || 1;
+              }
+              factor = Number(factor) || 1;
+            }
+            
+            if (factor > 0 && factor !== 1) {
+              currentQtyUI = currentStockBase / factor;
+            } else if (factor === 1) {
+              // If factor is 1, current stock base is already in UI units
+              currentQtyUI = currentStockBase;
+            }
+          }
+          
+          // If we couldn't calculate current quantity or got invalid result, 
+          // we need to be careful - don't use initial quantity as it might be wrong
+          // Instead, if conversion failed, we'll let backend handle it by sending just the change
+          if (!Number.isFinite(currentQtyUI) || currentQtyUI < 0) {
+            console.warn("Quick Add: Could not convert current stock base to UI units, will let backend handle calculation");
+            // If conversion fails and stock units match, send just the change amount
+            // Backend will add it to current stock
+            if (stockUnit === currentStockUnit) {
+              // We can't calculate properly, so send a special flag or let backend calculate
+              // For now, try to use a reasonable estimate
+              currentQtyUI = 0; // Will trigger fallback logic
+            }
+          }
+          
+          // Only use initial quantity as last resort if current stock is 0
+          if ((currentQtyUI === 0 || !Number.isFinite(currentQtyUI)) && currentStockBase === 0) {
+            currentQtyUI = parseFloat(batchDetail.batch.quantity) || 0;
+          }
+          
           // Always add the entered quantity to current quantity when stock units match
-          // This ensures we're adding stock, not replacing it
+          // For loose stock, we need to ensure we're adding, not replacing
           let newQty;
           if (stockUnit === currentStockUnit) {
             // Same stock unit: add quantities directly
-            // Use currentQty which should reflect current stock if available
-            newQty = currentQty + qtyChange;
+            // Use calculated currentQtyUI if available, otherwise use initial quantity as fallback
+            if (currentQtyUI > 0 && Number.isFinite(currentQtyUI)) {
+              newQty = currentQtyUI + qtyChange;
+            } else {
+              // Fallback: use initial quantity (might not be accurate if stock was sold)
+              // But backend will use current_stock_base to calculate difference correctly
+              const initialQty = parseFloat(batchDetail.batch.quantity) || 0;
+              newQty = initialQty + qtyChange;
+            }
+            console.log("Quick Add: Current stock calculation", {
+              currentStockBase,
+              currentQtyUI,
+              initialQty: parseFloat(batchDetail.batch.quantity) || 0,
+              qtyChange,
+              newQty,
+              stockUnit,
+              currentStockUnit
+            });
           } else {
             // Different stock unit: treat entered quantity as addition
             // Backend will calculate from current stock on hand
