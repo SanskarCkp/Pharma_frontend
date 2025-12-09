@@ -598,6 +598,219 @@ const ReceiveItems = () => {
     };
   }
 
+  // Helper function to calculate units_per_pack from packaging fields
+  const calculateUnitsPerPack = (item) => {
+    const category = item.category;
+    const stockUnit = item.stock_unit;
+    
+    // If user provided units_per_pack directly, use it
+    if (item.units_per_pack && Number(item.units_per_pack) > 0) {
+      return Number(item.units_per_pack);
+    }
+    
+    if (stockUnit === "box") {
+      // For box: calculate total units in a box
+      if (category === "tablet" || category === "capsule" || category === "supplement") {
+        const perStrip = Number(item.tablets_per_strip || item.capsules_per_strip || 0);
+        const stripsPerBox = Number(item.strips_per_box || 0);
+        if (perStrip > 0 && stripsPerBox > 0) {
+          return perStrip * stripsPerBox;
+        }
+      } else if (category === "syrup" || category === "drops" || category === "spray" || category === "lotion" || category === "shampoo" || category === "sanitizer") {
+        const mlPerBottle = Number(item.ml_per_bottle || 0);
+        const bottlesPerBox = Number(item.bottles_per_box || 0);
+        if (mlPerBottle > 0 && bottlesPerBox > 0) {
+          return mlPerBottle * bottlesPerBox;
+        }
+      } else if (category === "injection") {
+        const mlPerVial = Number(item.ml_per_vial || 0);
+        const vialsPerBox = Number(item.vials_per_box || 0);
+        if (mlPerVial > 0 && vialsPerBox > 0) {
+          return mlPerVial * vialsPerBox;
+        }
+      } else if (category === "ointment" || category === "gel") {
+        const gramsPerTube = Number(item.grams_per_tube || 0);
+        const tubesPerBox = Number(item.tubes_per_box || 0);
+        if (gramsPerTube > 0 && tubesPerBox > 0) {
+          return gramsPerTube * tubesPerBox;
+        }
+      } else if (category === "powder") {
+        const gramsPerSachet = Number(item.grams_per_sachet || 0);
+        const sachetsPerBox = Number(item.sachets_per_box || 0);
+        if (gramsPerSachet > 0 && sachetsPerBox > 0) {
+          return gramsPerSachet * sachetsPerBox;
+        }
+      } else if (category === "soap") {
+        const gramsPerBar = Number(item.grams_per_bar || 0);
+        const barsPerBox = Number(item.bars_per_box || 0);
+        if (gramsPerBar > 0 && barsPerBox > 0) {
+          return gramsPerBar * barsPerBox;
+        }
+      } else if (category === "bandage" || category === "mask" || category === "thermometer") {
+        const piecesPerPack = Number(item.pieces_per_pack || 0);
+        const packsPerBox = Number(item.packs_per_box || 0);
+        if (piecesPerPack > 0 && packsPerBox > 0) {
+          return piecesPerPack * packsPerBox;
+        }
+      } else if (category === "gloves") {
+        const pairsPerPack = Number(item.pairs_per_pack || 0);
+        const packsPerBox = Number(item.packs_per_box || 0);
+        if (pairsPerPack > 0 && packsPerBox > 0) {
+          return pairsPerPack * packsPerBox;
+        }
+      } else if (category === "cotton") {
+        const gramsPerPack = Number(item.grams_per_pack || 0);
+        const packsPerBox = Number(item.packs_per_box || 0);
+        if (gramsPerPack > 0 && packsPerBox > 0) {
+          return gramsPerPack * packsPerBox;
+        }
+      } else if (category === "inhaler") {
+        const dosesPerInhaler = Number(item.doses_per_inhaler || 0);
+        const inhalersPerBox = Number(item.inhalers_per_box || 0);
+        if (dosesPerInhaler > 0 && inhalersPerBox > 0) {
+          return dosesPerInhaler * inhalersPerBox;
+        }
+      } else {
+        // Generic/other
+        const unitsPerPack = Number(item.units_per_pack || 0);
+        const packsPerBox = Number(item.packs_per_box || 0);
+        if (unitsPerPack > 0 && packsPerBox > 0) {
+          return unitsPerPack * packsPerBox;
+        }
+      }
+    } else {
+      // For loose: calculate units per strip/bottle/vial/etc
+      if (category === "tablet" || category === "capsule" || category === "supplement") {
+        const val = Number(item.tablets_per_strip || item.capsules_per_strip || 0);
+        if (val > 0) return val;
+      } else if (category === "syrup" || category === "drops" || category === "spray" || category === "lotion" || category === "shampoo" || category === "sanitizer") {
+        const val = Number(item.ml_per_bottle || 0);
+        if (val > 0) return val;
+      } else if (category === "injection") {
+        const val = Number(item.ml_per_vial || 0);
+        if (val > 0) return val;
+      } else if (category === "ointment" || category === "gel") {
+        const val = Number(item.grams_per_tube || 0);
+        if (val > 0) return val;
+      } else if (category === "powder") {
+        const val = Number(item.grams_per_sachet || 0);
+        if (val > 0) return val;
+      } else if (category === "soap") {
+        const val = Number(item.grams_per_bar || 0);
+        if (val > 0) return val;
+      } else if (category === "inhaler") {
+        const val = Number(item.doses_per_inhaler || 0);
+        if (val > 0) return val;
+      }
+    }
+    
+    // Default fallback - return 1 if calculation fails
+    return 1;
+  };
+
+  // Helper function to determine base_unit and pack_unit from category
+  const getUnitNames = (category, stockUnit) => {
+    // Base unit is the smallest unit (tablet, ml, gram, etc.)
+    // Pack unit is the selling unit (strip, bottle, box, etc.)
+    
+    if (category === "tablet" || category === "capsule" || category === "supplement") {
+      return { base_unit: "TABLET", pack_unit: stockUnit === "box" ? "BOX" : "STRIP" };
+    } else if (category === "syrup" || category === "drops" || category === "spray" || category === "lotion" || category === "shampoo" || category === "sanitizer") {
+      return { base_unit: "ML", pack_unit: stockUnit === "box" ? "BOX" : "BOTTLE" };
+    } else if (category === "injection") {
+      return { base_unit: "ML", pack_unit: stockUnit === "box" ? "BOX" : "VIAL" };
+    } else if (category === "ointment" || category === "gel") {
+      return { base_unit: "GRAM", pack_unit: stockUnit === "box" ? "BOX" : "TUBE" };
+    } else if (category === "powder") {
+      return { base_unit: "GRAM", pack_unit: stockUnit === "box" ? "BOX" : "SACHET" };
+    } else if (category === "soap") {
+      return { base_unit: "GRAM", pack_unit: stockUnit === "box" ? "BOX" : "BAR" };
+    } else if (category === "inhaler") {
+      return { base_unit: "DOSE", pack_unit: stockUnit === "box" ? "BOX" : "INHALER" };
+    } else {
+      return { base_unit: "UNIT", pack_unit: stockUnit === "box" ? "BOX" : "PACK" };
+    }
+  };
+
+  // Helper function to build new_product payload
+  const buildNewProductPayload = (item) => {
+    const categoryIdOrName = item.category;
+    const stockUnit = item.stock_unit;
+    const units = getUnitNames(categoryIdOrName, stockUnit);
+    const unitsPerPack = calculateUnitsPerPack(item);
+    
+    // Get medicine_form ID (could be object with id, or just ID)
+    let medicineFormId = null;
+    if (item.medicine_form) {
+      if (typeof item.medicine_form === "object" && item.medicine_form.id) {
+        medicineFormId = item.medicine_form.id;
+      } else if (typeof item.medicine_form === "number" || (typeof item.medicine_form === "string" && !isNaN(item.medicine_form))) {
+        medicineFormId = Number(item.medicine_form);
+      } else if (typeof item.medicine_form === "string") {
+        // Try to find by name in medicineForms list
+        const foundForm = medicineForms.find(f => 
+          f.name?.toLowerCase() === item.medicine_form.toLowerCase() ||
+          f.id === item.medicine_form
+        );
+        medicineFormId = foundForm ? foundForm.id : null;
+      }
+    }
+
+    // Ensure units_per_pack is calculated and valid
+    const finalUnitsPerPack = unitsPerPack > 0 ? unitsPerPack : 1;
+    
+    // For category: Send the string ID (e.g., "tablet") and let backend map it to category name
+    // The backend _create_or_update_product_from_payload will handle the mapping
+    // Don't try to convert to numeric ID here - backend handles both string and numeric
+    const categoryToSend = categoryIdOrName || undefined;
+
+    const payload = {
+      name: item.product_name || item.requested_name || "Unknown Product",
+      base_unit: units.base_unit,
+      pack_unit: units.pack_unit,
+      units_per_pack: finalUnitsPerPack, // This is REQUIRED - ensure it's always a positive number
+      mrp: Number(item.mrp || 0),
+      medicine_form: medicineFormId || undefined, // Send ID if available, otherwise undefined
+      category: categoryToSend, // Send string ID (e.g., "tablet") - backend will map it
+      dosage_strength: item.strength || "",
+      gst_percent: Number(item.gst_percentage || 0),
+      // Include all packaging fields
+      tablets_per_strip: item.tablets_per_strip ? Number(item.tablets_per_strip) : undefined,
+      capsules_per_strip: item.capsules_per_strip ? Number(item.capsules_per_strip) : undefined,
+      strips_per_box: item.strips_per_box ? Number(item.strips_per_box) : undefined,
+      ml_per_bottle: item.ml_per_bottle ? Number(item.ml_per_bottle) : undefined,
+      bottles_per_box: item.bottles_per_box ? Number(item.bottles_per_box) : undefined,
+      ml_per_vial: item.ml_per_vial ? Number(item.ml_per_vial) : undefined,
+      vials_per_box: item.vials_per_box ? Number(item.vials_per_box) : undefined,
+      grams_per_tube: item.grams_per_tube ? Number(item.grams_per_tube) : undefined,
+      tubes_per_box: item.tubes_per_box ? Number(item.tubes_per_box) : undefined,
+      doses_per_inhaler: item.doses_per_inhaler ? Number(item.doses_per_inhaler) : undefined,
+      inhalers_per_box: item.inhalers_per_box ? Number(item.inhalers_per_box) : undefined,
+      grams_per_sachet: item.grams_per_sachet ? Number(item.grams_per_sachet) : undefined,
+      sachets_per_box: item.sachets_per_box ? Number(item.sachets_per_box) : undefined,
+      grams_per_bar: item.grams_per_bar ? Number(item.grams_per_bar) : undefined,
+      bars_per_box: item.bars_per_box ? Number(item.bars_per_box) : undefined,
+      pieces_per_pack: item.pieces_per_pack ? Number(item.pieces_per_pack) : undefined,
+      packs_per_box: item.packs_per_box ? Number(item.packs_per_box) : undefined,
+      pairs_per_pack: item.pairs_per_pack ? Number(item.pairs_per_pack) : undefined,
+      grams_per_pack: item.grams_per_pack ? Number(item.grams_per_pack) : undefined,
+    };
+
+    // Remove undefined values (but keep units_per_pack even if it's 1)
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined && key !== "units_per_pack") {
+        delete payload[key];
+      }
+    });
+
+    // Final validation - ensure units_per_pack is present and valid
+    if (!payload.units_per_pack || payload.units_per_pack <= 0) {
+      payload.units_per_pack = 1; // Fallback to 1 if calculation failed
+    }
+
+    return payload;
+  };
+
   // Only submit nonzero pack lines
   const handleCompleteReceiving = async () => {
     if (!purchaseOrder || !loggedInUser) {
@@ -611,6 +824,19 @@ const ReceiveItems = () => {
     itemsReceived.forEach((item) => {
       const receivedQty = Number(item.received_packs) || 0;
       if (receivedQty > 0) {
+        // Validate required fields for new products
+        if (!item.product_id) {
+          if (!item.category) {
+            validationErrors.push(`${item.product_name}: Category is required for new products`);
+          }
+          if (!item.stock_unit) {
+            validationErrors.push(`${item.product_name}: Stock unit type is required for new products`);
+          }
+          if (!item.mrp || Number(item.mrp) <= 0) {
+            validationErrors.push(`${item.product_name}: MRP is required for new products`);
+          }
+        }
+        
         const rowKey = `${item.po_line}_${item.batch || ""}`;
         const prevReceived = grnReceivedMap[rowKey] || 0;
         const totalOrdered = item.ordered || 0;
@@ -631,25 +857,40 @@ const ReceiveItems = () => {
 
     const grnLines = itemsReceived
       .filter((item) => Number(item.received_packs) > 0)
-      .map((item) => ({
-        po_line: item.po_line,
-        product: item.product_id,
-        batch_no: item.batch,
-        category: item.category || "",
-        mfg_date: item.mfg_date || null,
-        expiry_date: item.expiry_date || null,
-        qty_packs_received: Number(item.received_packs || 0),
-        qty_base_received: Number(item.received_base || 0),
-        qty_base_damaged: 0, // Removed damaged field
-        unit_cost: Number(item.unit_cost || 0),
-        mrp: Number(item.mrp || 0),
-        rack_no: item.rack_no || "",
-        units_per_pack: item.units_per_pack ? Number(item.units_per_pack) : null,
-        // include the new fields so GRN entry contains them
-        strength: item.strength || "",
-        quantity: item.quantity || "",
-        gst_percentage: item.gst_percentage || "",
-      }));
+      .map((item) => {
+        // Calculate qty_base_received from received_packs and packaging
+        let qtyBaseReceived = Number(item.received_base || 0);
+        if (!qtyBaseReceived && item.received_packs) {
+          const unitsPerPack = calculateUnitsPerPack(item);
+          qtyBaseReceived = Number(item.received_packs) * unitsPerPack;
+        }
+
+        const line = {
+          po_line: item.po_line,
+          product: item.product_id || null,
+          batch_no: item.batch,
+          category: item.category || "",
+          mfg_date: item.mfg_date || null,
+          expiry_date: item.expiry_date || null,
+          qty_packs_received: Number(item.received_packs || 0),
+          qty_base_received: qtyBaseReceived,
+          qty_base_damaged: Number(item.damaged_base || 0),
+          unit_cost: Number(item.unit_cost || 0),
+          mrp: Number(item.mrp || 0),
+          rack_no: item.rack_no || "",
+          units_per_pack: item.units_per_pack ? Number(item.units_per_pack) : null,
+          strength: item.strength || "",
+          quantity: item.quantity || "",
+          gst_percentage: item.gst_percentage || "",
+        };
+
+        // If product doesn't exist, include new_product payload
+        if (!item.product_id) {
+          line.new_product = buildNewProductPayload(item);
+        }
+
+        return line;
+      });
 
     if (grnLines.length === 0) {
       showAlert("No items entered!", "Error");
