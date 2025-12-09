@@ -9,19 +9,18 @@ import "../reports/ExpiryReport.css";
 const EXPIRY_ALERTS_API = apiUrl("inventory/expiry-alerts/");
 const SETTINGS_API = apiUrl("settings/app/");
 
-const STATUS_ORDER = ["all", "critical", "warning", "safe"];
+const STATUS_ORDER = ["all", "warning","critical"];
 const STATUS_LABEL = {
   all: "All",
   critical: "Critical",
   warning: "Warning",
-  safe: "Safe",
 };
 
 export default function ExpiryAlerts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
-  const [summary, setSummary] = useState({ critical: 0, warning: 0, safe: 0 });
+  const [summary, setSummary] = useState({ critical: 0, warning: 0 });
   const [thresholds, setThresholds] = useState({ critical: 30, warning: 60 });
   const [bucket, setBucket] = useState("all");
 
@@ -55,7 +54,7 @@ export default function ExpiryAlerts() {
       if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
       const data = await res.json();
       setItems(data.items || []);
-      setSummary(data.summary || { critical: 0, warning: 0, safe: 0 });
+      setSummary(data.summary || { critical: 0, warning: 0 });
     } catch (err) {
       setError(err.message || "Unable to load expiry data");
     } finally {
@@ -92,14 +91,6 @@ export default function ExpiryAlerts() {
       <div className="er-wrap">
         <div className="er-kpis">
           <div
-            className={`er-kpi critical ${bucket === 'critical' ? 'active' : ''}`}
-            onClick={() => setBucket('critical')}
-            style={{ cursor: 'pointer' }}
-          >
-            <p>Critical (≤ {thresholds.critical} days)</p>
-            <h3>{summary.critical ?? 0}</h3>
-          </div>
-          <div
             className={`er-kpi warning ${bucket === 'warning' ? 'active' : ''}`}
             onClick={() => setBucket('warning')}
             style={{ cursor: 'pointer' }}
@@ -110,12 +101,12 @@ export default function ExpiryAlerts() {
             <h3>{summary.warning ?? 0}</h3>
           </div>
           <div
-            className={`er-kpi safe ${bucket === 'safe' ? 'active' : ''}`}
-            onClick={() => setBucket('safe')}
+            className={`er-kpi critical ${bucket === 'critical' ? 'active' : ''}`}
+            onClick={() => setBucket('critical')}
             style={{ cursor: 'pointer' }}
           >
-            <p>Safe (&gt; {thresholds.warning} days)</p>
-            <h3>{summary.safe ?? 0}</h3>
+            <p>Critical (≤ {thresholds.critical} days)</p>
+            <h3>{summary.critical ?? 0}</h3>
           </div>
         </div>
 

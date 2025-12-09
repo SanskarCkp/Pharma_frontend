@@ -158,7 +158,6 @@ const CustomersDashboard = () => {
                   <th>Email</th>
                   <th>Type</th>
                   <th>City</th>
-                  <th>Status</th>
                   <th style={{ width: 140, textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
@@ -177,40 +176,21 @@ const CustomersDashboard = () => {
                       <td>{c.email || "-"}</td>
                       <td>{c.type || "-"}</td>
                       <td>{c.city || "-"}</td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            c.is_active ? "green" : "red"
-                          }`}
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          className="inv-icon"
+                          title="View details"
+                          onClick={() => navigate(`/masters/customers/${c.id}`)}
+                          style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                         >
-                          {c.is_active ? "Active" : "Inactive"}
-                        </span>
+                          <Eye size={16} />
+                        </button>
                       </td>
-                       <td className="inv-actions-cell">
-                         <div style={{ display: "inline-flex", gap: 8 }}>
-                           <button
-                             className="inv-icon"
-                             title="View details"
-                             onClick={() => navigate(`/masters/customers/${c.id}`)}
-                             style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                           >
-                             <Eye size={16} />
-                           </button>
-                           <button
-                             className="inv-icon danger"
-                             title="Delete"
-                             onClick={() => handleDelete(c.id)}
-                             style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                           >
-                             <Trash2 size={16} />
-                           </button>
-                         </div>
-                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: "center", padding: 14 }}>
+                    <td colSpan="7" style={{ textAlign: "center", padding: 14 }}>
                       No customers found
                     </td>
                   </tr>

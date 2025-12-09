@@ -35,3 +35,146 @@
   align-items: center;
   gap: 10px;
 }
+
+/* Master Cards Grid */
+.grid {
+  display: grid;
+}
+
+.gap-6 {
+  gap: 1.5rem;
+}
+
+.sm\:grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Master Card Styling - Match Customer Dashboard KPI Cards */
+.group {
+  text-decoration: none;
+  display: block;
+}
+
+.master-card {
+  padding: 24px 28px;
+  border-radius: 12px;
+  border: none;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+/* Orange Gradient for HSN Code */
+.master-card.orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+}
+
+.group:hover .master-card.orange {
+  box-shadow: 0 6px 25px rgba(249, 115, 22, 0.45);
+  transform: translateY(-4px);
+}
+
+/* Teal Gradient for Rack Locations */
+.master-card.teal {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+}
+
+.group:hover .master-card.teal {
+  box-shadow: 0 6px 25px rgba(20, 184, 166, 0.45);
+  transform: translateY(-4px);
+}
+
+.master-card h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.master-card .flex {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.master-card .flex span:first-child {
+  font-weight: 500;
+}
+
+.master-card .flex span:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 1.875rem;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Icon styling */
+.group > div .absolute {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e5e7eb;
+}
+
+.text-sky-500 {
+  color: #0ea5e9;
+}
+
+.text-orange-500 {
+  color: #f97316;
+}
+
+.text-teal-500 {
+  color: #14b8a6;
+}
+
+/* Utility classes */
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-rose-600 {
+  color: #e11d48;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-rose-500 {
+  color: #f43f5e;
+}
