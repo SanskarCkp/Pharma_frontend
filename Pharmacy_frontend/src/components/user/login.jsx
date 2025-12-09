@@ -1,9 +1,8 @@
 // src/components/user/login.jsx
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../common/logo";
 import MedicalCarousel from "../common/MedicalCarousel";
-import { fetchUsersFromBackend } from "../../api/users";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
@@ -12,46 +11,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [carouselOn, setCarouselOn] = useState(false);
-  const [userList, setUserList] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
   const { login: loginWithDevice } = useAuth();
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchUsersFromBackend();
-        const arr = Array.isArray(data) ? data : (data ? [data] : []);
-        const normalized = arr.map((u) => {
-          const username = u.username ?? u.email ?? "";
-          const first = u.first_name ?? "";
-          const last = u.last_name ?? "";
-          const fullName = u.full_name || `${first} ${last}`.trim() || username;
-          return { email: u.email ?? username, username, fullName };
-        });
-        setUserList(normalized);
-      } catch (e) {
-        console.warn(
-          "Failed to load users from backend, falling back to localStorage",
-          e
-        );
-        try {
-          const stored = localStorage.getItem("app_users");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            setUserList(
-              parsed.map((u) => ({
-                email: u.email,
-                username: u.email, // local users: username = email
-                fullName: u.fullName || "",
-              }))
-            );
-          }
-        } catch (err) {}
-      }
-    }
-    load();
-  }, []);
  
   const onChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -132,27 +94,9 @@ export default function Login() {
                           onChange={onChange}
                           className="mt-2 block w-full rounded-md border px-3 py-3"
                           placeholder="Enter username or email"
-                          list={userList.length ? "login-users" : undefined}
                           autoComplete="username"
                           required
                         />
-                        {userList.length > 0 && (
-                          <datalist id="login-users">
-                            {userList.map((u, idx) => (
-                              <option
-                                key={idx}
-                                value={u.username || u.email}
-                                label={
-                                  u.fullName
-                                    ? `${u.fullName} (${
-                                        u.email || u.username
-                                      })`
-                                    : u.email || u.username
-                                }
-                              />
-                            ))}
-                          </datalist>
-                        )}
                       </div>
  
                       <div>
