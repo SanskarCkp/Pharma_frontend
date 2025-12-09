@@ -712,13 +712,25 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
           
           if (batchDetail && batchDetail.batch) {
           // Calculate new quantity: add the entered quantity to current quantity
-          // The backend will calculate the base quantity from packaging fields
-          const currentQty = parseFloat(batchDetail.batch.quantity) || 0;
+          // Use current_stock_base to calculate current quantity in UI units
+          // This ensures we're adding to actual stock, not initial quantity
+          const currentStockBase = parseFloat(batchDetail.inventory?.stock_on_hand_base || batchDetail.batch.current_stock_base || 0);
+          const currentQty = parseFloat(batchDetail.batch.quantity) || 0; // Fallback to initial quantity
           const currentStockUnit = batchDetail.batch.stock_unit || "loose";
           const qtyChange = Number(quantity);
           
-          // If stock units match, add quantities; otherwise use the new quantity
-          const newQty = (stockUnit === currentStockUnit) ? currentQty + qtyChange : qtyChange;
+          // Always add the entered quantity to current quantity when stock units match
+          // This ensures we're adding stock, not replacing it
+          let newQty;
+          if (stockUnit === currentStockUnit) {
+            // Same stock unit: add quantities directly
+            // Use currentQty which should reflect current stock if available
+            newQty = currentQty + qtyChange;
+          } else {
+            // Different stock unit: treat entered quantity as addition
+            // Backend will calculate from current stock on hand
+            newQty = qtyChange;
+          }
           
           const updatePayload = {
             location_id: Number(DEFAULT_LOCATION_ID),
@@ -870,7 +882,15 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                         const currentQty = parseFloat(firstBatch.quantity) || 0;
                         const currentStockUnit = firstBatch.stock_unit || "loose";
                         const qtyChange = Number(quantity);
-                        const newQty = (stockUnit === currentStockUnit) ? currentQty + qtyChange : qtyChange;
+                        // Always add the entered quantity to current quantity when stock units match
+                        let newQty;
+                        if (stockUnit === currentStockUnit) {
+                          // Same stock unit: add quantities
+                          newQty = currentQty + qtyChange;
+                        } else {
+                          // Different stock unit: treat as new quantity (user is changing stock unit type)
+                          newQty = qtyChange;
+                        }
                         
                         const updatePayload = {
                           location_id: Number(DEFAULT_LOCATION_ID),
