@@ -8,6 +8,199 @@ import { authFetch } from "../../../api/http";
 import { useAlert } from "../../ui/alert-provider";
 import { MEDICINE_CATEGORIES_SIMPLE } from "../../../constants/medicineCategories";
 
+// Predefined categories with packaging structure (same as AddMedicine)
+const MEDICINE_CATEGORIES = [
+  {
+    id: "tablet",
+    name: "Tablet",
+    unit: "Tablets",
+    packagingFields: [
+      { key: "tablets_per_strip", label: "Tablets per Strip", placeholder: "e.g., 10, 15", alwaysShow: true },
+      { key: "strips_per_box", label: "Strips per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "capsule",
+    name: "Capsule",
+    unit: "Capsules",
+    packagingFields: [
+      { key: "capsules_per_strip", label: "Capsules per Strip", placeholder: "e.g., 10, 15", alwaysShow: true },
+      { key: "strips_per_box", label: "Strips per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "syrup",
+    name: "Syrup/Suspension",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 100, 200", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 12, 24", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "injection",
+    name: "Injection/Vial",
+    unit: "Vials",
+    packagingFields: [
+      { key: "ml_per_vial", label: "ML per Vial", placeholder: "e.g., 2, 5, 10", alwaysShow: true },
+      { key: "vials_per_box", label: "Vials per Box", placeholder: "e.g., 10, 20, 50", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "ointment",
+    name: "Ointment/Cream",
+    unit: "Grams",
+    packagingFields: [
+      { key: "grams_per_tube", label: "Grams per Tube", placeholder: "e.g., 15, 30, 50", alwaysShow: true },
+      { key: "tubes_per_box", label: "Tubes per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "drops",
+    name: "Drops (Eye/Ear/Nasal)",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 5, 10, 15", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 1, 6, 12", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "inhaler",
+    name: "Inhaler",
+    unit: "Units",
+    packagingFields: [
+      { key: "doses_per_inhaler", label: "Doses per Inhaler", placeholder: "e.g., 100, 200", alwaysShow: true },
+      { key: "inhalers_per_box", label: "Inhalers per Box", placeholder: "e.g., 1, 2", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "powder",
+    name: "Powder/Sachet",
+    unit: "Sachets",
+    packagingFields: [
+      { key: "grams_per_sachet", label: "Grams per Sachet", placeholder: "e.g., 5, 10, 15", alwaysShow: true },
+      { key: "sachets_per_box", label: "Sachets per Box", placeholder: "e.g., 10, 20, 30", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "gel",
+    name: "Gel",
+    unit: "Grams",
+    packagingFields: [
+      { key: "grams_per_tube", label: "Grams per Tube", placeholder: "e.g., 20, 30, 50", alwaysShow: true },
+      { key: "tubes_per_box", label: "Tubes per Box", placeholder: "e.g., 1, 10", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "spray",
+    name: "Spray",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 50, 100", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 1, 6", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "lotion",
+    name: "Lotion/Solution",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 100, 200, 500", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 1, 12", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "shampoo",
+    name: "Shampoo",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 100, 200, 500", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 1, 12", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "soap",
+    name: "Soap/Bar",
+    unit: "Grams",
+    packagingFields: [
+      { key: "grams_per_bar", label: "Grams per Bar", placeholder: "e.g., 75, 100, 125", alwaysShow: true },
+      { key: "bars_per_box", label: "Bars per Box", placeholder: "e.g., 1, 3, 6", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "bandage",
+    name: "Bandage/Dressing",
+    unit: "Pieces",
+    packagingFields: [
+      { key: "pieces_per_pack", label: "Pieces per Pack", placeholder: "e.g., 1, 5, 10", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "mask",
+    name: "Mask (Surgical/N95)",
+    unit: "Pieces",
+    packagingFields: [
+      { key: "pieces_per_pack", label: "Pieces per Pack", placeholder: "e.g., 1, 5, 10", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 10, 20, 50", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "gloves",
+    name: "Gloves",
+    unit: "Pairs",
+    packagingFields: [
+      { key: "pairs_per_pack", label: "Pairs per Pack", placeholder: "e.g., 1, 50, 100", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 1, 10", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "cotton",
+    name: "Cotton/Gauze",
+    unit: "Grams",
+    packagingFields: [
+      { key: "grams_per_pack", label: "Grams per Pack", placeholder: "e.g., 100, 200, 500", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "sanitizer",
+    name: "Hand Sanitizer",
+    unit: "ML",
+    packagingFields: [
+      { key: "ml_per_bottle", label: "ML per Bottle", placeholder: "e.g., 50, 100, 500", alwaysShow: true },
+      { key: "bottles_per_box", label: "Bottles per Box", placeholder: "e.g., 1, 12, 24", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "thermometer",
+    name: "Thermometer",
+    unit: "Pieces",
+    packagingFields: [
+      { key: "pieces_per_pack", label: "Pieces per Pack", placeholder: "e.g., 1", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 10, 20", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "supplement",
+    name: "Supplement/Vitamin",
+    unit: "Units",
+    packagingFields: [
+      { key: "tablets_per_strip", label: "Tablets per Strip", placeholder: "e.g., 10, 15, 30", alwaysShow: true },
+      { key: "strips_per_box", label: "Strips per Box", placeholder: "e.g., 1, 3, 10", showOnlyForBox: true },
+    ],
+  },
+  {
+    id: "other",
+    name: "Other/Miscellaneous",
+    unit: "Units",
+    packagingFields: [
+      { key: "units_per_pack", label: "Units per Pack", placeholder: "e.g., 1, 10", alwaysShow: true },
+      { key: "packs_per_box", label: "Packs per Box", placeholder: "e.g., 1, 10", showOnlyForBox: true },
+    ],
+  },
+];
+
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const ReceiveItems = () => {
@@ -38,8 +231,16 @@ const ReceiveItems = () => {
   // For summary display, track which row is selected
   const [selectedSummaryIdx, setSelectedSummaryIdx] = useState(0);
 
+  // Extract Supplier ID to prevent infinite loops from object reference changes
+  const supplierId = Supplier?.id || null;
+  const supplierName = Supplier?.name || null;
+
   useEffect(() => {
+    let isCancelled = false;
+    
     const fetchDetails = async () => {
+      if (isCancelled) return;
+      
       setLoading(true);
       try {
         // 1️⃣ User
@@ -190,7 +391,11 @@ const ReceiveItems = () => {
             po_line: item.id,
             product_id: productId,
             product_name:
-              item.product?.name || productIdToName[item.product] || productIdToName[productId] || "",
+              item.product?.name || 
+              productIdToName[item.product] || 
+              productIdToName[productId] || 
+              item.requested_name || 
+              "",
             ordered: item.qty_packs_ordered || 0,
             received_packs: "",
             received_base: "",
@@ -202,12 +407,36 @@ const ReceiveItems = () => {
             quantity: last?.quantity || prodMaster.quantity || "",
             units_per_pack: last?.units_per_pack || prodMaster.units_per_pack || "",
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
-            category: last?.category || "",
+            // use our structured categories; store ID when possible
+            category: last?.category || item.category || "",
             mfg_date: last?.mfg_date || "",
             expiry_date: last?.expiry_date || "",
             unit_cost: last?.unit_cost || item.expected_unit_cost || "",
             mrp: last?.mrp || item.mrp || prodMaster.mrp || "",
             rack_no: last?.rack_no || "",
+            // stock / packaging info (optional, per AddMedicine)
+            stock_unit: last?.stock_unit || "",
+            tablets_per_strip: last?.tablets_per_strip || "",
+            strips_per_box: last?.strips_per_box || "",
+            ml_per_bottle: last?.ml_per_bottle || "",
+            bottles_per_box: last?.bottles_per_box || "",
+            ml_per_vial: last?.ml_per_vial || "",
+            vials_per_box: last?.vials_per_box || "",
+            capsules_per_strip: last?.capsules_per_strip || "",
+            grams_per_tube: last?.grams_per_tube || "",
+            tubes_per_box: last?.tubes_per_box || "",
+            doses_per_inhaler: last?.doses_per_inhaler || "",
+            inhalers_per_box: last?.inhalers_per_box || "",
+            grams_per_sachet: last?.grams_per_sachet || "",
+            sachets_per_box: last?.sachets_per_box || "",
+            grams_per_bar: last?.grams_per_bar || "",
+            bars_per_box: last?.bars_per_box || "",
+            pieces_per_pack: last?.pieces_per_pack || "",
+            packs_per_box: last?.packs_per_box || "",
+            pairs_per_pack: last?.pairs_per_pack || "",
+            grams_per_pack: last?.grams_per_pack || "",
+            units_per_pack_cfg: last?.units_per_pack_cfg || "",
+            loose_units: last?.loose_units || "",
           };
         });
         setItemsReceived(itemsList);
@@ -227,36 +456,75 @@ const ReceiveItems = () => {
           poData.location_id ||
           (typeof poData.location === "number" ? poData.location : poData.location?.id) ||
           null;
+        
+        if (isCancelled) return;
+        
         setPurchaseOrder({
           id: poData.id,
           po_number: poData.po_number,
-          supplier: Supplier ? Supplier.name : poData.vendor_name || "",
-          vendor_id: Supplier?.id || poData.Supplier?.id,
+          supplier: supplierName || poData.vendor_name || "",
+          vendor_id: supplierId || poData.Supplier?.id,
           location_id: resolvedLocationId,
           location: resolvedLocationId,
           order_date: poData.order_date,
           expected_date: poData.expected_date,
         });
       } catch (err) {
-        console.error(err);
-        setPurchaseOrder(null);
+        console.error("Error fetching receive items details:", err);
+        if (!isCancelled) {
+          setPurchaseOrder(null);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDetails();
-  }, [id, Supplier]);
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isCancelled = true;
+    };
+  }, [id, supplierId, supplierName]);
 
-  // Handler with batch autofill
+  // Calculate remaining quantity that can be received for a PO line
+  const getRemainingQuantity = (poLine, batch) => {
+    const key = `${poLine}_${batch || ""}`;
+    const item = itemsReceived.find((item) => item.po_line === poLine && item.batch === batch);
+    const totalOrdered = item?.ordered || 0;
+    const totalReceivedPrev = grnReceivedMap[key] || 0;
+    const sessionReceived = Number(item?.received_packs || 0);
+    const remaining = totalOrdered - totalReceivedPrev - sessionReceived;
+    return Math.max(0, remaining);
+  };
+
+  // Handler with batch autofill and validation
   const handleItemEdit = (idx, field, value) => {
     setItemsReceived((prev) =>
       prev.map((row, i) => {
         if (i !== idx) return row;
         let updated = { ...row, [field]: value };
+        
+        // Validate received quantity doesn't exceed ordered
         if (field === "received_packs") {
+          const receivedQty = Number(value) || 0;
+          const rowKey = `${row.po_line}_${row.batch || ""}`;
+          const prevReceived = grnReceivedMap[rowKey] || 0;
+          const totalOrdered = row.ordered || 0;
+          const maxAllowed = totalOrdered - prevReceived;
+          
+          if (receivedQty > maxAllowed) {
+            showAlert(
+              `Received quantity (${receivedQty}) cannot exceed remaining ordered quantity (${maxAllowed})`,
+              "Error"
+            );
+            return row; // Don't update if validation fails
+          }
           updated.quantity = value;
         }
+        
         if (field === "batch") {
           const batchKey = `${row.product_id}_${value || ""}`;
           const last = lastDetailsMapRef.current[batchKey];
@@ -297,6 +565,29 @@ const ReceiveItems = () => {
       return;
     }
     const locationId = purchaseOrder.location_id || purchaseOrder.location;
+
+    // Validate all received quantities before submitting
+    const validationErrors = [];
+    itemsReceived.forEach((item) => {
+      const receivedQty = Number(item.received_packs) || 0;
+      if (receivedQty > 0) {
+        const rowKey = `${item.po_line}_${item.batch || ""}`;
+        const prevReceived = grnReceivedMap[rowKey] || 0;
+        const totalOrdered = item.ordered || 0;
+        const maxAllowed = totalOrdered - prevReceived;
+        
+        if (receivedQty > maxAllowed) {
+          validationErrors.push(
+            `${item.product_name}: Received (${receivedQty}) exceeds remaining ordered (${maxAllowed})`
+          );
+        }
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      showAlert(validationErrors.join("\n"), "Error");
+      return;
+    }
 
     const grnLines = itemsReceived
       .filter((item) => Number(item.received_packs) > 0)
@@ -390,7 +681,8 @@ const ReceiveItems = () => {
       );
 
       showAlert("GRN saved and products updated successfully!", "Success");
-      window.location.reload();
+      // Navigate back instead of reloading to prevent continuous loading
+      navigate(-1);
     } catch (e) {
       console.error(e);
       showAlert("An error occurred.", "Error");
@@ -541,203 +833,281 @@ const ReceiveItems = () => {
             <h3 style={{ marginBottom: "16px", fontSize: "18px", fontWeight: 600, color: "#111827" }}>Items Received</h3>
             <div className="inv-table-wrap">
               <table className="inv-table items-received-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Ordered</th>
-                <th> Received</th>
-                <th>Damaged</th>
-                <th>Batch</th>
-
-                <th>Medicine Form</th>
-                <th>Strength</th>
-                <th>Quantity</th>
-                <th>Units / Pack</th>
-                <th>GST %</th>
-
-                <th>Category</th>
-                <th>Rack No</th>
-                <th>Purchase Price</th>
-                <th>MRP</th>
-
-                <th>MFG Date</th>
-                <th>Expiry Date</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {itemsReceived.map((item, idx) => {
-                const rowKey = `${item.po_line}_${item.batch || ""}`;
-                const prevReceived = grnReceivedMap[rowKey] || 0;
-
-                return (
-                  <tr
-                    key={item.id}
-                    onClick={() => setSelectedSummaryIdx(idx)}
-                    style={{
-                      cursor: "pointer",
-                      background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
-                    }}
-                  >
-                    <td>{item.product_name}</td>
-                    <td>{item.ordered}</td>
-
-                    {/* Packs received */}
-                    <td>
-                      <input
-                        type="number"
-                        value={item.received_packs}
-                        min="0"
-                        onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
-                      />
-                    </td>
-
-                    {/* damaged */}
-                    <td>
-                      <input
-                        type="number"
-                        value={item.damaged_base}
-                        min="0"
-                        onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
-                      />
-                    </td>
-
-                    {/* batch */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.batch}
-                        onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
-                      />
-                    </td>
-
-                    {/* Medicine Form (dropdown) */}
-                    <td>
-                      <select
-                        value={item.medicine_form || ""}
-                        onChange={(e) => handleItemEdit(idx, "medicine_form", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {medicineForms.map((f) => (
-                          <option key={f.id || f.name} value={f.name || f.id}>
-                            {f.name || f.display || f.id}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Strength */}
-                    <td>
-                      <input
-                        type="text"
-                        value={item.strength || ""}
-                        onChange={(e) => handleItemEdit(idx, "strength", e.target.value)}
-                      />
-                    </td>
-
-                    {/* Quantity (auto-filled from received packs, non-editable) */}
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.quantity || ""}
-                        readOnly
-                        className="readonly-input"
-                      />
-                    </td>
-
-                    {/* Units per Pack */}
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.units_per_pack || ""}
-                        onChange={(e) => handleItemEdit(idx, "units_per_pack", e.target.value)}
-                      />
-                    </td>
-
-                    {/* GST */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.gst_percentage || ""}
-                        onChange={(e) => handleItemEdit(idx, "gst_percentage", e.target.value)}
-                      />
-                    </td>
-
-                    {/* Category */}
-                    <td>
-                      <select
-                        value={item.category || ""}
-                        onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {category.map((c) => (
-                          <option key={c.id} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Rack */}
-                    <td>
-                      <select
-                        value={item.rack_no || ""}
-                        onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {rackLocations.map((rack) => (
-                          <option key={rack.id} value={rack.name}>
-                            {rack.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Unit Cost */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.unit_cost || ""}
-                        onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
-                      />
-                    </td>
-
-                    {/* MRP */}
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.mrp || ""}
-                        onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
-                      />
-                    </td>
-
-                    {/* MFG Date */}
-                    <td>
-                      <input
-                        type="date"
-                        value={item.mfg_date || ""}
-                        onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
-                      />
-                    </td>
-
-                    {/* Expiry Date */}
-                    <td>
-                      <input
-                        type="date"
-                        value={item.expiry_date || ""}
-                        onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
-                      />
-                    </td>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Ordered</th>
+                    <th>Received</th>
+                    <th>Damaged</th>
+                    <th>Batch</th>
+                    <th>Category</th>
+                    <th>Medicine Form</th>
+                    <th>Stock Unit</th>
+                    <th>Packaging</th>
+                    <th>Total Qty</th>
+                    <th>Loose Units</th>
+                    <th>Strength</th>
+                    <th>GST %</th>
+                    <th>Rack No</th>
+                    <th>Cost Price</th>
+                    <th>MRP</th>
+                    <th>MFG Date</th>
+                    <th>Expiry Date</th>
                   </tr>
-                );
-              })}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {itemsReceived.map((item, idx) => {
+                    const rowKey = `${item.po_line}_${item.batch || ""}`;
+                    const prevReceived = grnReceivedMap[rowKey] || 0;
+                    const selectedCategory = MEDICINE_CATEGORIES.find((c) => c.id === item.category);
+                    const packagingFields = selectedCategory
+                      ? selectedCategory.packagingFields.filter(
+                          (field) => field.alwaysShow || (field.showOnlyForBox && item.stock_unit === "box")
+                        )
+                      : [];
+
+                    const totalLabel =
+                      item.stock_unit === "box"
+                        ? "Total Boxes *"
+                        : `Total ${
+                            selectedCategory?.id === "tablet"
+                              ? "Strips"
+                              : selectedCategory?.id === "syrup"
+                              ? "Bottles"
+                              : selectedCategory?.id === "injection"
+                              ? "Vials"
+                              : selectedCategory?.id === "capsule"
+                              ? "Strips"
+                              : selectedCategory?.id === "ointment"
+                              ? "Tubes"
+                              : "Units"
+                          } *`;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelectedSummaryIdx(idx)}
+                        style={{
+                          cursor: "pointer",
+                          background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
+                        }}
+                      >
+                        <td>{item.product_name}</td>
+                        <td>{item.ordered}</td>
+
+                        {/* Packs received */}
+                        <td>
+                          <input
+                            type="number"
+                            value={item.received_packs}
+                            min="0"
+                            max={item.ordered - (grnReceivedMap[`${item.po_line}_${item.batch || ""}`] || 0)}
+                            onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
+                            style={{
+                              borderColor: (() => {
+                                const receivedQty = Number(item.received_packs) || 0;
+                                const rowKey = `${item.po_line}_${item.batch || ""}`;
+                                const prevReceived = grnReceivedMap[rowKey] || 0;
+                                const totalOrdered = item.ordered || 0;
+                                const maxAllowed = totalOrdered - prevReceived;
+                                return receivedQty > maxAllowed ? "#ef4444" : undefined;
+                              })(),
+                            }}
+                          />
+                          <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>
+                            Remaining: {getRemainingQuantity(item.po_line, item.batch)}
+                          </div>
+                        </td>
+
+                        {/* Damaged (base units) */}
+                        <td>
+                          <input
+                            type="number"
+                            value={item.damaged_base}
+                            min="0"
+                            onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
+                          />
+                        </td>
+
+                        {/* Batch */}
+                        <td>
+                          <input
+                            type="text"
+                            value={item.batch}
+                            onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
+                          />
+                        </td>
+
+                        {/* Category (same as AddMedicine) */}
+                        <td>
+                          <select
+                            value={item.category || ""}
+                            onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
+                          >
+                            <option value="">Select category</option>
+                            {MEDICINE_CATEGORIES.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Medicine Form */}
+                        <td>
+                          <select
+                            value={item.medicine_form || ""}
+                            onChange={(e) => handleItemEdit(idx, "medicine_form", e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            {medicineForms.map((form) => (
+                              <option key={form.id} value={form.id}>
+                                {form.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Stock Unit Type */}
+                        <td>
+                          <select
+                            value={item.stock_unit || ""}
+                            onChange={(e) => handleItemEdit(idx, "stock_unit", e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            <option value="box">Box (Packed)</option>
+                            <option value="loose">Loose (Individual Units)</option>
+                          </select>
+                        </td>
+
+                        {/* Packaging fields */}
+                        <td>
+                          {packagingFields.length === 0 && (
+                            <span style={{ fontSize: 12, color: "#9ca3af" }}>—</span>
+                          )}
+                          {packagingFields.map((field) => (
+                            <div key={field.key} style={{ marginBottom: 4 }}>
+                              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
+                                {field.label}
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={item[field.key] || ""}
+                                onChange={(e) => handleItemEdit(idx, field.key, e.target.value)}
+                                placeholder={field.placeholder}
+                              />
+                            </div>
+                          ))}
+                        </td>
+
+                        {/* Total quantity */}
+                        <td>
+                          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>{totalLabel}</div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.quantity || ""}
+                            onChange={(e) => handleItemEdit(idx, "quantity", e.target.value)}
+                          />
+                        </td>
+
+                        {/* Loose units for tablet/capsule */}
+                        <td>
+                          {(item.category === "tablet" || item.category === "capsule") && (
+                            <>
+                              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
+                                Loose {item.category === "tablet" ? "Tablets" : "Capsules"} (optional)
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={item.loose_units || ""}
+                                onChange={(e) => handleItemEdit(idx, "loose_units", e.target.value)}
+                              />
+                            </>
+                          )}
+                        </td>
+
+                        {/* Strength */}
+                        <td>
+                          <input
+                            type="text"
+                            value={item.strength || ""}
+                            onChange={(e) => handleItemEdit(idx, "strength", e.target.value)}
+                          />
+                        </td>
+
+                        {/* GST % */}
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={item.gst_percentage || ""}
+                            onChange={(e) => handleItemEdit(idx, "gst_percentage", e.target.value)}
+                          />
+                        </td>
+
+                        {/* Rack Location */}
+                        <td>
+                          <select
+                            value={item.rack_no || ""}
+                            onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            {rackLocations.map((rack) => (
+                              <option key={rack.id} value={rack.name}>
+                                {rack.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Cost Price */}
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={item.unit_cost || ""}
+                            onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
+                          />
+                        </td>
+
+                        {/* MRP */}
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={item.mrp || ""}
+                            onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
+                          />
+                        </td>
+
+                        {/* MFG Date */}
+                        <td>
+                          <input
+                            type="date"
+                            value={item.mfg_date || ""}
+                            onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
+                          />
+                        </td>
+
+                        {/* Expiry Date */}
+                        <td>
+                          <input
+                            type="date"
+                            value={item.expiry_date || ""}
+                            onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
