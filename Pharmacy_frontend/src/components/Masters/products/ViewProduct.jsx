@@ -11,7 +11,6 @@ const ViewProduct = () => {
   const navigate = useNavigate();
   const [product, setProduct] = useState({
     name: "",
-    hsn: "",
     schedule: "",
     pack_size: "",
     manufacturer: "",
@@ -41,11 +40,6 @@ const ViewProduct = () => {
           <div className="form-group">
             <label>Name:</label>
             <input type="text" value={product.name} readOnly />
-          </div>
-
-          <div className="form-group">
-            <label>HSN:</label>
-            <input type="text" value={product.hsn} readOnly />
           </div>
         </div>
 

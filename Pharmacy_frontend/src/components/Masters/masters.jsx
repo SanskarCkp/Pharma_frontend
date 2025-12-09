@@ -88,13 +88,6 @@ export default function MastersDashboard() {
 
   const items = [
     {
-      path: "/hsncode",
-      label: "HSN Code",
-      icon: <Pill size={16} />,
-      total: mfTotal,
-      color: "orange",
-    },
-    {
       path: "/masters/rack-locations",
       label: "Rack Locations",
       icon: <Package size={16} />,

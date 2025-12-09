@@ -502,7 +502,6 @@ export default function MedicineInventory() {
             <table className="inv-table">
               <thead>
                 <tr>
-                  <th>HSN code</th>
                   <th onClick={() => handleSort("batch_number")} className="sortable">
                     Batch Number <SortIndicator column="batch_number" />
                   </th>
@@ -538,12 +537,10 @@ export default function MedicineInventory() {
                     const uomLabel = r.uom || r.base_uom?.name || r.quantity_uom?.name || "";
                     const rackLabel = r.rack || r.rack_name || r.rack_no || "";
 
-                    const hsnCode = r.hsn_code ?? r.batch_lot__product__hsn_code ?? r.medicine?.hsn_code ?? r.product?.hsn_code ?? "";
                     const strength = r.strength ?? r.batch_lot__product__strength ?? r.medicine?.strength ?? r.product?.strength ?? "";
 
                     return (
                       <tr key={rowKey}>
-                        <td>{hsnCode}</td>
                         <td>{r.batch_number ?? r.batch_lot__batch_no ?? ""}</td>
                         <td>{r.medicine_name ?? r.batch_lot__product__name ?? ""}</td>
                         <td>{strength}</td>
@@ -589,7 +586,7 @@ export default function MedicineInventory() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={11} style={{ textAlign: "center", padding: 14 }}>
+                    <td colSpan={10} style={{ textAlign: "center", padding: 14 }}>
                       No medicines found
                     </td>
                   </tr>

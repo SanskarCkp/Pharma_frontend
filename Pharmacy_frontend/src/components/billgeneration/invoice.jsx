@@ -237,7 +237,6 @@ export default function Invoice() {
               <th className={styles.textRight}>Rate</th>
               <th className={styles.textRight}>GST</th>
               <th className={styles.textRight}>Amount</th>
-              <th className={styles.textCenter}>HSN Code</th>
             </tr>
           </thead>
           <tbody>
@@ -252,7 +251,6 @@ export default function Invoice() {
                 <td className={styles.textRight}>{Number(item.rate_per_base).toFixed(2)}</td>
                 <td className={styles.textRight}>{Number(item.gst_percent || 0).toFixed(2)}</td>
                 <td className={styles.textRight}>{Number(item.line_total).toFixed(2)}</td>
-                <td className={styles.textCenter}>{item.hsn_code || "-"}</td>
               </tr>
             ))}
           </tbody>
