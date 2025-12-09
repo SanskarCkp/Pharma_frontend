@@ -18,7 +18,6 @@ const AddVendor = () => {
     email: "",
     contact_person: "",
     address: "",
-    product_info: "",
     bank_name: "",
     account_no: "",
     ifsc: "",
@@ -126,20 +125,6 @@ const AddVendor = () => {
           <div className="field full">
             <label>Address *</label>
             <textarea name="address" value={formData.address} onChange={handleChange}></textarea>
-          </div>
-        </div>
-
-        {/* PRODUCTS */}
-        <div className="section-card">
-          <h2 className="section-heading">Products & Supply Information</h2>
-          <div className="field full">
-            <label>What Products Can This Supplier Deliver? *</label>
-            <textarea
-              name="product_info"
-              value={formData.product_info}
-              onChange={handleChange}
-              placeholder="Eg: Antibiotics, Surgical Items, Diabetic Medicines, etc."
-            ></textarea>
           </div>
         </div>
 

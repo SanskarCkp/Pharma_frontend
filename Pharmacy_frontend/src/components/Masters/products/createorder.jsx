@@ -40,9 +40,9 @@ const CreateOrder = () => {
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [items, setItems] = useState([]);
+  const [cart, setCart] = useState([]);
 
-  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(true);
   const [manualProductName, setManualProductName] = useState("");
   const [manualQty, setManualQty] = useState(1);
   const [manualCategory, setManualCategory] = useState("");
@@ -73,40 +73,10 @@ const CreateOrder = () => {
     fetchVendor();
   }, [Supplier, navigate]);
 
-  const fetchProducts = async () => {
-    try {
-      const pRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`);
-      const pData = await pRes.json();
-      const productList = Array.isArray(pData) ? pData : pData.results || [];
-
-      const normalized = productList.map((p) => ({
-        uid: `p_${p.id}`,
-        id: p.id,
-        name: p.name,
-        quantity: Number(p.pack_unit) || 0,
-        expected_unit_cost: p.purchase_price || 0,
-        category: typeof p.category === "object" ? p.category.id : p.category || null,
-        isNew: false,
-      }));
-
-      // ❗ FILTER OUT INVALID PRODUCTS
-      setItems(normalized.filter(item => item.id && item.name));
-
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
-
   useEffect(() => {
-    if (vendorData) {
-      fetchProducts();
-    }
-  }, [vendorData]);
-
-  useEffect(() => {
-    const totalQty = items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
+    const totalQty = cart.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
     setTotalItems(totalQty);
-  }, [items]);
+  }, [cart]);
 
   const generateProductCode = (name) => {
     const slug = name.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 6);
@@ -114,91 +84,39 @@ const CreateOrder = () => {
     return `${slug || "PRD"}${rand}`;
   };
 
-  const handleAddProduct = () => setShowAddProduct(true);
-
-  const handleAddManualProduct = async () => {
+  const handleAddManualProduct = () => {
     if (!manualProductName.trim()) return showAlert("Enter product name", "Error");
     if (!manualCategory) return showAlert("Select category", "Error");
     if (!manualQty || Number(manualQty) <= 0) return showAlert("Enter valid quantity", "Error");
-    if (!vendorData?.id) return showAlert("Supplier not loaded", "Error");
 
-    const productPayload = {
-      code: generateProductCode(manualProductName.trim()),
+    const newItem = {
+      uid: `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: null, // No product ID yet - will be created when order is submitted
       name: manualProductName.trim(),
-      generic_name: "",
-      dosage_strength: "",
-      hsn: "",
-      schedule: "OTC",
-      pack_size: "",
-      manufacturer: "",
-      mrp: 0,
-      base_unit: "",
-      pack_unit: String(manualQty),
-      units_per_pack: 1,
-      base_unit_step: 1,
-      gst_percent: 0,
-      description: "",
-      storage_instructions: "",
-      is_sensitive: false,
-      is_active: true,
+      quantity: Number(manualQty),
+      expected_unit_cost: 0,
       category: manualCategory,
-      preferred_vendor: Number(vendorData.id),
+      isNew: true,
     };
 
-    try {
-      const productRes = await authFetch(`${API_BASE}/api/v1/catalog/products/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(productPayload),
-      });
-
-      if (!productRes.ok) {
-        const err = await productRes.json();
-        console.log("❌ Product Create Failed:", err);
-        showAlert("Product save failed", "Error");
-        return;
-      }
-
-      const created = await productRes.json();
-      const newItem = {
-        uid: `p_${created.id}`,
-        id: created.id,
-        name: created.name,
-        quantity: Number(manualQty),
-        expected_unit_cost: created.mrp || 0,
-        category: manualCategory,
-        isNew: false,
-      };
-
-      setItems((prev) => [...prev, newItem]);
-      setManualProductName("");
-      setManualQty(1);
-      setManualCategory("");
-      setShowAddProduct(false);
-    } catch (err) {
-      console.error("Manual product error:", err);
-      showAlert("Error creating product", "Error");
-    }
+    setCart((prev) => [...prev, newItem]);
+    setManualProductName("");
+    setManualQty(1);
+    setManualCategory("");
   };
 
   const handleQuantityChange = (uid, value) =>
-    setItems((prev) =>
+    setCart((prev) =>
       prev.map((it) => (it.uid === uid ? { ...it, quantity: Number(value) || 0 } : it))
     );
 
   const handleDelete = (uid) =>
-    setItems((prev) => prev.filter((it) => it.uid !== uid));
-
-  const toDDMMYYYY = (dateStr) => {
-    if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}-${m}-${y}`;
-  };
+    setCart((prev) => prev.filter((it) => it.uid !== uid));
 
   const handleCreateOrder = async () => {
     if (!vendorData?.id) return showAlert("Supplier not loaded", "Error");
 
-    const orderRows = items.filter((r) => Number(r.quantity) > 0);
+    const orderRows = cart.filter((r) => Number(r.quantity) > 0);
     if (orderRows.length === 0) return showAlert("Add at least one product", "Error");
 
   const lines = orderRows.map((r) => {
@@ -223,7 +141,7 @@ const CreateOrder = () => {
       expected_date: expectedDate || null,
       status: "DRAFT",
       note: notes || "",
-      lines: lines,
+      lines: cleanedLines,
     };
 
     try {
@@ -291,9 +209,6 @@ const CreateOrder = () => {
           <div className="kpi-card add-product-card">
             <div className="card-header">
               <h3>Order Items</h3>
-              <button className="add-btn" onClick={handleAddProduct}>
-                + Add Product
-              </button>
             </div>
 
             {showAddProduct && (
@@ -327,53 +242,6 @@ const CreateOrder = () => {
                 </button>
               </div>
             )}
-
-            {items.length === 0 ? (
-              <div className="no-products">No products available.</div>
-            ) : (
-              <div className="inv-table-wrap">
-              <table className="products-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Quantity</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.uid}>
-                      <td>{item.name}</td>
-                      <td>
-                        {MEDICINE_CATEGORIES.find((c) => c.id === item.category)
-                          ?.name || "—"}
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(item.uid, e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(item.uid)}
-                          title="Delete product"
-                        >
-                          <Trash2 size={18} color="#ef4444" strokeWidth={2} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            )}
           </div>
 
           {/* Additional Info */}
@@ -403,6 +271,53 @@ const CreateOrder = () => {
           <div className="kpi-card summary-card">
             <h3>Summary</h3>
             <div className="kpi-item">Total Items: {totalItems}</div>
+            
+            {cart.length > 0 && (
+              <div className="cart-items" style={{ marginTop: "20px" }}>
+                <h4 style={{ marginBottom: "10px" }}>Cart Items:</h4>
+                <div className="cart-list" style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {cart.map((item) => (
+                    <div key={item.uid} className="cart-item" style={{ 
+                      padding: "10px", 
+                      border: "1px solid #e0e0e0", 
+                      borderRadius: "4px", 
+                      marginBottom: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: "500" }}>{item.name}</div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
+                          {MEDICINE_CATEGORIES.find((c) => c.id === item.category)?.name || "—"}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.uid, e.target.value)}
+                          style={{ width: "60px", padding: "4px", textAlign: "center" }}
+                        />
+                        <button
+                          onClick={() => handleDelete(item.uid)}
+                          title="Delete product"
+                          style={{ 
+                            background: "none", 
+                            border: "none", 
+                            cursor: "pointer",
+                            padding: "4px"
+                          }}
+                        >
+                          <Trash2 size={16} color="#ef4444" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-actions">
