@@ -69,7 +69,6 @@ import RecallEvents from "./components/user/recall_events/recall_events.jsx";
 import PurchaseLines from "./components/user/purchase_lines/purchase_lines.jsx";
 import SalesInvoices from "./components/user/sales_invoices/sales_invoices.jsx";
 import UnitOfMeasurement from "./components/unitofmeasurement/unitofmeasurement.jsx";
-import MedicineForms from "./components/medicineforms/medicineforms.jsx";
 import Medicinecategories from "./components/medicinecategories/medicinecategories.jsx";
 
 // Bill generation
@@ -237,7 +236,6 @@ function AppLayout() {
               path="/unitofmeasurement"
               element={<UnitOfMeasurement />}
             />
-            <Route path="/medicineforms" element={<MedicineForms />} />
             <Route
               path="/medicinecategories"
               element={<Medicinecategories />}

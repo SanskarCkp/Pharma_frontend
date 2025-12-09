@@ -84,7 +84,6 @@ export default function Topbar() {
     { label: "Purchase Lines", path: "/purchase-lines", keywords: "purchase lines" },
     { label: "Sales Invoices", path: "/sales-invoices", keywords: "sales invoices" },
     { label: "Unit of Measurement", path: "/unitofmeasurement", keywords: "unit measurement" },
-    { label: "Medicine Forms", path: "/medicineforms", keywords: "medicine forms" },
     { label: "Medicine Categories", path: "/medicinecategories", keywords: "medicine categories" },
   ];
 

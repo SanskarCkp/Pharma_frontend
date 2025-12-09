@@ -215,7 +215,6 @@ const ReceiveItems = () => {
   const [itemsReceived, setItemsReceived] = useState([]);
   const [category, setCategory] = useState([]);
   const [rackLocations, setRackLocations] = useState([]);
-  const [medicineForms, setMedicineForms] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -230,6 +229,9 @@ const ReceiveItems = () => {
 
   // For summary display, track which row is selected
   const [selectedSummaryIdx, setSelectedSummaryIdx] = useState(0);
+  // Modal state for receiving items
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedItemIdx, setSelectedItemIdx] = useState(null);
 
   // Extract Supplier ID to prevent infinite loops from object reference changes
   const supplierId = Supplier?.id || null;
@@ -274,12 +276,6 @@ const ReceiveItems = () => {
         const rackData = rackRes.ok ? await rackRes.json() : [];
         setRackLocations(Array.isArray(rackData) ? rackData : rackData.results || []);
 
-        // 5.5️⃣ Medicine Forms
-        const mfRes = await authFetch(`${API_BASE_URL}/api/v1/catalog/forms/`);
-        const mfData = mfRes.ok ? await mfRes.json() : [];
-        setMedicineForms(Array.isArray(mfData) ? mfData : mfData.results || []);
-
-
         // 6️⃣ Product names & product details (we may need product master fields)
         const productIdSet = new Set();
         linesData.forEach((item) => {
@@ -297,8 +293,17 @@ const ReceiveItems = () => {
               const p = await res.json();
               productIdToName[pid] = p.name;
               // optional fields from product master (if present)
+              // Handle category from product - could be object, string, or ID
+              let productCategory = "";
+              if (p.category) {
+                if (typeof p.category === "object") {
+                  productCategory = p.category.id || p.category.name || "";
+                } else {
+                  productCategory = p.category;
+                }
+              }
               productDetailsMap[pid] = {
-                medicine_form: p.medicine_form || "",
+                category: productCategory,
                 strength: p.strength || "",
                 quantity: p.quantity || "",
                 units_per_pack: p.units_per_pack || "",
@@ -357,7 +362,6 @@ const ReceiveItems = () => {
               unit_cost: line.unit_cost || "",
               mrp: line.mrp || "",
               batch: line.batch_no || "",
-              medicine_form: line.medicine_form || "",
               strength: line.strength || "",
               gst_percentage: line.gst_percentage || "",
               grn_received_at: line.grn_received_at,
@@ -386,6 +390,32 @@ const ReceiveItems = () => {
           const last = prefillKey ? lastDetails[prefillKey] : {};
           const prodMaster = productDetailsMap[productId] || {};
           const orderUom = item.uom || item.uom_code || "";
+          
+          // Extract category from PO line - handle different formats
+          let poLineCategory = "";
+          if (item.category) {
+            if (typeof item.category === "object") {
+              // Category is an object with id or name
+              poLineCategory = item.category.id || item.category.name || "";
+            } else if (typeof item.category === "string") {
+              // Category is a string (could be ID or name)
+              poLineCategory = item.category;
+            }
+          } else if (item.category_id) {
+            poLineCategory = item.category_id;
+          } else if (item.category_name) {
+            // Find category ID from name
+            const foundCat = MEDICINE_CATEGORIES.find(c => c.name === item.category_name);
+            poLineCategory = foundCat ? foundCat.id : "";
+          }
+          
+          // Normalize category to ID format
+          if (poLineCategory) {
+            // If it's a name, convert to ID
+            const foundByName = MEDICINE_CATEGORIES.find(c => c.name === poLineCategory);
+            if (foundByName) poLineCategory = foundByName.id;
+          }
+          
           return {
             id: item.id || idx,
             po_line: item.id,
@@ -399,16 +429,14 @@ const ReceiveItems = () => {
             ordered: item.qty_packs_ordered || 0,
             received_packs: "",
             received_base: "",
-            damaged_base: "",
             batch: last?.batch || "",
             // prefer last batch details, else product master, else blank
-            medicine_form: last?.medicine_form || prodMaster.medicine_form || "",
             strength: last?.strength || prodMaster.strength || "",
             quantity: last?.quantity || prodMaster.quantity || "",
             units_per_pack: last?.units_per_pack || prodMaster.units_per_pack || "",
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
-            // use our structured categories; store ID when possible
-            category: last?.category || item.category || "",
+            // Priority: PO line category > Product master category > Last batch category
+            category: poLineCategory || prodMaster.category || last?.category || "",
             mfg_date: last?.mfg_date || "",
             expiry_date: last?.expiry_date || "",
             unit_cost: last?.unit_cost || item.expected_unit_cost || "",
@@ -498,6 +526,18 @@ const ReceiveItems = () => {
     const sessionReceived = Number(item?.received_packs || 0);
     const remaining = totalOrdered - totalReceivedPrev - sessionReceived;
     return Math.max(0, remaining);
+  };
+
+  // Open modal for receiving item
+  const openReceiveModal = (idx) => {
+    setSelectedItemIdx(idx);
+    setModalOpen(true);
+  };
+
+  // Close modal
+  const closeReceiveModal = () => {
+    setModalOpen(false);
+    setSelectedItemIdx(null);
   };
 
   // Handler with batch autofill and validation
@@ -600,13 +640,12 @@ const ReceiveItems = () => {
         expiry_date: item.expiry_date || null,
         qty_packs_received: Number(item.received_packs || 0),
         qty_base_received: Number(item.received_base || 0),
-        qty_base_damaged: Number(item.damaged_base || 0),
+        qty_base_damaged: 0, // Removed damaged field
         unit_cost: Number(item.unit_cost || 0),
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
         units_per_pack: item.units_per_pack ? Number(item.units_per_pack) : null,
         // include the new fields so GRN entry contains them
-        medicine_form: item.medicine_form || "",
         strength: item.strength || "",
         quantity: item.quantity || "",
         gst_percentage: item.gst_percentage || "",
@@ -653,14 +692,13 @@ const ReceiveItems = () => {
       }
 
       // Update catalog product master for each received line (PATCH product)
-      // This ensures the product master gets medicine_form, base_uom, selling_uom, gst, mrp updates
+      // This ensures the product master gets base_uom, selling_uom, gst, mrp updates
       await Promise.all(
         grnLines.map(async (line) => {
           try {
             if (!line.product) return;
             const productPatch = {
               // only include fields if present (avoid overwriting with empty)
-              ...(line.medicine_form ? { medicine_form: line.medicine_form } : {}),
               ...(line.strength ? { strength: line.strength } : {}),
               ...(line.quantity ? { quantity: line.quantity } : {}),
               ...(line.gst_percentage ? { gst_percentage: line.gst_percentage } : {}),
@@ -828,31 +866,16 @@ const ReceiveItems = () => {
             </div>
           </div>
 
-          {/* ITEMS TABLE */}
+          {/* ITEMS TABLE - Simplified */}
           <div className="receiveitems-table-section">
-            <h3 style={{ marginBottom: "16px", fontSize: "18px", fontWeight: 600, color: "#111827" }}>Items Received</h3>
+            <h3 style={{ marginBottom: "16px", fontSize: "18px", fontWeight: 600, color: "#111827" }}>Items to Receive</h3>
             <div className="inv-table-wrap">
               <table className="inv-table items-received-table">
                 <thead>
                   <tr>
                     <th>Product</th>
-                    <th>Ordered</th>
-                    <th>Received</th>
-                    <th>Damaged</th>
-                    <th>Batch</th>
-                    <th>Category</th>
-                    <th>Medicine Form</th>
-                    <th>Stock Unit</th>
-                    <th>Packaging</th>
-                    <th>Total Qty</th>
-                    <th>Loose Units</th>
-                    <th>Strength</th>
-                    <th>GST %</th>
-                    <th>Rack No</th>
-                    <th>Cost Price</th>
-                    <th>MRP</th>
-                    <th>MFG Date</th>
-                    <th>Expiry Date</th>
+                    <th>Ordered Quantity</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -860,248 +883,43 @@ const ReceiveItems = () => {
                   {itemsReceived.map((item, idx) => {
                     const rowKey = `${item.po_line}_${item.batch || ""}`;
                     const prevReceived = grnReceivedMap[rowKey] || 0;
-                    const selectedCategory = MEDICINE_CATEGORIES.find((c) => c.id === item.category);
-                    const packagingFields = selectedCategory
-                      ? selectedCategory.packagingFields.filter(
-                          (field) => field.alwaysShow || (field.showOnlyForBox && item.stock_unit === "box")
-                        )
-                      : [];
-
-                    const totalLabel =
-                      item.stock_unit === "box"
-                        ? "Total Boxes *"
-                        : `Total ${
-                            selectedCategory?.id === "tablet"
-                              ? "Strips"
-                              : selectedCategory?.id === "syrup"
-                              ? "Bottles"
-                              : selectedCategory?.id === "injection"
-                              ? "Vials"
-                              : selectedCategory?.id === "capsule"
-                              ? "Strips"
-                              : selectedCategory?.id === "ointment"
-                              ? "Tubes"
-                              : "Units"
-                          } *`;
+                    const remaining = item.ordered - prevReceived;
+                    const hasReceived = Number(item.received_packs) > 0;
 
                     return (
                       <tr
                         key={item.id}
-                        onClick={() => setSelectedSummaryIdx(idx)}
                         style={{
-                          cursor: "pointer",
                           background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
                         }}
                       >
-                        <td>{item.product_name}</td>
-                        <td>{item.ordered}</td>
-
-                        {/* Packs received */}
+                        <td style={{ fontWeight: 500 }}>{item.product_name}</td>
                         <td>
-                          <input
-                            type="number"
-                            value={item.received_packs}
-                            min="0"
-                            max={item.ordered - (grnReceivedMap[`${item.po_line}_${item.batch || ""}`] || 0)}
-                            onChange={(e) => handleItemEdit(idx, "received_packs", e.target.value)}
-                            style={{
-                              borderColor: (() => {
-                                const receivedQty = Number(item.received_packs) || 0;
-                                const rowKey = `${item.po_line}_${item.batch || ""}`;
-                                const prevReceived = grnReceivedMap[rowKey] || 0;
-                                const totalOrdered = item.ordered || 0;
-                                const maxAllowed = totalOrdered - prevReceived;
-                                return receivedQty > maxAllowed ? "#ef4444" : undefined;
-                              })(),
-                            }}
-                          />
-                          <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>
-                            Remaining: {getRemainingQuantity(item.po_line, item.batch)}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <span style={{ fontSize: "14px", fontWeight: 600 }}>{item.ordered}</span>
+                            {prevReceived > 0 && (
+                              <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                                Previously received: {prevReceived}
+                              </span>
+                            )}
+                            {hasReceived && (
+                              <span style={{ fontSize: "12px", color: "#059669", fontWeight: 500 }}>
+                                This session: {item.received_packs}
+                              </span>
+                            )}
+                            <span style={{ fontSize: "12px", color: remaining > 0 ? "#d97706" : "#059669" }}>
+                              Remaining: {remaining}
+                            </span>
                           </div>
                         </td>
-
-                        {/* Damaged (base units) */}
                         <td>
-                          <input
-                            type="number"
-                            value={item.damaged_base}
-                            min="0"
-                            onChange={(e) => handleItemEdit(idx, "damaged_base", e.target.value)}
-                          />
-                        </td>
-
-                        {/* Batch */}
-                        <td>
-                          <input
-                            type="text"
-                            value={item.batch}
-                            onChange={(e) => handleItemEdit(idx, "batch", e.target.value)}
-                          />
-                        </td>
-
-                        {/* Category (same as AddMedicine) */}
-                        <td>
-                          <select
-                            value={item.category || ""}
-                            onChange={(e) => handleItemEdit(idx, "category", e.target.value)}
+                          <button
+                            className="inv-add"
+                            onClick={() => openReceiveModal(idx)}
+                            style={{ padding: "8px 16px", fontSize: "14px" }}
                           >
-                            <option value="">Select category</option>
-                            {MEDICINE_CATEGORIES.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Medicine Form */}
-                        <td>
-                          <select
-                            value={item.medicine_form || ""}
-                            onChange={(e) => handleItemEdit(idx, "medicine_form", e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            {medicineForms.map((form) => (
-                              <option key={form.id} value={form.id}>
-                                {form.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Stock Unit Type */}
-                        <td>
-                          <select
-                            value={item.stock_unit || ""}
-                            onChange={(e) => handleItemEdit(idx, "stock_unit", e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            <option value="box">Box (Packed)</option>
-                            <option value="loose">Loose (Individual Units)</option>
-                          </select>
-                        </td>
-
-                        {/* Packaging fields */}
-                        <td>
-                          {packagingFields.length === 0 && (
-                            <span style={{ fontSize: 12, color: "#9ca3af" }}>—</span>
-                          )}
-                          {packagingFields.map((field) => (
-                            <div key={field.key} style={{ marginBottom: 4 }}>
-                              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
-                                {field.label}
-                              </div>
-                              <input
-                                type="number"
-                                min="0"
-                                step="any"
-                                value={item[field.key] || ""}
-                                onChange={(e) => handleItemEdit(idx, field.key, e.target.value)}
-                                placeholder={field.placeholder}
-                              />
-                            </div>
-                          ))}
-                        </td>
-
-                        {/* Total quantity */}
-                        <td>
-                          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>{totalLabel}</div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.quantity || ""}
-                            onChange={(e) => handleItemEdit(idx, "quantity", e.target.value)}
-                          />
-                        </td>
-
-                        {/* Loose units for tablet/capsule */}
-                        <td>
-                          {(item.category === "tablet" || item.category === "capsule") && (
-                            <>
-                              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
-                                Loose {item.category === "tablet" ? "Tablets" : "Capsules"} (optional)
-                              </div>
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={item.loose_units || ""}
-                                onChange={(e) => handleItemEdit(idx, "loose_units", e.target.value)}
-                              />
-                            </>
-                          )}
-                        </td>
-
-                        {/* Strength */}
-                        <td>
-                          <input
-                            type="text"
-                            value={item.strength || ""}
-                            onChange={(e) => handleItemEdit(idx, "strength", e.target.value)}
-                          />
-                        </td>
-
-                        {/* GST % */}
-                        <td>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.gst_percentage || ""}
-                            onChange={(e) => handleItemEdit(idx, "gst_percentage", e.target.value)}
-                          />
-                        </td>
-
-                        {/* Rack Location */}
-                        <td>
-                          <select
-                            value={item.rack_no || ""}
-                            onChange={(e) => handleItemEdit(idx, "rack_no", e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            {rackLocations.map((rack) => (
-                              <option key={rack.id} value={rack.name}>
-                                {rack.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Cost Price */}
-                        <td>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.unit_cost || ""}
-                            onChange={(e) => handleItemEdit(idx, "unit_cost", e.target.value)}
-                          />
-                        </td>
-
-                        {/* MRP */}
-                        <td>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.mrp || ""}
-                            onChange={(e) => handleItemEdit(idx, "mrp", e.target.value)}
-                          />
-                        </td>
-
-                        {/* MFG Date */}
-                        <td>
-                          <input
-                            type="date"
-                            value={item.mfg_date || ""}
-                            onChange={(e) => handleItemEdit(idx, "mfg_date", e.target.value)}
-                          />
-                        </td>
-
-                        {/* Expiry Date */}
-                        <td>
-                          <input
-                            type="date"
-                            value={item.expiry_date || ""}
-                            onChange={(e) => handleItemEdit(idx, "expiry_date", e.target.value)}
-                          />
+                            {hasReceived ? "Update Receipt" : "Receive Item"}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -1110,6 +928,408 @@ const ReceiveItems = () => {
               </table>
             </div>
           </div>
+
+          {/* Receive Item Modal */}
+          {modalOpen && selectedItemIdx !== null && (() => {
+            const item = itemsReceived[selectedItemIdx];
+            const rowKey = `${item.po_line}_${item.batch || ""}`;
+            const prevReceived = grnReceivedMap[rowKey] || 0;
+            const selectedCategory = MEDICINE_CATEGORIES.find((c) => c.id === item.category);
+            const packagingFields = selectedCategory
+              ? selectedCategory.packagingFields.filter(
+                  (field) => field.alwaysShow || (field.showOnlyForBox && item.stock_unit === "box")
+                )
+              : [];
+
+            const totalLabel =
+              item.stock_unit === "box"
+                ? "Total Boxes *"
+                : `Total ${
+                    selectedCategory?.id === "tablet"
+                      ? "Strips"
+                      : selectedCategory?.id === "syrup"
+                      ? "Bottles"
+                      : selectedCategory?.id === "injection"
+                      ? "Vials"
+                      : selectedCategory?.id === "capsule"
+                      ? "Strips"
+                      : selectedCategory?.id === "ointment"
+                      ? "Tubes"
+                      : "Units"
+                  } *`;
+
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(0, 0, 0, 0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                }}
+                onClick={closeReceiveModal}
+              >
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: "12px",
+                    padding: "24px",
+                    maxWidth: "900px",
+                    width: "90%",
+                    maxHeight: "90vh",
+                    overflowY: "auto",
+                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                    <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>Receive Item: {item.product_name}</h2>
+                    <button
+                      onClick={closeReceiveModal}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        fontSize: "24px",
+                        cursor: "pointer",
+                        color: "#6b7280",
+                        padding: "0",
+                        width: "32px",
+                        height: "32px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Ordered Quantity</label>
+                      <input
+                        type="text"
+                        value={item.ordered}
+                        readOnly
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                          backgroundColor: "#f9fafb",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>
+                        Received Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={item.received_packs}
+                        min="0"
+                        max={item.ordered - prevReceived}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "received_packs", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                          borderColor: (() => {
+                            const receivedQty = Number(item.received_packs) || 0;
+                            const totalOrdered = item.ordered || 0;
+                            const maxAllowed = totalOrdered - prevReceived;
+                            return receivedQty > maxAllowed ? "#ef4444" : undefined;
+                          })(),
+                        }}
+                      />
+                      <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                        Remaining: {getRemainingQuantity(item.po_line, item.batch)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Batch</label>
+                      <input
+                        type="text"
+                        value={item.batch}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "batch", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Category *</label>
+                      <input
+                        type="text"
+                        value={item.category ? (MEDICINE_CATEGORIES.find(c => c.id === item.category)?.name || item.category) : "Not specified"}
+                        readOnly
+                        disabled
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                          backgroundColor: "#f9fafb",
+                          color: "#6b7280",
+                          cursor: "not-allowed",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Stock Unit Type</label>
+                      <select
+                        value={item.stock_unit || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "stock_unit", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        <option value="box">Box (Packed)</option>
+                        <option value="loose">Loose (Individual Units)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Strength</label>
+                      <input
+                        type="text"
+                        value={item.strength || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "strength", e.target.value)}
+                        placeholder="e.g., 500mg"
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Packaging fields */}
+                  {packagingFields.length > 0 && (
+                    <div style={{ marginBottom: "20px" }}>
+                      <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Packaging Details</label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                        {packagingFields.map((field) => (
+                          <div key={field.key}>
+                            <label style={{ display: "block", marginBottom: "4px", fontSize: "13px", color: "#6b7280" }}>
+                              {field.label}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={item[field.key] || ""}
+                              onChange={(e) => handleItemEdit(selectedItemIdx, field.key, e.target.value)}
+                              placeholder={field.placeholder}
+                              style={{
+                                width: "100%",
+                                padding: "8px",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "6px",
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>{totalLabel}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.quantity || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "quantity", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                    {(item.category === "tablet" || item.category === "capsule") && (
+                      <div>
+                        <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>
+                          Loose {item.category === "tablet" ? "Tablets" : "Capsules"} (optional)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={item.loose_units || ""}
+                          onChange={(e) => handleItemEdit(selectedItemIdx, "loose_units", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>GST %</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.gst_percentage || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "gst_percentage", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Rack Location</label>
+                      <select
+                        value={item.rack_no || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "rack_no", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {rackLocations.map((rack) => (
+                          <option key={rack.id} value={rack.name}>
+                            {rack.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Cost Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unit_cost || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "unit_cost", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>MRP</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.mrp || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "mrp", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>MFG Date</label>
+                      <input
+                        type="date"
+                        value={item.mfg_date || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "mfg_date", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Expiry Date</label>
+                      <input
+                        type="date"
+                        value={item.expiry_date || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "expiry_date", e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px" }}>
+                    <button
+                      onClick={closeReceiveModal}
+                      style={{
+                        padding: "10px 20px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        backgroundColor: "white",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        closeReceiveModal();
+                      }}
+                      style={{
+                        padding: "10px 20px",
+                        border: "none",
+                        borderRadius: "6px",
+                        backgroundColor: "#059669",
+                        color: "white",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

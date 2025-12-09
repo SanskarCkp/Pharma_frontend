@@ -127,7 +127,7 @@ const Sidebar = () => {
               return "sidebar-link";
             }
 
-            const masterMatches = ["/masters", "/medicinecategories", "/medicineforms", "/unitofmeasurement"];
+            const masterMatches = ["/masters", "/medicinecategories", "/unitofmeasurement"];
             const active = masterMatches.some(
               (m) => location.pathname === m || location.pathname.startsWith(`${m}/`)
             );

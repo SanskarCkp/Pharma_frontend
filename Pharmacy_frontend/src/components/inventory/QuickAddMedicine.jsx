@@ -717,7 +717,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
           let currentQtyUI = 0;
           if (currentStockBase > 0 && stockUnit === currentStockUnit) {
             // Try to convert current stock base back to UI units
-            // Get packaging info from selected medicine, form state, or batch detail
+            // Get packaging info from selected medicine or batch detail
             const med = selectedMedicine || {};
             let factor = 1;
             
@@ -894,7 +894,6 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                           id: med.id,
                           name: med.name,
                           category: categoryId,
-                          form: med.medicine_form?.id || med.form?.id || med.form,
                           strength: med.dosage_strength || med.strength || "",
                           rack_location: med.rack_location?.id || med.rack_location || 1,
                           gst_percent: med.gst_percent || "0",

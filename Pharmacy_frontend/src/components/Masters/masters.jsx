@@ -22,7 +22,6 @@ const API_BASE = normalizeBase(rawBase);
 
 const ENDPOINTS = {
   // MedicineCategories: `${API_BASE}/api/v1/catalog/categories/`,
-  MedicineForms: `${API_BASE}/api/v1/catalog/forms/`,
   // UnitsOfMeasurement: `${API_BASE}/api/v1/catalog/uoms/`,
   // paymentTerms: `${API_BASE}/api/v1/settings/payment-terms/`,
   rackLocations: `${API_BASE}/api/v1/inventory/rack-locations/`,
@@ -33,14 +32,12 @@ export default function MastersDashboard() {
   const [ptTotal, setPtTotal] = useState(null);
   const [rlTotal, setRlTotal] = useState(null);
   const [mcTotal, setmcTotal] = useState(null);
-  const [mfTotal, setmfTotal] = useState(null);
   const [umTotal, setumTotal] = useState(null);
 
 
   const [ptError, setPtError] = useState(null);
   const [rlError, setRlError] = useState(null);
   const [mcError, setmcError] = useState(null);
-  const [mfError, setmfError] = useState(null);
   const [umError, setumError] = useState(null);
 
   useEffect(() => {
@@ -78,7 +75,6 @@ export default function MastersDashboard() {
 
     // run them in parallel
     // fetchCount(ENDPOINTS.MedicineCategories, setmcTotal, setmcError);
-    fetchCount(ENDPOINTS.MedicineForms, setmfTotal, setmfError);
     // fetchCount(ENDPOINTS.UnitsOfMeasurement, setumTotal, setumError);
     // fetchCount(ENDPOINTS.paymentTerms, setPtTotal, setPtError);
     fetchCount(ENDPOINTS.rackLocations, setRlTotal, setRlError);
@@ -134,7 +130,6 @@ export default function MastersDashboard() {
         {/* {ptError && <div>Payment terms load error: {ptError}</div>} */}
         {rlError && <div>Rack locations load error: {rlError}</div>}
         {/* {mcError && <div>Medicine categories load error: {mcError}</div>} */}
-        {mfError && <div>Medicine forms load error: {mfError}</div>}
         {/* {umError && <div>Units load error: {umError}</div>} */}
       </div>
     </div>

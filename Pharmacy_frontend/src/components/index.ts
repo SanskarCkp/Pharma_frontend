@@ -17,7 +17,6 @@ export {effect} from './effect';
 export {effects} from './effects';
 export {inventory} from './inventory';
 export {unitofmeasurement} from './unitofmeasurement';
-export {medicineforms} from './medicineforms';
 export {medicinecategories} from './medicinecategories';
 export {billgeneration} from './billgeneration';
 export {expiryalerts} from './expiryalerts';

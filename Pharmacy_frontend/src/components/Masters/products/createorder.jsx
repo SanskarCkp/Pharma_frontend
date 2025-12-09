@@ -104,6 +104,8 @@ const CreateOrder = () => {
     };
     if (r.id) line.product = r.id;
     else line.requested_name = r.name;
+    // Include category if available
+    if (r.category) line.category = r.category;
     return line;
   });
 
