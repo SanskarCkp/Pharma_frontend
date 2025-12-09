@@ -94,12 +94,9 @@ export default function MedicineDetailPage() {
           <div className="inv-card">
             <h3>Basic Information</h3>
             {renderInfoRow("Medicine Name", medicine?.name)}
-            {renderInfoRow("Generic Name", medicine?.generic_name)}
             {renderInfoRow("Category", medicine?.category?.name)}
-            {renderInfoRow("Form", medicine?.form?.name)}
             {renderInfoRow("Strength", medicine?.strength)}
             {renderInfoRow("Rack Location", medicine?.rack_location?.name)}
-            {renderInfoRow("Description", medicine?.description)}
           </div>
 
           <div className="inv-card">
