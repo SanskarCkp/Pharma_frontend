@@ -343,8 +343,6 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
               gst_percent: '0',
               mrp: item.mrp || '0',
               form: null,
-              base_uom: null,
-              selling_uom: null,
               // Packaging fields will be fetched from product detail when selected
               tablets_per_strip: null,
               capsules_per_strip: null,
@@ -524,8 +522,6 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         category: med.category || category, // Frontend category ID
         form: med.form?.id || med.form,
         strength: med.strength || med.dosage_strength || "",
-        base_uom: med.base_uom?.id || med.base_uom,
-        selling_uom: med.selling_uom?.id || med.selling_uom,
         rack_location: med.rack_location?.id || med.rack_location || 1,
         gst_percent: med.gst_percent || "0",
         mrp: med.mrp || "0",
@@ -561,8 +557,6 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         gst_percent: "0",
         mrp: "0",
         form: 1, // Default form - adjust as needed
-        base_uom: 5, // Default TAB UOM - adjust as needed
-        selling_uom: 7, // Default STRIP UOM - adjust as needed
       };
 
       // Set packaging fields - use values from form state, fallback to defaults
@@ -901,8 +895,6 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                           category: categoryId,
                           form: med.medicine_form?.id || med.form?.id || med.form,
                           strength: med.dosage_strength || med.strength || "",
-                          base_uom: med.base_uom?.id || med.base_uom,
-                          selling_uom: med.selling_uom?.id || med.selling_uom,
                           rack_location: med.rack_location?.id || med.rack_location || 1,
                           gst_percent: med.gst_percent || "0",
                           mrp: med.mrp || "0",

@@ -6,6 +6,7 @@ import jsPDF from "jspdf";
 import styles from "./invoice.module.css";
 import { authFetch } from "../../api/http";
 import { apiUrl } from "../../api/base";
+import { MedicalCrossLogo } from "../common/logo";
 
 const INVOICE_URL = apiUrl("sales/invoices/");
 
@@ -158,11 +159,7 @@ export default function Invoice() {
         <div className={styles.invoiceHeader}>
           <div className={styles.leftSection}>
             <div className={styles.logoSection}>
-              <img
-                src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
-                alt="logo"
-                className={styles.mobileLogo}
-              />
+              <MedicalCrossLogo size={80} />
             </div>
             <div className={styles.companyInfo}>
               <h2 className={styles.companyName}>Keshav Medicals</h2>

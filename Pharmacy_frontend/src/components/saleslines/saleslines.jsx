@@ -16,7 +16,6 @@ const Saleslines = () => {
     productId: "",
     batchLotId: "",
     qtyBase: "",
-    soldUom: "BASE",
     ratePerBase: "",
     taxPercent: "",
     taxAmount: "",
@@ -72,7 +71,7 @@ const Saleslines = () => {
         `Invoice ID: ${newLine.saleInvoiceId}\n` +
         `Product ID: ${newLine.productId}\n` +
         `Batch Lot ID: ${newLine.batchLotId}\n` +
-        `Qty: ${newLine.qtyBase} ${newLine.soldUom}\n` +
+        `Qty: ${newLine.qtyBase}\n` +
         `Rate per Base: ₹${newLine.ratePerBase}\n` +
         `Tax: ${newLine.taxPercent}% (₹${newLine.taxAmount})\n` +
         `Total: ₹${newLine.lineTotal}\n` +
@@ -89,7 +88,6 @@ const Saleslines = () => {
       productId: "",
       batchLotId: "",
       qtyBase: "",
-      soldUom: "BASE",
       ratePerBase: "",
       taxPercent: "",
       taxAmount: "",
@@ -154,17 +152,6 @@ const Saleslines = () => {
           />
         </div>
 
-        <div className="formGroup">
-          <label>Sold UOM:</label>
-          <select
-            name="soldUom"
-            value={formData.soldUom}
-            onChange={handleChange}
-          >
-            <option value="BASE">BASE</option>
-            <option value="PACK">PACK</option>
-          </select>
-        </div>
 
         <div className="formGroup">
           <label>Rate per Base (₹):</label>
@@ -241,7 +228,6 @@ const Saleslines = () => {
                 <th>Product ID</th>
                 <th>Batch Lot ID</th>
                 <th>Qty</th>
-                <th>UOM</th>
                 <th>Rate</th>
                 <th>Tax %</th>
                 <th>Tax Amt</th>
@@ -257,7 +243,6 @@ const Saleslines = () => {
                   <td>{line.productId}</td>
                   <td>{line.batchLotId}</td>
                   <td>{line.qtyBase}</td>
-                  <td>{line.soldUom}</td>
                   <td>₹{line.ratePerBase}</td>
                   <td>{line.taxPercent}%</td>
                   <td>₹{line.taxAmount}</td>

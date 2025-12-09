@@ -16,6 +16,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { MedicalCrossLogo } from "./common/logo";
 import "./Sidebar.css";
 
 // ⬅️ use the logout from api/auth instead of ../utils/logout
@@ -84,14 +85,10 @@ const Sidebar = () => {
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-        <div className="mobile-logo-wrap">
-          <img
-            src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
-            alt="logo"
-            className="mobile-logo"
-          />
-          <span className="mobile-brand">Keshav Medicals</span>
-        </div>
+          <div className="mobile-logo-wrap">
+            <MedicalCrossLogo size={40} />
+            <span className="mobile-brand">Keshav Medicals</span>
+          </div>
       </div>
 
       {/* Overlay for mobile */}
@@ -107,11 +104,7 @@ const Sidebar = () => {
         {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo-wrap">
-            <img
-              src="https://image2url.com/images/1762228868711-92532987-d9ed-48dc-902b-ffb845d41cdc.jpeg"
-              alt="logo"
-              className="sidebar-logo"
-            />
+            <MedicalCrossLogo size={48} />
             <div className="sidebar-brand-multi">
               <span className="brand-line1">Keshav Medicals</span>
               <span className="brand-line2">Management System</span>

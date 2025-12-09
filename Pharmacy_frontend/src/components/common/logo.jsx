@@ -1,6 +1,31 @@
 // src/components/common/logo.jsx
 import React from "react";
 
+// Medical Cross Logo Component (Red square, white square, green cross)
+export const MedicalCrossLogo = ({ size = 56, className = "" }) => {
+  return (
+    <div
+      className={`flex items-center justify-center flex-shrink-0 ${className}`}
+      style={{
+        width: size,
+        height: size,
+      }}
+      aria-hidden
+    >
+      <svg width={size} height={size} viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Outer red square with rounded corners */}
+        <rect x="0" y="0" width="56" height="56" rx="12" fill="#dc2626" />
+        {/* Middle white square with rounded corners */}
+        <rect x="6" y="6" width="44" height="44" rx="8" fill="#ffffff" />
+        {/* Inner green cross - vertical bar */}
+        <rect x="24" y="18" width="8" height="20" rx="2" fill="#22c55e" />
+        {/* Inner green cross - horizontal bar */}
+        <rect x="18" y="24" width="20" height="8" rx="2" fill="#22c55e" />
+      </svg>
+    </div>
+  );
+};
+
 export default function Logo() {
   return (
     <div
@@ -11,24 +36,8 @@ export default function Logo() {
         WebkitBackdropFilter: "blur(6px)",
       }}
     >
-      {/* square icon */}
-      <div
-        className="flex items-center justify-center"
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 12,
-          background: "#ffffff",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-          border: "1px solid rgba(0,0,0,0.05)",
-        }}
-        aria-hidden
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="3" width="18" height="18" rx="4" fill="#fff" />
-          <path d="M12 7v10M8 12h8" stroke="#059669" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
+      {/* Medical Cross Logo */}
+      <MedicalCrossLogo size={56} />
 
       {/* brand text (keeps compact) */}
       <div className="flex flex-col leading-tight select-none">

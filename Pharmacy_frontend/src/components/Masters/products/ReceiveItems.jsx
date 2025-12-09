@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { CheckCircle, Package, ClipboardList, ArrowLeft } from "lucide-react";
 import "./receiveitems.css";
+import "../../inventory/inventory.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
 import { useAlert } from "../../ui/alert-provider";
@@ -21,7 +22,6 @@ const ReceiveItems = () => {
   const [category, setCategory] = useState([]);
   const [rackLocations, setRackLocations] = useState([]);
   const [medicineForms, setMedicineForms] = useState([]);
-  const [uoms, setUoms] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,12 +83,6 @@ const ReceiveItems = () => {
         const mfData = mfRes.ok ? await mfRes.json() : [];
         setMedicineForms(Array.isArray(mfData) ? mfData : mfData.results || []);
 
-        // 5.6️⃣ UOMs (units of measurement)
-        const uomRes = await authFetch(
-          `${API_BASE_URL}/api/v1/catalog/uoms/`
-        );
-        const uomData = uomRes.ok ? await uomRes.json() : [];
-        setUoms(Array.isArray(uomData) ? uomData : uomData.results || []);
 
         // 6️⃣ Product names & product details (we may need product master fields)
         const productIdSet = new Set();
@@ -170,8 +164,6 @@ const ReceiveItems = () => {
               batch: line.batch_no || "",
               medicine_form: line.medicine_form || "",
               strength: line.strength || "",
-              base_uom: line.base_uom || "",
-              selling_uom: line.selling_uom || "",
               hsn_code: line.hsn_code || "",
               gst_percentage: line.gst_percentage || "",
               grn_received_at: line.grn_received_at,
@@ -216,8 +208,6 @@ const ReceiveItems = () => {
             strength: last?.strength || prodMaster.strength || "",
             quantity: last?.quantity || prodMaster.quantity || "",
             units_per_pack: last?.units_per_pack || prodMaster.units_per_pack || "",
-            base_uom: last?.base_uom || prodMaster.base_uom || orderUom || "",
-            selling_uom: last?.selling_uom || prodMaster.selling_uom || orderUom || "",
             hsn_code: last?.hsn_code || prodMaster.hsn_code || "",
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
             category: last?.category || "",
@@ -332,13 +322,10 @@ const ReceiveItems = () => {
         mrp: Number(item.mrp || 0),
         rack_no: item.rack_no || "",
         units_per_pack: item.units_per_pack ? Number(item.units_per_pack) : null,
-        quantity_uom: item.selling_uom || item.base_uom || "",
         // include the new fields so GRN entry contains them
         medicine_form: item.medicine_form || "",
         strength: item.strength || "",
         quantity: item.quantity || "",
-        base_uom: item.base_uom || "",
-        selling_uom: item.selling_uom || "",
         hsn_code: item.hsn_code || "",
         gst_percentage: item.gst_percentage || "",
       }));
@@ -394,8 +381,6 @@ const ReceiveItems = () => {
               ...(line.medicine_form ? { medicine_form: line.medicine_form } : {}),
               ...(line.strength ? { strength: line.strength } : {}),
               ...(line.quantity ? { quantity: line.quantity } : {}),
-              ...(line.base_uom ? { base_uom: line.base_uom } : {}),
-              ...(line.selling_uom ? { selling_uom: line.selling_uom } : {}),
               ...(line.hsn_code ? { hsn_code: line.hsn_code } : {}),
               ...(line.gst_percentage ? { gst_percentage: line.gst_percentage } : {}),
               ...(line.mrp ? { mrp: line.mrp } : {}),
@@ -424,25 +409,41 @@ const ReceiveItems = () => {
 
   if (loading)
     return (
-      <div className="receiveitems-container">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} />
-          <span>Back</span>
-        </button>
-        <h1 className="page-title">Receive Items</h1>
-        <p className="loading-text">Loading...</p>
+      <div className="inv-wrap">
+        <div className="inv-container">
+          <div className="receiveitems-header-section">
+            <button className="back-btn" onClick={() => navigate(-1)}>
+              <ArrowLeft size={18} />
+              Back
+            </button>
+          </div>
+          <div className="inv-header">
+            <div>
+              <h2>Receive Items</h2>
+              <p>Loading...</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
 
   if (!purchaseOrder)
     return (
-      <div className="receiveitems-container">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} />
-          <span>Back</span>
-        </button>
-        <h1 className="page-title">Receive Items</h1>
-        <p className="loading-text">Purchase Order not found.</p>
+      <div className="inv-wrap">
+        <div className="inv-container">
+          <div className="receiveitems-header-section">
+            <button className="back-btn" onClick={() => navigate(-1)}>
+              <ArrowLeft size={18} />
+              Back
+            </button>
+          </div>
+          <div className="inv-header">
+            <div>
+              <h2>Receive Items</h2>
+              <p style={{ color: "#ef4444" }}>Purchase Order not found.</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
 
@@ -451,75 +452,105 @@ const ReceiveItems = () => {
   const selSummary = getLineSummary(selectedItem.po_line, selectedItem.batch);
 
   return (
-    <div className="receiveitems-container">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <ArrowLeft size={18} />
-        <span>Back</span>
-      </button>
-      <h1 className="page-title">Receive Items</h1>
-      <div className="kpi-cards-grid">
-        {/* PURCHASE ORDER */}
-        <div className="kpi-card">
-          <h3>Purchase Order Details</h3>
-          <div className="kpi-item">
-            <strong>PO Number:</strong> {purchaseOrder.po_number}
-          </div>
-          <div className="kpi-item">
-            <strong>Supplier:</strong> {purchaseOrder.supplier}
-          </div>
-          <div className="kpi-item">
-            <strong>Order Date:</strong> {formatDateDDMMYYYY(purchaseOrder.order_date)}
-          </div>
-          <div className="kpi-item">
-            <strong>Expected Date:</strong> {formatDateDDMMYYYY(purchaseOrder.expected_date)}
-          </div>
-        </div>
-
-        {/* RECEIVING DETAILS */}
-        <div className="kpi-card">
-          <h3>Receiving Details</h3>
-          {loggedInUser && (
-            <div className="kpi-item">
-              <strong>Received By:</strong> {loggedInUser.full_name || loggedInUser.username}
-            </div>
-          )}
-          {receivingDetails ? (
-            <>
-              <div className="kpi-item">
-                <strong>Received Date:</strong> {formatDateDDMMYYYY(receivingDetails.received_date)}
-              </div>
-              <div className="kpi-item">
-                <strong>Invoice Number:</strong> {receivingDetails.invoice_number}
-              </div>
-            </>
-          ) : (
-            <div className="kpi-item" style={{ color: "#d97706" }}>
-              Not yet received
-            </div>
-          )}
-        </div>
-
-        {/* SUMMARY FOR SELECTED ROW */}
-        <div className="kpi-card summary-card">
-          <h3>Receiving Summary (for selected item)</h3>
-          <div className="summary-row">
-            <CheckCircle size={16} /> Total Ordered: {selSummary.total_ordered}
-          </div>
-          <div className="summary-row">
-            <Package size={16} /> Total Received: {selSummary.total_received}
-          </div>
-          <div className="summary-row">
-            <ClipboardList size={16} /> Completion: {selSummary.completion}
-          </div>
-          <button className="complete-btn" onClick={handleCompleteReceiving}>
-            Complete Receiving
+    <div className="inv-wrap">
+      <div className="inv-container">
+        <div className="receiveitems-header-section">
+          <button className="back-btn" onClick={() => navigate(-1)}>
+            <ArrowLeft size={18} />
+            Back
           </button>
         </div>
 
-        {/* ITEMS TABLE */}
-        <div className="kpi-card items-table-card">
-          <h3>Items Received</h3>
-          <table className="items-received-table">
+        <div className="inv-header">
+          <div>
+            <h2>Receive Items</h2>
+            <p>Receive items for Purchase Order: {purchaseOrder.po_number}</p>
+          </div>
+        </div>
+
+        <div className="inv-card">
+          <div className="receiveitems-details-grid">
+            {/* PURCHASE ORDER */}
+            <div className="receiveitems-detail-card">
+              <h3>Purchase Order Details</h3>
+              <div className="receiveitems-detail-item">
+                <span className="receiveitems-label">PO Number:</span>
+                <span className="receiveitems-value">{purchaseOrder.po_number}</span>
+              </div>
+              <div className="receiveitems-detail-item">
+                <span className="receiveitems-label">Supplier:</span>
+                <span className="receiveitems-value">{purchaseOrder.supplier}</span>
+              </div>
+              <div className="receiveitems-detail-item">
+                <span className="receiveitems-label">Order Date:</span>
+                <span className="receiveitems-value">{formatDateDDMMYYYY(purchaseOrder.order_date)}</span>
+              </div>
+              <div className="receiveitems-detail-item">
+                <span className="receiveitems-label">Expected Date:</span>
+                <span className="receiveitems-value">{formatDateDDMMYYYY(purchaseOrder.expected_date) || "-"}</span>
+              </div>
+            </div>
+
+            {/* RECEIVING DETAILS */}
+            <div className="receiveitems-detail-card">
+              <h3>Receiving Details</h3>
+              {loggedInUser && (
+                <div className="receiveitems-detail-item">
+                  <span className="receiveitems-label">Received By:</span>
+                  <span className="receiveitems-value">{loggedInUser.full_name || loggedInUser.username}</span>
+                </div>
+              )}
+              {receivingDetails ? (
+                <>
+                  <div className="receiveitems-detail-item">
+                    <span className="receiveitems-label">Received Date:</span>
+                    <span className="receiveitems-value">{formatDateDDMMYYYY(receivingDetails.received_date)}</span>
+                  </div>
+                  <div className="receiveitems-detail-item">
+                    <span className="receiveitems-label">Invoice Number:</span>
+                    <span className="receiveitems-value">{receivingDetails.invoice_number || "-"}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="receiveitems-detail-item">
+                  <span className="receiveitems-value" style={{ color: "#d97706", fontWeight: 600 }}>
+                    Not yet received
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* SUMMARY FOR SELECTED ROW */}
+            <div className="receiveitems-detail-card receiveitems-summary-card">
+              <h3>Receiving Summary</h3>
+              <div className="receiveitems-summary-content">
+                <div className="receiveitems-summary-row">
+                  <CheckCircle size={18} style={{ color: "#059669" }} />
+                  <span className="receiveitems-label">Total Ordered:</span>
+                  <span className="receiveitems-value">{selSummary.total_ordered}</span>
+                </div>
+                <div className="receiveitems-summary-row">
+                  <Package size={18} style={{ color: "#2563eb" }} />
+                  <span className="receiveitems-label">Total Received:</span>
+                  <span className="receiveitems-value">{selSummary.total_received}</span>
+                </div>
+                <div className="receiveitems-summary-row">
+                  <ClipboardList size={18} style={{ color: "#7c3aed" }} />
+                  <span className="receiveitems-label">Completion:</span>
+                  <span className="receiveitems-value">{selSummary.completion}</span>
+                </div>
+              </div>
+              <button className="inv-add complete-receiving-btn" onClick={handleCompleteReceiving}>
+                Complete Receiving
+              </button>
+            </div>
+          </div>
+
+          {/* ITEMS TABLE */}
+          <div className="receiveitems-table-section">
+            <h3 style={{ marginBottom: "16px", fontSize: "18px", fontWeight: 600, color: "#111827" }}>Items Received</h3>
+            <div className="inv-table-wrap">
+              <table className="inv-table items-received-table">
             <thead>
               <tr>
                 <th>Product</th>
@@ -532,8 +563,6 @@ const ReceiveItems = () => {
                 <th>Strength</th>
                 <th>Quantity</th>
                 <th>Units / Pack</th>
-                <th>Base UOM *</th>
-                <th>Selling UOM</th>
                 <th>HSN Code</th>
                 <th>GST %</th>
 
@@ -638,42 +667,6 @@ const ReceiveItems = () => {
                       />
                     </td>
 
-                    {/* Base UOM (dropdown) */}
-                    <td>
-                      <select
-                        value={item.base_uom || ""}
-                        onChange={(e) => handleItemEdit(idx, "base_uom", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {uoms.map((u) => {
-                          const value = u.code || u.name || u.id;
-                          return (
-                            <option key={u.id || value} value={value}>
-                              {u.name || value}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </td>
-
-                    {/* Selling UOM (dropdown) */}
-                    <td>
-                      <select
-                        value={item.selling_uom || ""}
-                        onChange={(e) => handleItemEdit(idx, "selling_uom", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {uoms.map((u) => {
-                          const value = u.code || u.name || u.id;
-                          return (
-                            <option key={u.id || value} value={value}>
-                              {u.name || value}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </td>
-
                     {/* HSN */}
                     <td>
                       <input
@@ -763,8 +756,10 @@ const ReceiveItems = () => {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

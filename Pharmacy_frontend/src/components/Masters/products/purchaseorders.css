@@ -1,15 +1,3 @@
-.purchaseorders-container {
-  width: 100%;
-  margin: 0 auto;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
-  padding: 25px 45px;
-  min-height: calc(100vh - 70px - 60px - 48px);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
 /* Header Section - Back button */
 .purchaseorders-header-section {
   display: flex;
@@ -17,7 +5,7 @@
   margin-bottom: 1rem;
 }
 
-.purchaseorders-container .back-btn {
+.purchaseorders-header-section .back-btn {
   display: inline-flex !important;
   align-items: center;
   gap: 8px;
@@ -33,7 +21,7 @@
   box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
-.purchaseorders-container .back-btn:hover {
+.purchaseorders-header-section .back-btn:hover {
   background: #059669 !important;
   border-color: #047857 !important;
   color: white !important;
@@ -41,39 +29,8 @@
   box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
 }
 
-.purchaseorders-container .back-btn:active {
+.purchaseorders-header-section .back-btn:active {
   transform: translateY(0);
-}
-
-/* Header Card */
-.purchaseorders-header-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 30px;
-  box-shadow: none;
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  color: #111827;
-}
-
-.Supplier-name {
-  font-size: 0.95rem;
-  color: #6b7280;
-  margin: 0;
-}
-
-.orders-table-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* Actions cell uses inv-actions-cell from inventory.css */

@@ -97,14 +97,14 @@ export default function GenerateBill() {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [cart, setCart] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedUomKey, setSelectedUomKey] = useState("BASE");
-  const [qtyInput, setQtyInput] = useState(1);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedProductForAdd, setSelectedProductForAdd] = useState(null);
+  const [addQuantity, setAddQuantity] = useState(1);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState("");
   const [otherPaymentMethod, setOtherPaymentMethod] = useState("");
-  const [amountPaying, setAmountPaying] = useState("");
+  const [discount, setDiscount] = useState("");
   const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -234,57 +234,52 @@ export default function GenerateBill() {
     return res.json();
   };
 
-  const openUOMCard = async (product) => {
+  const openAddModal = async (product) => {
     if (!product?.batch_id) return;
     setLoadingDetail(true);
-    setSelectedProduct(null);
+    setSelectedProductForAdd(null);
+    setAddQuantity(1);
     try {
       const detail = await fetchBatchDetail(product.batch_id);
       const medicine = detail.medicine || {};
       const inventory = detail.inventory || {};
-      const baseLabel = medicine.base_uom?.name || product.base_uom || "Units";
-      const sellingLabel = medicine.selling_uom?.name || "";
-      const gstPercent = numberOrZero(medicine.gst_percent);
       const packPrice = numberOrZero(medicine.mrp || product.mrp, 2);
       const unitsPerPack = Math.max(1, deriveUnitsPerPack(medicine));
-      const ratePerBase = unitsPerPack > 0 ? packPrice / unitsPerPack : packPrice;
       const availableBase = numberOrZero(inventory.stock_on_hand_base || product.stock_base || 0);
+      const availableBoxes = unitsPerPack > 0 ? Math.floor(availableBase / unitsPerPack) : 0;
 
-      const options = [];
-      if (unitsPerPack > 0) {
-        const packLabelText = sellingLabel?.trim()
-          ? sellingLabel.trim()
-          : `${baseLabel} Pack`;
-        options.push({
-          key: "PACK",
-          code: "PACK",
-          displayLabel: `${packLabelText} (${unitsPerPack} ${baseLabel})`,
-          factor: unitsPerPack,
-        });
+      if (availableBase <= 0) {
+        showAlert("No stock available for this medicine.", "Stock Alert");
+        return;
       }
-      options.push({
-        key: "BASE",
-        code: "BASE",
-        displayLabel: `${baseLabel} (base)`,
-        factor: 1,
-      });
 
-      const detailData = {
+      // Check if already in cart
+      const existingItem = cart.find((item) => item.batch_id === product.batch_id);
+      const currentQtyBase = existingItem ? numberOrZero(existingItem.qty_base) : 0;
+      const remainingStock = availableBase - currentQtyBase;
+      const remainingBoxes = unitsPerPack > 0 ? Math.floor(remainingStock / unitsPerPack) : 0;
+
+      if (remainingStock <= 0) {
+        showAlert("No more stock available for this medicine.", "Stock Alert");
+        return;
+      }
+
+      const productData = {
         batch_id: product.batch_id,
         batch_number: product.batch_number,
         product_id: product.product_id,
         name: medicine.name || product.name,
-        gstPercent,
-        packPrice,
-        ratePerBase,
         availableBase,
-        baseLabel,
-        uomOptions: options,
+        remainingStock,
+        currentQtyInCart: currentQtyBase,
+        packPrice,
+        unitsPerPack,
+        availableBoxes,
+        remainingBoxes,
       };
 
-      setSelectedProduct(detailData);
-      setSelectedUomKey(options[0]?.key || "BASE");
-      setQtyInput(options[0] && availableBase > 0 ? 1 : 0);
+      setSelectedProductForAdd(productData);
+      setShowAddModal(true);
     } catch (err) {
       console.error(err);
       showAlert(err.message || "Unable to load medicine details. Please try again.", "Error");
@@ -293,68 +288,78 @@ export default function GenerateBill() {
     }
   };
 
-  const selectedOption = selectedProduct?.uomOptions?.find((o) => o.key === selectedUomKey) || null;
-  const maxQtyForSelected = useMemo(() => {
-    if (!selectedProduct || !selectedOption) return undefined;
-    if (!selectedProduct.availableBase || selectedProduct.availableBase <= 0) return 0;
-    const factor = selectedOption.factor || 1;
-    if (factor <= 0) return undefined;
-    return Math.floor(selectedProduct.availableBase / factor);
-  }, [selectedProduct, selectedOption]);
-
-  useEffect(() => {
-    if (!selectedProduct || maxQtyForSelected === undefined) return;
-    if (maxQtyForSelected === 0) {
-      setQtyInput(0);
-    } else if (qtyInput <= 0) {
-      setQtyInput(1);
-    } else if (qtyInput > maxQtyForSelected) {
-      setQtyInput(maxQtyForSelected);
-    }
-  }, [selectedProduct, maxQtyForSelected]);
-
-  const addProductWithUOM = () => {
-    if (!selectedProduct || !selectedOption) return;
-    if (!maxQtyForSelected || maxQtyForSelected <= 0) {
-      showAlert("No stock available for this unit.", "Stock Alert");
+  const addProductToCart = async () => {
+    if (!selectedProductForAdd) return;
+    
+    const qtyToAdd = Math.max(1, Math.floor(numberOrZero(addQuantity)));
+    if (qtyToAdd <= 0) {
+      showAlert("Please enter a valid quantity.", "Validation Error");
       return;
     }
-    const qty = Math.max(1, Math.min(qtyInput || 1, maxQtyForSelected));
-    const conversionFactor = selectedOption.factor || 1;
-    const qtyBase = qty * conversionFactor;
-    const soldLabel = selectedOption.displayLabel;
-    const soldCode = selectedOption.code;
-    const unitPrice = soldCode === "PACK" ? selectedProduct.packPrice : selectedProduct.ratePerBase;
 
-    setCart((prev) => {
-      const next = [...prev];
-      const idx = next.findIndex((item) => item.batch_id === selectedProduct.batch_id);
-      const line = {
-        batch_id: selectedProduct.batch_id,
-        batch_number: selectedProduct.batch_number,
-        product_id: selectedProduct.product_id,
-        name: selectedProduct.name,
-        gstPercent: selectedProduct.gstPercent,
-        packPrice: selectedProduct.packPrice,
-        ratePerBase: selectedProduct.ratePerBase,
-        unitPrice,
-        qty,
-        qty_base: qtyBase,
-        sold_uom_code: soldCode,
-        sold_uom_label: soldLabel,
-        conversionFactor,
-        availableBase: selectedProduct.availableBase,
-      };
-      if (idx >= 0) {
-        next[idx] = line;
-      } else {
-        next.push(line);
+    if (qtyToAdd > selectedProductForAdd.remainingStock) {
+      showAlert(`Only ${selectedProductForAdd.remainingStock} units available.`, "Stock Alert");
+      return;
+    }
+
+    setLoadingDetail(true);
+    try {
+      const product = products.find(p => p.batch_id === selectedProductForAdd.batch_id);
+      if (!product) {
+        showAlert("Product not found.", "Error");
+        return;
       }
-      return next;
-    });
-    setSelectedProduct(null);
-    setSelectedUomKey("BASE");
-    setQtyInput(1);
+
+      const detail = await fetchBatchDetail(product.batch_id);
+      const medicine = detail.medicine || {};
+      const inventory = detail.inventory || {};
+      const gstPercent = numberOrZero(medicine.gst_percent);
+      const packPrice = numberOrZero(medicine.mrp || product.mrp, 2);
+      const unitsPerPack = Math.max(1, deriveUnitsPerPack(medicine));
+      const ratePerBase = unitsPerPack > 0 ? packPrice / unitsPerPack : packPrice;
+      const availableBase = numberOrZero(inventory.stock_on_hand_base || product.stock_base || 0);
+
+      // Check if already in cart
+      const existingItem = cart.find((item) => item.batch_id === selectedProductForAdd.batch_id);
+      const currentQtyBase = existingItem ? numberOrZero(existingItem.qty_base) : 0;
+      const newQtyBase = currentQtyBase + qtyToAdd;
+
+      setCart((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((item) => item.batch_id === selectedProductForAdd.batch_id);
+        const line = {
+          batch_id: selectedProductForAdd.batch_id,
+          batch_number: selectedProductForAdd.batch_number,
+          product_id: selectedProductForAdd.product_id,
+          name: selectedProductForAdd.name,
+          gstPercent,
+          packPrice,
+          ratePerBase,
+          unitPrice: ratePerBase,
+          qty: newQtyBase,
+          qty_base: newQtyBase,
+          sold_uom_code: "BASE",
+          sold_uom_label: "Loose",
+          conversionFactor: 1,
+          availableBase,
+        };
+        if (idx >= 0) {
+          next[idx] = line;
+        } else {
+          next.push(line);
+        }
+        return next;
+      });
+
+      setShowAddModal(false);
+      setSelectedProductForAdd(null);
+      setAddQuantity(1);
+    } catch (err) {
+      console.error(err);
+      showAlert(err.message || "Unable to add medicine to cart. Please try again.", "Error");
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const updateQty = (batchId, delta) => {
@@ -377,6 +382,10 @@ export default function GenerateBill() {
 
   const removeItem = (batchId) => {
     setCart((prev) => prev.filter((item) => item.batch_id !== batchId));
+    // Clear discount if cart becomes empty
+    if (cart.length === 1) {
+      setDiscount("");
+    }
   };
 
   const totals = useMemo(() => {
@@ -388,21 +397,19 @@ export default function GenerateBill() {
       const pct = numberOrZero(item.gstPercent);
       taxAmount += lineSubtotal * (pct / 100);
     });
-    return { subtotal, taxAmount, total: subtotal + taxAmount };
-  }, [cart]);
-
-  useEffect(() => {
-    if (!cart.length) {
-      setAmountPaying("");
-      return;
-    }
-    if (!amountPaying) {
-      const amt = totals.total;
-      if (amt > 0) {
-        setAmountPaying(numberOrZero(amt, 2).toFixed(2));
-      }
-    }
-  }, [cart, totals.total]);
+    const totalBeforeDiscount = subtotal + taxAmount;
+    const discountPercent = numberOrZero(discount);
+    const discountAmount = totalBeforeDiscount * (discountPercent / 100);
+    const finalTotal = Math.max(0, totalBeforeDiscount - discountAmount);
+    return { 
+      subtotal, 
+      taxAmount, 
+      total: totalBeforeDiscount,
+      discountPercent,
+      discount: discountAmount,
+      finalTotal 
+    };
+  }, [cart, discount]);
 
   const submitInvoice = async () => {
     if (submitting) return;
@@ -422,11 +429,16 @@ export default function GenerateBill() {
       showAlert("Please specify the payment method for 'Other'.", "Validation Error");
       return;
     }
-    const amountPaid = parseFloat(amountPaying);
-    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
-      showAlert("Enter a valid payment amount.", "Validation Error");
+    const discountPercent = numberOrZero(discount);
+    if (discountPercent < 0) {
+      showAlert("Discount percentage cannot be negative.", "Validation Error");
       return;
     }
+    if (discountPercent > 100) {
+      showAlert("Discount percentage cannot exceed 100%.", "Validation Error");
+      return;
+    }
+    const amountPaid = totals.finalTotal;
 
     const missingBatch = cart.find((item) => !item.batch_id);
     if (missingBatch) {
@@ -434,15 +446,25 @@ export default function GenerateBill() {
       return;
     }
 
-    const lines = cart.map((item) => ({
-      product: item.product_id,
-      batch_lot: item.batch_id,
-      qty_base: qtyToString(item.qty_base),
-      sold_uom: item.sold_uom_code || "BASE",
-      rate_per_base: numberOrZero(item.ratePerBase, 4).toFixed(4),
-      discount_amount: "0",
-      tax_percent: numberOrZero(item.gstPercent, 2).toFixed(2),
-    }));
+    // Calculate discount per line (proportional to line total)
+    const totalBeforeDiscount = totals.total;
+    const discountPerLine = totalBeforeDiscount > 0 
+      ? totals.discount / totalBeforeDiscount 
+      : 0;
+
+    const lines = cart.map((item) => {
+      const lineSubtotal = numberOrZero(item.unitPrice) * numberOrZero(item.qty);
+      const lineDiscount = lineSubtotal * discountPerLine;
+      return {
+        product: item.product_id,
+        batch_lot: item.batch_id,
+        qty_base: qtyToString(item.qty_base),
+        sold_uom: item.sold_uom_code || "BASE",
+        rate_per_base: numberOrZero(item.ratePerBase, 4).toFixed(4),
+        discount_amount: numberOrZero(lineDiscount, 2).toFixed(2),
+        tax_percent: numberOrZero(item.gstPercent, 2).toFixed(2),
+      };
+    });
 
     // If customer is selected, use customer_id, otherwise use inline fields
     const payload = {
@@ -480,15 +502,14 @@ export default function GenerateBill() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: selectedMethod,
-          amount: amountPaying
+          amount: totals.finalTotal
         })
       });
 
       // continue the remaining code
       dispatchInventoryRefresh();
       setCart([]);
-      setSelectedProduct(null);
-      setAmountPaying("");
+      setDiscount("");
       setSelectedMethod("");
       setSearchTerm("");
 
@@ -599,7 +620,7 @@ export default function GenerateBill() {
               )}
             </label>
             <label>
-              Email
+              Email (optional)
               <input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Customer email" />
             </label>
             <label>
@@ -663,8 +684,8 @@ export default function GenerateBill() {
                     Batch: {product.batch_number || "-"} | Stock: {product.stock_base} {product.base_uom}
                   </div>
                 </div>
-                <button className="btn-chip" onClick={() => openUOMCard(product)} title="Add to bill">
-                  +
+                <button className="btn-chip" onClick={() => openAddModal(product)} title="Add to bill" disabled={loadingDetail}>
+                  {loadingDetail ? "..." : "+"}
                 </button>
               </div>
             ))}
@@ -677,102 +698,80 @@ export default function GenerateBill() {
             <span className="hint">Adjust quantity & remove</span>
           </header>
 
-          {loadingDetail && <p>Loading medicine details...</p>}
-
-          {selectedProduct && (
-            <div className="uom-card">
-              <div className="uom-head">
-                <h4>Sell {selectedProduct.name}</h4>
-                <button className="btn-ghost" onClick={() => setSelectedProduct(null)}>×</button>
-              </div>
-              <p className="meta">
-                Available: {numberOrZero(selectedProduct.availableBase)} {selectedProduct.baseLabel}
+          {cart.length === 0 && (
+            <div style={{ 
+              padding: "40px 20px", 
+              textAlign: "center",
+              background: "#f9fafb",
+              borderRadius: "8px",
+              border: "1px dashed #d1d5db",
+              marginTop: "12px"
+            }}>
+              <p style={{ 
+                color: "#6b7280", 
+                fontSize: "14px", 
+                fontWeight: "500",
+                margin: 0
+              }}>
+                No items added.
               </p>
-              <label>
-                Unit of Measure
-                <select value={selectedUomKey} onChange={(e) => setSelectedUomKey(e.target.value)}>
-                  {selectedProduct.uomOptions.map((opt) => (
-                    <option key={opt.key} value={opt.key}>
-                      {opt.displayLabel}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Quantity
-                <input
-                  type="number"
-                  min={maxQtyForSelected && maxQtyForSelected > 0 ? 1 : 0}
-                  value={qtyInput}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    if (!Number.isFinite(val)) {
-                      setQtyInput(1);
-                      return;
-                    }
-                    const max = maxQtyForSelected;
-                    if (max !== undefined && max > 0) {
-                      setQtyInput(Math.max(1, Math.min(val, max)));
-                    } else {
-                      setQtyInput(Math.max(0, val));
-                    }
-                  }}
-                />
-              </label>
-              {maxQtyForSelected !== undefined && (
-                <p className="meta">
-                  {maxQtyForSelected > 0 ? `Max available: ${maxQtyForSelected}` : "Out of stock for this unit"}
-                </p>
-              )}
-              <div className="uom-actions">
-                <button className="btn-primary" onClick={addProductWithUOM} disabled={!maxQtyForSelected || maxQtyForSelected <= 0}>
-                  Add to Cart
-                </button>
-                <button className="btn-secondary" onClick={() => setSelectedProduct(null)}>
-                  Cancel
-                </button>
-              </div>
+              <p style={{ 
+                color: "#9ca3af", 
+                fontSize: "12px", 
+                marginTop: "4px",
+                margin: "4px 0 0 0"
+              }}>
+                Select medicines from the list above to add them to cart
+              </p>
             </div>
           )}
 
-          {cart.length === 0 ? (
-            <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", padding: "20px", textAlign: "center" }}>No items added.</p>
-          ) : (
-            <table className="cart-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Price</th>
-                  <th>Total</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map((item) => (
-                  <tr key={item.batch_id}>
-                    <td>
-                      {item.name}
-                      <div className="meta">Batch {item.batch_number || "-"} ({item.sold_uom_label})</div>
-                    </td>
-                    <td className="qty-cell">
-                      <button onClick={() => updateQty(item.batch_id, -1)} disabled={item.qty <= 1}>
-                        -
-                      </button>
-                      <span>{item.qty}</span>
-                      <button onClick={() => updateQty(item.batch_id, 1)}>+</button>
-                    </td>
-                    <td>{formatCurrency(item.unitPrice)}</td>
-                    <td>{formatCurrency(item.unitPrice * item.qty)}</td>
-                    <td>
-                      <button className="link-danger" onClick={() => removeItem(item.batch_id)}>
-                        Remove
-                      </button>
-                    </td>
+          {cart.length > 0 && (
+            <div className="cart-container" style={{ marginTop: "12px" }}>
+              <table className="cart-table">
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: "200px" }}>Item</th>
+                    <th style={{ width: "120px", textAlign: "center" }}>Qty</th>
+                    <th style={{ width: "100px", textAlign: "right" }}>Price</th>
+                    <th style={{ width: "100px", textAlign: "right" }}>Total</th>
+                    <th style={{ width: "80px", textAlign: "center" }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {cart.map((item) => (
+                    <tr key={item.batch_id}>
+                      <td>
+                        <div style={{ fontWeight: "600", color: "#111827", marginBottom: "4px", fontSize: "14px" }}>
+                          {item.name}
+                        </div>
+                        <div className="meta" style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                          Batch: {item.batch_number || "-"}
+                        </div>
+                      </td>
+                      <td className="qty-cell" style={{ justifyContent: "center" }}>
+                        <button onClick={() => updateQty(item.batch_id, -1)} disabled={item.qty <= 1}>
+                          -
+                        </button>
+                        <span>{item.qty}</span>
+                        <button onClick={() => updateQty(item.batch_id, 1)}>+</button>
+                      </td>
+                      <td style={{ fontWeight: "500", textAlign: "right" }}>{formatCurrency(item.unitPrice)}</td>
+                      <td style={{ fontWeight: "600", color: "#111827", textAlign: "right" }}>{formatCurrency(item.unitPrice * item.qty)}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button 
+                          className="link-danger" 
+                          onClick={() => removeItem(item.batch_id)}
+                          style={{ fontSize: "13px", padding: "4px 8px" }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -789,10 +788,16 @@ export default function GenerateBill() {
             <span>GST</span>
             <strong>{formatCurrency(totals.taxAmount)}</strong>
           </div>
-          <div className="summary-divider" />
+          {totals.discountPercent > 0 && (
+            <div className="summary-row" style={{ color: "#059669" }}>
+              <span>Discount ({totals.discountPercent}%)</span>
+              <strong>-{formatCurrency(totals.discount)}</strong>
+            </div>
+          )}
+
           <div className="summary-row total">
             <span>Total</span>
-            <strong>{formatCurrency(totals.total)}</strong>
+            <strong>{formatCurrency(totals.finalTotal)}</strong>
           </div>
 
           <label className="summary-field">
@@ -820,12 +825,20 @@ export default function GenerateBill() {
           )}
 
           <label className="summary-field">
-            Amount Paying
+            Discount (%)
             <input
               type="number"
-              placeholder="Enter Amount"
-              value={amountPaying}
-              onChange={(e) => setAmountPaying(e.target.value)}
+              step="0.01"
+              min="0"
+              max="100"
+              placeholder="Enter discount percentage"
+              value={discount}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || (!isNaN(val) && parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+                  setDiscount(val);
+                }
+              }}
             />
           </label>
 
@@ -834,6 +847,116 @@ export default function GenerateBill() {
           </button>
         </section>
       </div>
+
+      {/* Add Product Modal */}
+      {showAddModal && selectedProductForAdd && (
+        <div className="add-modal-overlay" onClick={() => { setShowAddModal(false); setSelectedProductForAdd(null); setAddQuantity(1); setAddType("loose"); }}>
+          <div className="add-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="add-modal-header">
+              <h3>Add to Cart</h3>
+              <button
+                className="add-modal-close"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedProductForAdd(null);
+                  setAddQuantity(1);
+                  setAddType("loose");
+                }}
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="add-modal-body">
+              <div className="add-product-info">
+                <div className="add-product-name">{selectedProductForAdd.name}</div>
+                <div className="add-product-details">
+                  <div className="add-detail-item">
+                    <span className="add-detail-label">Batch:</span>
+                    <span className="add-detail-value">{selectedProductForAdd.batch_number || "-"}</span>
+                  </div>
+                  <div className="add-detail-item">
+                    <span className="add-detail-label">Available Stock:</span>
+                    <span className="add-detail-value stock-value">{selectedProductForAdd.remainingStock} units</span>
+                  </div>
+                  {selectedProductForAdd.currentQtyInCart > 0 && (
+                    <div className="add-detail-item">
+                      <span className="add-detail-label">Already in cart:</span>
+                      <span className="add-detail-value">{selectedProductForAdd.currentQtyInCart} units</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="add-quantity-section">
+                <label className="add-quantity-label">
+                  Quantity <span className="required-asterisk">*</span>
+                </label>
+                <div className="add-quantity-input-wrapper">
+                  <button
+                    type="button"
+                    className="add-quantity-btn decrease"
+                    onClick={() => {
+                      const newQty = Math.max(1, addQuantity - 1);
+                      setAddQuantity(newQty);
+                    }}
+                    disabled={addQuantity <= 1}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedProductForAdd.remainingStock}
+                    value={addQuantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 1;
+                      setAddQuantity(Math.max(1, Math.min(val, selectedProductForAdd.remainingStock)));
+                    }}
+                    className="add-quantity-input"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="add-quantity-btn increase"
+                    onClick={() => {
+                      const newQty = Math.min(selectedProductForAdd.remainingStock, addQuantity + 1);
+                      setAddQuantity(newQty);
+                    }}
+                    disabled={addQuantity >= selectedProductForAdd.remainingStock}
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="add-quantity-hint">
+                  Max: {selectedProductForAdd.remainingStock} units
+                </div>
+              </div>
+            </div>
+            
+            <div className="add-modal-actions">
+              <button
+                className="add-modal-btn cancel-btn"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedProductForAdd(null);
+                  setAddQuantity(1);
+                  setAddType("loose");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="add-modal-btn primary-btn"
+                onClick={addProductToCart}
+                disabled={loadingDetail || !addQuantity || addQuantity <= 0 || addQuantity > selectedProductForAdd.remainingStock}
+              >
+                {loadingDetail ? "Adding..." : "Add to Cart"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

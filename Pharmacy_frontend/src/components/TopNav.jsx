@@ -2,6 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { MedicalCrossLogo } from "./common/logo";
 
 export default function TopNav() {
   const navigate = useNavigate();
@@ -25,11 +26,7 @@ export default function TopNav() {
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === "Enter") navigate("/dashboard"); }}
         >
-          <img
-            src="/logo192.png"
-            alt="App logo"
-            className="h-8 w-8 rounded-sm"
-          />
+          <MedicalCrossLogo size={32} />
           <span className="font-semibold text-lg">Pharmacy App</span>
         </div>
 
