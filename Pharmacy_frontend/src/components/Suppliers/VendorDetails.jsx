@@ -137,14 +137,23 @@ const VendorDetails = () => {
     formData.append("location_id", Supplier.default_location || 1);
 
     try {
-      const res = await authFetch(`${API_BASE_URL}/api/v1/procurement/import-purchase-pdf/`, {
-        method: "POST",
-        body: formData,
-      });
+      // NEW MULTI-FILE ENDPOINT
+      const res = await authFetch(
+        `${API_BASE_URL}/api/v1/procurement/import-purchase-file/`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
       if (!res.ok) throw new Error("Import failed");
 
       const data = await res.json();
-      showAlert(`Imported ${data.lines_created} lines successfully!`, "Import Success");
+      showAlert(
+        `Imported ${data.lines_created} Products successfully!`,
+        "Import Success"
+      );
+
 
       const ordersRes = await authFetch(
         `${API_BASE_URL}/api/v1/procurement/purchase-orders/?Supplier=${Supplier.id}`
@@ -157,7 +166,7 @@ const VendorDetails = () => {
       setActiveTab("purchase");
     } catch (err) {
       console.error(err);
-      showAlert("Failed to import PDF. Check console for details.", "Error");
+      showAlert("Failed to import file. Check the File type it must be CSV or PDF.", "Error");
     } finally {
       setImporting(false);
     }
