@@ -159,7 +159,18 @@ const VendorDetails = () => {
         }
       );
 
-      if (!res.ok) throw new Error("Import failed");
+      if (!res.ok) {
+        let errorMessage = "Failed to import file. Check the File type it must be CSV or PDF.";
+        try {
+          const errorData = await res.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch {
+          // If JSON parsing fails, use default message
+        }
+        throw new Error(errorMessage);
+      }
 
       const data = await res.json();
       showAlert(

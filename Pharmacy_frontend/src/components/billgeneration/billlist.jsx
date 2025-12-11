@@ -437,17 +437,51 @@ export default function BillList() {
                       <td>{bill.customer_name_display || bill.customer_name || bill.customer?.name || bill.customer_detail?.name || "-"}</td>
                       <td>{formatMoney(bill.net_total)}</td>
                       <td>
-                        <span
-                          className={`badge ${
-                            bill.payment_status === "PAID" || bill.payment_status === "paid"
-                              ? "green"
-                              : bill.payment_status === "PENDING"
-                              ? "amber"
-                              : "red"
-                          }`}
-                        >
-                          {bill.payment_status}
-                        </span>
+                        {(() => {
+                          // Get payment method display or fallback to payment status
+                          const paymentDisplay = bill.payment_method_display || bill.payment_status || "CREDIT";
+                          
+                          // Format payment method names for display
+                          const formatPaymentMethod = (method) => {
+                            if (!method) return "CREDIT";
+                            const methodUpper = method.toUpperCase();
+                            if (methodUpper === "CARD_CREDIT") return "CARD - CREDIT";
+                            if (methodUpper === "CARD_DEBIT") return "CARD - DEBIT";
+                            if (methodUpper === "NET_BANKING") return "NET BANKING";
+                            if (methodUpper === "CASH") return "CASH";
+                            if (methodUpper === "UPI") return "UPI";
+                            if (methodUpper === "OTHER") return "OTHER";
+                            if (methodUpper === "PAID" || methodUpper === "PARTIAL") return methodUpper;
+                            if (methodUpper === "CREDIT") return "CREDIT";
+                            return methodUpper.replace(/_/g, " ");
+                          };
+                          
+                          const displayText = formatPaymentMethod(paymentDisplay);
+                          
+                          // Determine badge color
+                          const isPaidMethod = bill.payment_method_display && (
+                            bill.payment_method_display === "CASH" ||
+                            bill.payment_method_display === "UPI" ||
+                            bill.payment_method_display === "CARD_CREDIT" ||
+                            bill.payment_method_display === "CARD_DEBIT" ||
+                            bill.payment_method_display === "NET_BANKING" ||
+                            bill.payment_method_display === "OTHER"
+                          );
+                          
+                          const badgeClass = isPaidMethod
+                            ? "green"
+                            : bill.payment_status === "PAID" || bill.payment_status === "paid"
+                            ? "green"
+                            : bill.payment_status === "PENDING"
+                            ? "amber"
+                            : "red";
+                          
+                          return (
+                            <span className={`badge ${badgeClass}`}>
+                              {displayText}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="inv-actions-cell">
                         <button
