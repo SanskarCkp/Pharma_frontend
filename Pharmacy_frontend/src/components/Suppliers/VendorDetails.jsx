@@ -19,6 +19,7 @@ const VendorDetails = () => {
   const [suppliedProducts, setSuppliedProducts] = useState([]);
   const [activeTab, setActiveTab] = useState("purchase");
   const [importing, setImporting] = useState(false);
+  const [showFileTypeModal, setShowFileTypeModal] = useState(false);
   const fileInputRef = useRef(null);
 
   // Fetch Supplier Basic Details
@@ -120,8 +121,20 @@ const VendorDetails = () => {
 
 
   const handleImportClick = () => {
+    setShowFileTypeModal(true);
+  };
+
+  const handleFileTypeSelection = (fileType) => {
+    setShowFileTypeModal(false);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = null;
+      // Set the accept attribute based on file type
+      if (fileType === 'csv') {
+        fileInputRef.current.accept = '.csv,text/csv';
+      } else if (fileType === 'pdf') {
+        fileInputRef.current.accept = 'application/pdf,.pdf';
+      }
       fileInputRef.current.click();
     }
   };
@@ -177,10 +190,52 @@ const VendorDetails = () => {
 
   return (
     <div className="Supplier-details-wrap">
+      {/* File Type Selection Modal */}
+      {showFileTypeModal && (
+        <div className="modal-backdrop" onClick={() => setShowFileTypeModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Select File Type to Import</h3>
+              <button className="modal-close" onClick={() => setShowFileTypeModal(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-description">Choose the file format you want to import:</p>
+              <div className="file-type-options">
+                <button
+                  className="file-type-btn csv-btn"
+                  onClick={() => handleFileTypeSelection('csv')}
+                >
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10 13H14M10 17H14M10 9H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="file-type-label">CSV File</span>
+                  <span className="file-type-desc">Comma-separated values</span>
+                </button>
+                <button
+                  className="file-type-btn pdf-btn"
+                  onClick={() => handleFileTypeSelection('pdf')}
+                >
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="file-type-label">PDF File</span>
+                  <span className="file-type-desc">Portable Document Format</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hidden File Input */}
       <input
         type="file"
-        accept="application/pdf"
+        accept="application/pdf,.csv"
         ref={fileInputRef}
         style={{ display: "none" }}
         onChange={handleFileChange}
@@ -270,7 +325,7 @@ const VendorDetails = () => {
                 disabled={importing}
                 onClick={handleImportClick}
               >
-                {importing ? "Importing..." : "Import PDF"}
+                {importing ? "Importing..." : "Import PDF or CSV"}
               </button>
             )}
             <button
