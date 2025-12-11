@@ -273,20 +273,30 @@
   padding: 10px 14px;
   border-radius: 10px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .pmBtn:hover {
   background: #f3f4f6;
 }
 
-.pmBtn.primary {
-  background: var(--primary);
-  border-color: transparent;
-  color: #fff;
+button.pmBtn.primary {
+  background: #10b981 !important;
+  border: 1px solid #10b981 !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
-.pmBtn.primary:hover {
-  background: var(--primary-dark);
+button.pmBtn.primary:hover {
+  background: #0ea471 !important;
+  border-color: #0ea471 !important;
+}
+
+button.pmBtn.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .pmBtn.ghost {
