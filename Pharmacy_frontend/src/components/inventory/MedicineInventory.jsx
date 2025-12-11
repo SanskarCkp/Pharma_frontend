@@ -450,10 +450,12 @@ export default function MedicineInventory() {
             className="inv-btn brown"
             onClick={() => {
               const csvRows = [
-                ["Batch", "Name", "Category", "Quantity", "MRP", "Expiry", "Status"],
+                ["Batch", "Name", "Strength", "HSN Code", "Category", "Quantity", "MRP", "Expiry", "Status"],
                 ...rows.map((r) => [
                   r.batch_number,
                   r.medicine_name,
+                  r.strength ?? r.batch_lot__product__strength ?? r.medicine?.strength ?? r.product?.strength ?? "",
+                  r.hsn_code ?? r.hsn ?? r.medicine?.hsn_code ?? r.product?.hsn_code ?? "",
                   getCategoryLabel(r),
                   getBaseQuantity(r),
                   r.mrp,
@@ -506,6 +508,7 @@ export default function MedicineInventory() {
                     Medicine Name <SortIndicator column="medicine_name" />
                   </th>
                   <th>Strength</th>
+                  <th>HSN Code</th>
                   <th onClick={() => handleSort("category")} className="sortable">
                     Category <SortIndicator column="category" />
                   </th>
@@ -535,12 +538,14 @@ export default function MedicineInventory() {
                     const rackLabel = r.rack || r.rack_name || r.rack_no || "";
 
                     const strength = r.strength ?? r.batch_lot__product__strength ?? r.medicine?.strength ?? r.product?.strength ?? "";
+                    const hsnCode = r.hsn_code ?? r.hsn ?? r.medicine?.hsn_code ?? r.product?.hsn_code ?? "";
 
                     return (
                       <tr key={rowKey}>
                         <td>{r.batch_number ?? r.batch_lot__batch_no ?? ""}</td>
                         <td>{r.medicine_name ?? r.batch_lot__product__name ?? ""}</td>
                         <td>{strength}</td>
+                        <td>{hsnCode}</td>
                         <td>{categoryLabel}</td>
                         <td>{quantityValue}</td>
                         <td>{[uomLabel, rackLabel].filter(Boolean).join(" / ")}</td>
@@ -583,7 +588,7 @@ export default function MedicineInventory() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: "center", padding: 14 }}>
+                    <td colSpan={11} style={{ textAlign: "center", padding: 14 }}>
                       No medicines found
                     </td>
                   </tr>
