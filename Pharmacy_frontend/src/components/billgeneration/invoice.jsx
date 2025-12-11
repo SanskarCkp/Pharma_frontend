@@ -70,7 +70,7 @@ export default function Invoice() {
   const subtotal = Number(invoice?.gross_total || 0);
   const gstAmount = Number(invoice?.tax_total || 0);
   const total = Number(invoice?.net_total || 0);
-  const discount = Number(invoice?.discount || 0);
+  const discount = Number(invoice?.discount_total || 0);
 
   const handlePrint = () => window.print();
 
@@ -230,6 +230,7 @@ export default function Invoice() {
             <tr>
               <th className={styles.srNo}>Sr.No</th>
               <th>Item Name</th>
+              <th className={styles.textCenter}>HSN</th>
               <th className={styles.textCenter}>Batch No.</th>
               <th className={styles.textCenter}>Exp Dt</th>
               <th className={styles.textRight}>Qty</th>
@@ -244,6 +245,7 @@ export default function Invoice() {
               <tr key={index}>
                 <td className={styles.textCenter}>{index + 1}</td>
                 <td>{item.product_name}</td>
+                <td className={styles.textCenter}>{item.hsn_code || "-"}</td>
                 <td className={styles.textCenter}>{item.batch_no || item.batch_lot || "-"}</td>
                 <td className={styles.textCenter}>{item.expiry_date || "-"}</td>
                 <td className={styles.textRight}>{item.qty_base}</td>
