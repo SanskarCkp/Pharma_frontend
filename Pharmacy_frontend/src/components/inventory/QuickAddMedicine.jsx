@@ -166,6 +166,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
   const [stockUnit, setStockUnit] = useState("");
   const [quantity, setQuantity] = useState("");
   const [category, setCategory] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
   const [boxCount, setBoxCount] = useState("");
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [optionsVisible, setOptionsVisible] = useState(false);
@@ -398,8 +399,16 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
 
   const handleCategoryChange = (e) => {
     if (selectedMedicine) return;
-    setCategory(e.target.value);
+    const newCategory = e.target.value;
+    setCategory(newCategory);
     setCategoryTouched(true);
+    // Auto-fill HSN code from category
+    if (newCategory) {
+      const selectedCategory = BASE_CATEGORIES.find(c => c.id === newCategory);
+      if (selectedCategory?.defaultHsnCode) {
+        setHsnCode(selectedCategory.defaultHsnCode);
+      }
+    }
   };
 
   const handleStockUnitChange = (e) => {
@@ -420,6 +429,15 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     setSelectedMedicine(med);
     setCategoryTouched(false);
     setOptionsVisible(false);
+    // Auto-fill HSN code from category or from medicine data
+    if (med.hsn || med.hsn_code) {
+      setHsnCode(med.hsn || med.hsn_code);
+    } else if (detectedCategory) {
+      const selectedCategory = BASE_CATEGORIES.find(c => c.id === detectedCategory);
+      if (selectedCategory?.defaultHsnCode) {
+        setHsnCode(selectedCategory.defaultHsnCode);
+      }
+    }
     
     // Fetch product details to get packaging fields and other info
     if (med.id) {
@@ -462,6 +480,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
     setStockUnit("");
     setQuantity("");
     setCategory("");
+    setHsnCode("");
     setBoxCount("");
     setCategoryTouched(false);
     setSuggestions([]);
@@ -526,6 +545,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         rack_location: med.rack_location?.id || med.rack_location || 1,
         gst_percent: med.gst_percent || "0",
         mrp: med.mrp || "0",
+        hsn_code: hsnCode.trim() || med.hsn || med.hsn_code || undefined,
         // Include all packaging fields from selected medicine - ensure they're numbers, not null
         tablets_per_strip: med.tablets_per_strip ? Number(med.tablets_per_strip) : undefined,
         capsules_per_strip: med.capsules_per_strip ? Number(med.capsules_per_strip) : undefined,
@@ -558,6 +578,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
         gst_percent: "0",
         mrp: "0",
         form: 1, // Default form - adjust as needed
+        hsn_code: hsnCode.trim() || undefined,
       };
 
       // Set packaging fields - use values from form state, fallback to defaults
@@ -898,6 +919,7 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                           rack_location: med.rack_location?.id || med.rack_location || 1,
                           gst_percent: med.gst_percent || "0",
                           mrp: med.mrp || "0",
+                          hsn_code: hsnCode.trim() || med.hsn || med.hsn_code || undefined,
                           tablets_per_strip: med.tablets_per_strip ? Number(med.tablets_per_strip) : undefined,
                           capsules_per_strip: med.capsules_per_strip ? Number(med.capsules_per_strip) : undefined,
                           strips_per_box: med.strips_per_box ? Number(med.strips_per_box) : undefined,
@@ -1176,6 +1198,21 @@ export default function QuickAddMedicine({ open, onClose, onSaved }) {
                 ✓ Auto-detected from selected medicine
               </div>
             )}
+          </div>
+
+          <div className="field">
+            <label>HSN Code</label>
+            <input
+              type="text"
+              value={hsnCode}
+              onChange={(e) => setHsnCode(e.target.value)}
+              placeholder="e.g., 30049099"
+              maxLength={8}
+              pattern="[0-9]{4,8}"
+            />
+            <div className="hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              {hsnCode ? '✓ Editable - You can modify the HSN code' : 'Auto-filled from category, but you can edit'}
+            </div>
           </div>
 
           <div className="field">

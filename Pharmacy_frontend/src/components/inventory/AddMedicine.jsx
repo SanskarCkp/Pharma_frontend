@@ -265,7 +265,7 @@ export default function AddMedicine({
       category: categoryValue,
       strength: med.strength || "",
       description: med.description || "",
-      hsn_code: med.hsn_code || "",
+      hsn_code: med.hsn || med.hsn_code || "",
       rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
       gst_percent: med.gst_percent || "",
       cost_price: batchInfo.purchase_price || med.cost_price || "", // Map purchase_price from batch to cost_price

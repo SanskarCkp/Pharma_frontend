@@ -6,7 +6,7 @@ import "../../inventory/inventory.css";
 import { formatDateDDMMYYYY } from "../../../utils/dateFormat";
 import { authFetch } from "../../../api/http";
 import { useAlert } from "../../ui/alert-provider";
-import { MEDICINE_CATEGORIES_SIMPLE } from "../../../constants/medicineCategories";
+import { MEDICINE_CATEGORIES_SIMPLE, MEDICINE_CATEGORIES as BASE_CATEGORIES } from "../../../constants/medicineCategories";
 
 // Predefined categories with packaging structure (same as AddMedicine)
 const MEDICINE_CATEGORIES = [
@@ -437,6 +437,15 @@ const ReceiveItems = () => {
             gst_percentage: last?.gst_percentage || prodMaster.gst_percentage || "",
             // Priority: PO line category > Product master category > Last batch category
             category: poLineCategory || prodMaster.category || last?.category || "",
+            hsn_code: last?.hsn_code || prodMaster.hsn || prodMaster.hsn_code || (() => {
+              // Auto-fill HSN from category if available
+              const catId = poLineCategory || prodMaster.category || last?.category || "";
+              if (catId) {
+                const cat = BASE_CATEGORIES.find(c => c.id === catId);
+                return cat?.defaultHsnCode || "";
+              }
+              return "";
+            })(),
             mfg_date: last?.mfg_date || "",
             expiry_date: last?.expiry_date || "",
             unit_cost: last?.unit_cost || item.expected_unit_cost || "",
@@ -774,6 +783,7 @@ const ReceiveItems = () => {
       category: categoryToSend, // Send string ID (e.g., "tablet") - backend will map it
       dosage_strength: item.strength || "",
       gst_percent: Number(item.gst_percentage || 0),
+      hsn: item.hsn_code?.trim() || undefined, // HSN code - editable field
       // Include all packaging fields
       tablets_per_strip: item.tablets_per_strip ? Number(item.tablets_per_strip) : undefined,
       capsules_per_strip: item.capsules_per_strip ? Number(item.capsules_per_strip) : undefined,
@@ -1327,6 +1337,28 @@ const ReceiveItems = () => {
                           cursor: "not-allowed",
                         }}
                       />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>HSN Code</label>
+                      <input
+                        type="text"
+                        value={item.hsn_code || ""}
+                        onChange={(e) => handleItemEdit(selectedItemIdx, "hsn_code", e.target.value)}
+                        placeholder="e.g., 30049099"
+                        maxLength={8}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                        }}
+                      />
+                      <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                        {item.hsn_code ? "✓ Editable - You can modify the HSN code" : "Auto-filled from category, but you can edit"}
+                      </div>
                     </div>
                   </div>
 
