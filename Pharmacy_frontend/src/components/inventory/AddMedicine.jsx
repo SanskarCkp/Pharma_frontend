@@ -29,6 +29,7 @@ const createInitialMedicine = () => ({
   category: "",
   strength: "",
   description: "",
+  hsn_code: "",
   rack_location: "",
   gst_percent: "",
   cost_price: "",
@@ -264,6 +265,7 @@ export default function AddMedicine({
       category: categoryValue,
       strength: med.strength || "",
       description: med.description || "",
+      hsn_code: med.hsn_code || "",
       rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
       gst_percent: med.gst_percent || "",
       cost_price: batchInfo.purchase_price || med.cost_price || "", // Map purchase_price from batch to cost_price
@@ -340,7 +342,19 @@ export default function AddMedicine({
 
   const handleMedicineChange = (e) => {
     const { name, value } = e.target;
-    setMedicine((prev) => ({ ...prev, [name]: value }));
+
+    // Auto-fill HSN code when category changes
+    if (name === 'category' && value) {
+      const selectedCategory = MEDICINE_CATEGORIES.find(c => c.id === value);
+      setMedicine((prev) => ({
+        ...prev,
+        [name]: value,
+        // Auto-fill HSN code from the selected category
+        hsn_code: selectedCategory?.defaultHsnCode || prev.hsn_code
+      }));
+    } else {
+      setMedicine((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleBatchChange = (e) => {
@@ -352,6 +366,15 @@ export default function AddMedicine({
     const localErrors = {};
     if (!medicine.name.trim()) localErrors.name = "Medicine name is required";
     if (!medicine.category) localErrors.category = "Category is required";
+
+    // Validate HSN code if provided (must be 4, 6, or 8 digits)
+    if (medicine.hsn_code) {
+      const hsnTrimmed = medicine.hsn_code.trim();
+      if (!/^\d{4}$|^\d{6}$|^\d{8}$/.test(hsnTrimmed)) {
+        localErrors.hsn_code = "HSN code must be 4, 6, or 8 digits";
+      }
+    }
+
     if (!medicine.rack_location) localErrors.rack_location = "Rack location is required";
     if (!medicine.gst_percent) localErrors.gst_percent = "GST % is required";
     if (!medicine.cost_price) localErrors.cost_price = "Cost price is required";
@@ -389,6 +412,7 @@ export default function AddMedicine({
       category: medicine.category,
       strength: medicine.strength.trim() || undefined,
       description: medicine.description.trim() || undefined,
+      hsn_code: medicine.hsn_code.trim() || undefined,
       rack_location: Number(medicine.rack_location),
       gst_percent: medicine.gst_percent || "0",
       mrp: medicine.mrp,
@@ -564,6 +588,35 @@ export default function AddMedicine({
           {renderFieldError("description")}
         </div>
 
+        <div className="field">
+          <label>HSN Code</label>
+          <input
+            name="hsn_code"
+            value={medicine.hsn_code}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 30049099"
+            maxLength="8"
+            className={errors.hsn_code ? "error" : ""}
+          />
+          {renderFieldError("hsn_code")}
+        </div>
+
+        <div className="field">
+          <label>GST % *</label>
+          <input
+            name="gst_percent"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value={medicine.gst_percent}
+            onChange={handleMedicineChange}
+            placeholder="e.g., 12, 18, 5"
+            className={errors.gst_percent ? "error" : ""}
+          />
+          {renderFieldError("gst_percent")}
+        </div>
+
         <div style={{ gridColumn: "1/3", marginTop: 20, marginBottom: 10 }}>
           <h3 className="section-title">Opening Stock</h3>
           <div className="section-line" />
@@ -714,21 +767,7 @@ export default function AddMedicine({
           {renderFieldError("rack_location")}
         </div>
 
-        <div className="field">
-          <label>GST % *</label>
-          <input
-            name="gst_percent"
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            value={medicine.gst_percent}
-            onChange={handleMedicineChange}
-            placeholder="e.g., 12, 18, 5"
-            className={errors.gst_percent ? "error" : ""}
-          />
-          {renderFieldError("gst_percent")}
-        </div>
+        <div style={{ gridColumn: "1/1" }}></div>
 
         <div className="field">
           <label>Cost Price *</label>
