@@ -28,6 +28,7 @@ const createInitialMedicine = () => ({
   name: "",
   category: "",
   strength: "",
+  description: "",
   rack_location: "",
   gst_percent: "",
   cost_price: "",
@@ -262,6 +263,7 @@ export default function AddMedicine({
       name: med.name || "",
       category: categoryValue,
       strength: med.strength || "",
+      description: med.description || "",
       rack_location: med.rack_location?.id ? String(med.rack_location.id) : "",
       gst_percent: med.gst_percent || "",
       cost_price: batchInfo.purchase_price || med.cost_price || "", // Map purchase_price from batch to cost_price
@@ -386,6 +388,7 @@ export default function AddMedicine({
       name: medicine.name.trim(),
       category: medicine.category,
       strength: medicine.strength.trim() || undefined,
+      description: medicine.description.trim() || undefined,
       rack_location: Number(medicine.rack_location),
       gst_percent: medicine.gst_percent || "0",
       mrp: medicine.mrp,
@@ -548,6 +551,17 @@ export default function AddMedicine({
             placeholder="e.g., 500mg, 250mg/5ml"
           />
           {renderFieldError("strength")}
+        </div>
+
+        <div className="field">
+          <label>Description</label>
+          <input
+            name="description"
+            value={medicine.description}
+            onChange={handleMedicineChange}
+            placeholder="i.e., Company name or other details"
+          />
+          {renderFieldError("description")}
         </div>
 
         <div style={{ gridColumn: "1/3", marginTop: 20, marginBottom: 10 }}>
