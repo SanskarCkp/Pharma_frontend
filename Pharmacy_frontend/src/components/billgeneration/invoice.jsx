@@ -200,7 +200,7 @@ export default function Invoice() {
               </div>
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Doctor :</span>
-                <span className={styles.infoValue}>{invoice?.doctor_name || "DR SPANDANA PEDDAREDDY"}</span>
+                <span className={styles.infoValue}>{invoice?.doctor_name || "UNKNOWN"}</span>
               </div>
             </div>
             <div className={styles.invoiceInfo}>

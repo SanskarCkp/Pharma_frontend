@@ -442,6 +442,10 @@ export default function GenerateBill() {
       };
     });
 
+    // Get the payment method type from the selected method ID
+    const selectedPaymentMethod = paymentMethods.find(m => m.id === selectedMethod);
+    const paymentMethodType = selectedPaymentMethod ? selectedPaymentMethod.type : selectedMethod;
+
     // If customer is selected, use customer_id, otherwise use inline fields
     const payload = {
       location: locationId,
@@ -453,7 +457,7 @@ export default function GenerateBill() {
       customer_city: customer.city || "",
       doctor_name: customer.doctor || "",
       lines,
-      payment_method: selectedMethod,
+      payment_method: paymentMethodType,
       amount_paid: amountPaid,
     };
 
@@ -477,7 +481,7 @@ export default function GenerateBill() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: selectedMethod,
+          mode: paymentMethodType,
           amount: totals.finalTotal
         })
       });
