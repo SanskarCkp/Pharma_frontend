@@ -451,6 +451,7 @@ const ReceiveItems = () => {
             unit_cost: last?.unit_cost || item.expected_unit_cost || "",
             mrp: last?.mrp || item.mrp || prodMaster.mrp || "",
             rack_no: last?.rack_no || "",
+            rack_location_id: last?.rack_location_id || "",
             // stock / packaging info (optional, per AddMedicine)
             stock_unit: last?.stock_unit || "",
             tablets_per_strip: last?.tablets_per_strip || "",
@@ -555,6 +556,14 @@ const ReceiveItems = () => {
       prev.map((row, i) => {
         if (i !== idx) return row;
         let updated = { ...row, [field]: value };
+        
+        // Auto-fill HSN code when category changes
+        if (field === "category" && value) {
+          const selectedCategory = BASE_CATEGORIES.find(c => c.id === value);
+          if (selectedCategory?.defaultHsnCode) {
+            updated.hsn_code = selectedCategory.defaultHsnCode;
+          }
+        }
         
         // Validate received quantity doesn't exceed ordered
         if (field === "received_packs") {
@@ -784,6 +793,7 @@ const ReceiveItems = () => {
       dosage_strength: item.strength || "",
       gst_percent: Number(item.gst_percentage || 0),
       hsn: item.hsn_code?.trim() || undefined, // HSN code - editable field
+      rack_location: item.rack_location_id || undefined, // Rack location ID
       // Include all packaging fields
       tablets_per_strip: item.tablets_per_strip ? Number(item.tablets_per_strip) : undefined,
       capsules_per_strip: item.capsules_per_strip ? Number(item.capsules_per_strip) : undefined,
@@ -1322,21 +1332,36 @@ const ReceiveItems = () => {
                     </div>
                     <div>
                       <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Category *</label>
-                      <input
-                        type="text"
-                        value={item.category ? (MEDICINE_CATEGORIES.find(c => c.id === item.category)?.name || item.category) : "Not specified"}
-                        readOnly
-                        disabled
+                      <select
+                        value={item.category || ""}
+                        onChange={(e) => {
+                          const newCategory = e.target.value;
+                          // Auto-fill HSN code when category changes
+                          const selectedCategory = BASE_CATEGORIES.find(c => c.id === newCategory);
+                          const newHsnCode = selectedCategory?.defaultHsnCode || "";
+                          
+                          // Update both category and HSN code
+                          handleItemEdit(selectedItemIdx, "category", newCategory);
+                          if (newHsnCode) {
+                            handleItemEdit(selectedItemIdx, "hsn_code", newHsnCode);
+                          }
+                        }}
                         style={{
                           width: "100%",
                           padding: "8px",
                           border: "1px solid #d1d5db",
                           borderRadius: "6px",
-                          backgroundColor: "#f9fafb",
-                          color: "#6b7280",
-                          cursor: "not-allowed",
+                          backgroundColor: item.category ? "white" : "#f9fafb",
                         }}
-                      />
+                        required
+                      >
+                        <option value="">Select Category *</option>
+                        {MEDICINE_CATEGORIES.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -1484,8 +1509,13 @@ const ReceiveItems = () => {
                     <div>
                       <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: 500 }}>Rack Location</label>
                       <select
-                        value={item.rack_no || ""}
-                        onChange={(e) => handleItemEdit(selectedItemIdx, "rack_no", e.target.value)}
+                        value={item.rack_location_id || ""}
+                        onChange={(e) => {
+                          const rackId = e.target.value;
+                          const rackName = rackLocations.find(r => r.id === Number(rackId))?.name || "";
+                          handleItemEdit(selectedItemIdx, "rack_location_id", rackId);
+                          handleItemEdit(selectedItemIdx, "rack_no", rackName); // Also update rack_no for batch
+                        }}
                         style={{
                           width: "100%",
                           padding: "8px",
@@ -1495,7 +1525,7 @@ const ReceiveItems = () => {
                       >
                         <option value="">Select</option>
                         {rackLocations.map((rack) => (
-                          <option key={rack.id} value={rack.name}>
+                          <option key={rack.id} value={rack.id}>
                             {rack.name}
                           </option>
                         ))}

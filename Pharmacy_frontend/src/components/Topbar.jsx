@@ -60,7 +60,6 @@ export default function Topbar() {
     { label: "Masters - Roles", path: "/masters/roles", keywords: "roles permissions" },
     { label: "Masters - Locations", path: "/masters/locations", keywords: "locations warehouse shop" },
     { label: "Masters - Products", path: "/masters/products", keywords: "products catalog" },
-    { label: "Masters - Payment Terms", path: "/masters/payment-terms", keywords: "payment terms" },
     { label: "Masters - Rack Locations", path: "/masters/rack-locations", keywords: "rack locations" },
     { label: "Reports - Sales", path: "/reports/sales", keywords: "report sales" },
     { label: "Reports - Purchases", path: "/reports/purchases", keywords: "report purchase" },

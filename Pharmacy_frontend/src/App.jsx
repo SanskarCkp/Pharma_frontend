@@ -56,7 +56,6 @@ import AddProduct from "./components/Masters/products/addproducts.jsx";
 import ViewProduct from "./components/Masters/products/ViewProduct.jsx";
 import EditProduct from "./components/Masters/products/EditProduct.jsx";
 import PaymentMethods from "./components/Masters/Payment_Methods/Payment_Methods.jsx";
-import PaymentTerms from "./components/Masters/payment_terms/payment_terms.jsx";
 import RackLocations from "./components/Masters/rack_locations/rack_locations.jsx";
 
 // User
@@ -218,7 +217,6 @@ function AppLayout() {
               path="/masters/payment-methods"
               element={<PaymentMethods />}
             />
-            <Route path="/masters/payment-terms" element={<PaymentTerms />} />
             <Route
               path="/masters/rack-locations"
               element={<RackLocations />}
