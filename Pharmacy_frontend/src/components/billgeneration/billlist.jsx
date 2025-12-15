@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, Trash2 } from "lucide-react";
+import { useAlert } from "../ui/alert-provider";
 import "./billgeneration.css";
 import "../inventory/inventory.css";
 import { authFetch } from "../../api/http";
@@ -12,6 +13,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function BillList() {
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
   const [bills, setBills] = useState([]);
   const [kpis, setKpis] = useState({
     totalBills: 0,
@@ -64,7 +66,12 @@ export default function BillList() {
         );
         if (listRes.ok) {
           const data = await listRes.json();
-          setBills(Array.isArray(data) ? data : data.results || []);
+          const billsData = Array.isArray(data) ? data : data.results || [];
+          // Debug: Check if invoice_date is present
+          if (billsData.length > 0 && !billsData[0].invoice_date) {
+            console.warn("Invoice date missing in response:", billsData[0]);
+          }
+          setBills(billsData);
         } else {
           setBills([]);
         }
@@ -76,6 +83,120 @@ export default function BillList() {
   }, []);
 
   const formatMoney = (v) => `₹${Number(v || 0).toFixed(2)}`;
+
+  // Safely format date to prevent "Invalid Date"
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    try {
+      // Check if it's already in DD-MM-YYYY HH:MM format (from backend)
+      if (typeof dateString === 'string' && /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}/.test(dateString)) {
+        // Already formatted by backend, just add seconds if missing
+        if (dateString.length === 16) {
+          // Format: "15-12-2025 07:02" - add seconds
+          return dateString + ":00";
+        }
+        return dateString;
+      }
+      
+      // Try to parse DD-MM-YYYY format manually
+      if (typeof dateString === 'string' && /^\d{2}-\d{2}-\d{4}/.test(dateString)) {
+        // Parse DD-MM-YYYY format
+        const parts = dateString.split(' ');
+        const datePart = parts[0]; // "15-12-2025"
+        const timePart = parts[1] || "00:00"; // "07:02" or empty
+        
+        const [day, month, year] = datePart.split('-').map(Number);
+        const [hours = 0, minutes = 0] = timePart.split(':').map(Number);
+        
+        // Create date object (month is 0-indexed in JS)
+        const date = new Date(year, month - 1, day, hours, minutes);
+        
+        if (isNaN(date.getTime())) {
+          console.warn("Invalid date:", dateString);
+          return "-";
+        }
+        
+        // Format as DD-MM-YYYY HH:MM:SS
+        const formattedDay = String(date.getDate()).padStart(2, '0');
+        const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+        const formattedYear = date.getFullYear();
+        const formattedHours = String(date.getHours()).padStart(2, '0');
+        const formattedMinutes = String(date.getMinutes()).padStart(2, '0');
+        const formattedSeconds = String(date.getSeconds()).padStart(2, '0');
+        return `${formattedDay}-${formattedMonth}-${formattedYear} ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+      }
+      
+      // Handle ISO format or other standard formats
+      const date = dateString instanceof Date ? dateString : new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn("Invalid date:", dateString);
+        return "-";
+      }
+      // Format as DD-MM-YYYY HH:MM:SS
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+      console.warn("Error formatting date:", dateString, e);
+      return "-";
+    }
+  };
+
+  // Handle invoice deletion
+  const handleDelete = async (bill) => {
+    console.log("handleDelete called for bill:", bill); // Debug log
+    
+    // Check if invoice is POSTED (stock was deducted)
+    // Status might be in different fields, check all possibilities
+    const status = bill.status || bill.invoice_status || "";
+    const isPosted = status === "POSTED" || status === "posted";
+    
+    // First confirmation
+    const confirmMsg = `Are you sure you want to delete invoice ${bill.invoice_no || bill.id}?`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+    
+    // If POSTED, ask about stock restoration
+    let restoreStock = false;
+    if (isPosted) {
+      restoreStock = window.confirm(
+        `Invoice ${bill.invoice_no || bill.id} is POSTED (stock was deducted).\n\nDo you want to restore the stock for the items in this invoice?`
+      );
+    }
+    
+    try {
+      const invoiceId = bill.id;
+      const url = `${INVOICES_URL}${invoiceId}/${restoreStock ? '?restore_stock=true' : ''}`;
+      
+      console.log("Deleting invoice:", url); // Debug log
+      
+      const res = await authFetch(url, {
+        method: "DELETE",
+      });
+      
+      console.log("Delete response:", res.status, res.ok); // Debug log
+      
+      if (res.ok || res.status === 204) {
+        showAlert(`Invoice ${bill.invoice_no || invoiceId} deleted successfully${restoreStock ? ' and stock restored' : ''}`, "Success");
+        // Remove from list
+        setBills(prev => prev.filter(b => b.id !== invoiceId));
+        // Reload to refresh stats
+        window.location.reload();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        showAlert(errorData.detail || "Failed to delete invoice", "Error");
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+      showAlert("Failed to delete invoice: " + (err.message || "Unknown error"), "Error");
+    }
+  };
 
   // Filter and sort bills
   const filteredAndSortedBills = useMemo(() => {
@@ -371,13 +492,16 @@ export default function BillList() {
               onClick={() => {
                 const csvRows = [
                   ["Bill ID", "Date", "Customer", "Amount", "Payment Status"],
-                  ...filteredAndSortedBills.map((b) => [
-                    b.invoice_no,
-                    b.invoice_date ? new Date(b.invoice_date).toLocaleString() : "",
-                    b.customer_name || b.customer?.name || "-",
-                    b.net_total,
-                    b.payment_status,
-                  ]),
+                  ...filteredAndSortedBills.map((b) => {
+                    const formattedDate = formatDate(b.invoice_date);
+                    return [
+                      b.invoice_no,
+                      formattedDate !== "-" ? formattedDate : "",
+                      b.customer_name || b.customer?.name || "-",
+                      b.net_total,
+                      b.payment_status,
+                    ];
+                  }),
                 ];
                 const csv = csvRows
                   .map((cols) => cols.map((c) => `"${(c ?? "").toString().replace(/"/g, '""')}"`).join(","))
@@ -429,11 +553,7 @@ export default function BillList() {
                   paginatedBills.map((bill) => (
                     <tr key={bill.id}>
                       <td>{bill.invoice_no}</td>
-                      <td>
-                        {bill.invoice_date
-                          ? new Date(bill.invoice_date).toLocaleString()
-                          : "-"}
-                      </td>
+                      <td>{formatDate(bill.invoice_date || bill.created_at || bill.updated_at)}</td>
                       <td>{bill.customer_name_display || bill.customer_name || bill.customer?.name || bill.customer_detail?.name || "-"}</td>
                       <td>{formatMoney(bill.net_total)}</td>
                       <td>
@@ -490,6 +610,19 @@ export default function BillList() {
                           onClick={() => navigate(`/billgeneration/invoice/${bill.id}`)}
                         >
                           <Eye size={16} />
+                        </button>
+                        <button
+                          className="inv-icon danger"
+                          title="Delete Invoice"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("Delete button clicked for bill:", bill.id); // Debug
+                            handleDelete(bill);
+                          }}
+                          type="button"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>

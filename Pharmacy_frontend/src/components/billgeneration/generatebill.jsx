@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./billgeneration.css";
 import { authFetch } from "../../api/http";
@@ -83,6 +83,8 @@ export default function GenerateBill() {
   const [discount, setDiscount] = useState("");
   const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [reuseDeletedInvoice, setReuseDeletedInvoice] = useState(false);
+  const hasCheckedDeletedInvoice = useRef(false);
 
   const dispatchInventoryRefresh = () => {
     try {
@@ -101,6 +103,48 @@ export default function GenerateBill() {
   useEffect(() => {
     setPaymentMethods(HARDCODED_PAYMENT_METHODS);
   }, []);
+
+  // Check for deleted invoice number when component mounts (only once)
+  useEffect(() => {
+    // Prevent double execution (React StrictMode causes double mount in dev)
+    if (hasCheckedDeletedInvoice.current) {
+      return;
+    }
+    hasCheckedDeletedInvoice.current = true;
+    
+    async function checkDeletedInvoice() {
+      try {
+        console.log("Checking for deleted invoice number...");
+        const deletedRes = await authFetch(`${INVOICES_URL}last-deleted-invoice/`);
+        console.log("Deleted invoice response:", deletedRes.status, deletedRes.ok);
+        
+        if (deletedRes.ok) {
+          const deletedData = await deletedRes.json();
+          console.log("Deleted invoice data:", deletedData);
+          
+          if (deletedData && deletedData.invoice_no) {
+            const shouldReuse = window.confirm(
+              `A deleted invoice number (${deletedData.invoice_no}) is available. Would you like to reuse it?`
+            );
+            console.log("User chose to reuse:", shouldReuse);
+            setReuseDeletedInvoice(shouldReuse);
+          } else {
+            console.log("No deleted invoice number available");
+            setReuseDeletedInvoice(false);
+          }
+        } else {
+          const errorText = await deletedRes.text();
+          console.error("Failed to get deleted invoice number:", deletedRes.status, errorText);
+        }
+      } catch (err) {
+        console.error("Failed to check for deleted invoice number:", err);
+        // Continue with normal flow if check fails
+      }
+    }
+    
+    checkDeletedInvoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Debounce search term
   useEffect(() => {
@@ -459,6 +503,7 @@ export default function GenerateBill() {
       lines,
       payment_method: paymentMethodType,
       amount_paid: amountPaid,
+      reuse_deleted_invoice_number: reuseDeletedInvoice, // Use the state value set when page loaded
     };
 
     try {
@@ -492,6 +537,7 @@ export default function GenerateBill() {
       setDiscount("");
       setSelectedMethod("");
       setSearchTerm("");
+      setReuseDeletedInvoice(false);
 
       navigate(`/billgeneration/invoice/${data.id}`);
     } catch (err) {
