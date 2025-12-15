@@ -163,7 +163,7 @@ export default function Invoice() {
             </div>
             <div className={styles.companyInfo}>
               <h2 className={styles.companyName}>Keshav Medicals</h2>
-              <p className={styles.companySubtitle}>(a unit of wellness pharma)</p>
+              <p className={styles.companySubtitle}>(a unit of Keshav Medicals)</p>
               <p className={styles.companyAddress}>
                 Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,<br />
                 Avalahalli, DB Pura Main Road, Bengaluru-560064
@@ -304,7 +304,7 @@ export default function Invoice() {
               <div className={styles.pageInfo}>Page 1 of 1</div>
             </div>
             <div className={styles.pharmacistSignature}>
-              <div className={styles.signatureLabel}>For Wellness Pharma</div>
+              <div className={styles.signatureLabel}>For Keshav Medicals</div>
               <div className={styles.pharmacistLabel}>Pharmacist:</div>
             </div>
           </div>
