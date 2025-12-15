@@ -116,13 +116,27 @@ const VendorsDashboard = () => {
       });
 
       if (res.ok) {
+        showAlert("Supplier deleted successfully!", "Success");
         setVendors((prev) => prev.filter((v) => v.id !== id));
       } else {
-        showAlert("Failed to delete Supplier", "Error");
+        // Try to get error message from response
+        let errorMessage = "Failed to delete Supplier";
+        try {
+          const errorData = await res.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (parseErr) {
+          // If JSON parsing fails, use default message
+          console.error("Failed to parse error response:", parseErr);
+        }
+        showAlert(errorMessage, "Error");
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      showAlert("Delete failed", "Error");
+      showAlert("Delete failed: " + (err.message || "Unknown error"), "Error");
     }
   };
 

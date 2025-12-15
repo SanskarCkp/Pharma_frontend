@@ -421,12 +421,13 @@ const ReceiveItems = () => {
             po_line: item.id,
             product_id: productId,
             product_name:
+              item.product_name ||  // Use product_name from API (contains requested_name for Excel imports)
+              item.requested_name ||  // Fallback to requested_name directly
               item.product?.name || 
               productIdToName[item.product] || 
               productIdToName[productId] || 
-              item.requested_name || 
               "",
-            ordered: item.qty_packs_ordered || 0,
+            ordered: item.qty_packs_ordered || 0,  // Quantity from Excel/CSV import
             received_packs: "",
             received_base: "",
             batch: last?.batch || "",
@@ -1143,9 +1144,11 @@ const ReceiveItems = () => {
                 <tbody>
                   {itemsReceived.map((item, idx) => {
                     const rowKey = `${item.po_line}_${item.batch || ""}`;
-                    const prevReceived = grnReceivedMap[rowKey] || 0;
-                    const remaining = item.ordered - prevReceived;
-                    const hasReceived = Number(item.received_packs) > 0;
+                    const prevReceived = Number(grnReceivedMap[rowKey] || 0);
+                    const ordered = Number(item.ordered || 0);
+                    const sessionReceived = Number(item.received_packs || 0);
+                    const remaining = Math.max(0, ordered - prevReceived - sessionReceived);
+                    const hasReceived = sessionReceived > 0;
 
                     return (
                       <tr
@@ -1154,10 +1157,10 @@ const ReceiveItems = () => {
                           background: idx === selectedSummaryIdx ? "#f3f4f6" : "inherit",
                         }}
                       >
-                        <td style={{ fontWeight: 500 }}>{item.product_name}</td>
+                        <td style={{ fontWeight: 500 }}>{item.product_name || item.batch || "-"}</td>
                         <td>
                           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <span style={{ fontSize: "14px", fontWeight: 600 }}>{item.ordered}</span>
+                            <span style={{ fontSize: "14px", fontWeight: 600 }}>{ordered}</span>
                             {prevReceived > 0 && (
                               <span style={{ fontSize: "12px", color: "#6b7280" }}>
                                 Previously received: {prevReceived}
@@ -1165,7 +1168,7 @@ const ReceiveItems = () => {
                             )}
                             {hasReceived && (
                               <span style={{ fontSize: "12px", color: "#059669", fontWeight: 500 }}>
-                                This session: {item.received_packs}
+                                This session: {sessionReceived}
                               </span>
                             )}
                             <span style={{ fontSize: "12px", color: remaining > 0 ? "#d97706" : "#059669" }}>
