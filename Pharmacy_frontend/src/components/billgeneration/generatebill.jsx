@@ -36,6 +36,15 @@ const formatCurrency = (value) => {
   return `Rs.${num.toFixed(2)}`;
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) {
+    return value;
+  }
+  return dt.toLocaleString();
+};
+
 const qtyToString = (value) => {
   const num = numberOrZero(value, 3);
   return num.toFixed(3);
@@ -84,6 +93,7 @@ export default function GenerateBill() {
   const [inventoryRefreshTick, setInventoryRefreshTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [reuseDeletedInvoice, setReuseDeletedInvoice] = useState(false);
+  const [deletedInvoiceInfo, setDeletedInvoiceInfo] = useState(null);
   const hasCheckedDeletedInvoice = useRef(false);
 
   const dispatchInventoryRefresh = () => {
@@ -92,6 +102,11 @@ export default function GenerateBill() {
     } catch {
       /* ignore */
     }
+  };
+
+  const handleReuseDialogChoice = (shouldReuse) => {
+    setReuseDeletedInvoice(shouldReuse);
+    setDeletedInvoiceInfo(null);
   };
 
   useEffect(() => {
@@ -123,22 +138,23 @@ export default function GenerateBill() {
           console.log("Deleted invoice data:", deletedData);
           
           if (deletedData && deletedData.invoice_no) {
-            const shouldReuse = window.confirm(
-              `A deleted invoice number (${deletedData.invoice_no}) is available. Would you like to reuse it?`
-            );
-            console.log("User chose to reuse:", shouldReuse);
-            setReuseDeletedInvoice(shouldReuse);
+            setDeletedInvoiceInfo(deletedData);
           } else {
             console.log("No deleted invoice number available");
+            setDeletedInvoiceInfo(null);
             setReuseDeletedInvoice(false);
           }
         } else {
           const errorText = await deletedRes.text();
           console.error("Failed to get deleted invoice number:", deletedRes.status, errorText);
+          setDeletedInvoiceInfo(null);
+          setReuseDeletedInvoice(false);
         }
       } catch (err) {
         console.error("Failed to check for deleted invoice number:", err);
         // Continue with normal flow if check fails
+        setDeletedInvoiceInfo(null);
+        setReuseDeletedInvoice(false);
       }
     }
     
@@ -978,6 +994,69 @@ export default function GenerateBill() {
                 disabled={loadingDetail || !addQuantity || addQuantity <= 0 || addQuantity > selectedProductForAdd.remainingStock}
               >
                 {loadingDetail ? "Adding..." : "Add to Cart"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deletedInvoiceInfo && deletedInvoiceInfo.invoice_no && (
+        <div className="app-modal-overlay" role="dialog" aria-modal="true">
+          <div className="app-modal">
+            <div className="app-modal__header">
+              <div>
+                <p className="app-modal__eyebrow">Invoice numbering</p>
+                <h3>Reuse deleted invoice number?</h3>
+              </div>
+              <button
+                type="button"
+                className="app-modal__close"
+                onClick={() => handleReuseDialogChoice(false)}
+                aria-label="Dismiss dialog"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="app-modal__body">
+              <p>
+                Invoice <strong>{deletedInvoiceInfo.invoice_no}</strong> was recently deleted and can be reused to
+                avoid gaps in your billing sequence. Would you like to use it for this bill?
+              </p>
+              <div className="app-modal__summary">
+                <div>
+                  <span className="app-modal__summary-label">Invoice no.</span>
+                  <strong>{deletedInvoiceInfo.invoice_no}</strong>
+                </div>
+                {(deletedInvoiceInfo.invoice_date || deletedInvoiceInfo.deleted_at) && (
+                  <div>
+                    <span className="app-modal__summary-label">Deleted on</span>
+                    <strong>{formatDateTime(deletedInvoiceInfo.deleted_at || deletedInvoiceInfo.invoice_date)}</strong>
+                  </div>
+                )}
+                {typeof deletedInvoiceInfo.net_total !== "undefined" && (
+                  <div>
+                    <span className="app-modal__summary-label">Previous total</span>
+                    <strong>{formatCurrency(deletedInvoiceInfo.net_total)}</strong>
+                  </div>
+                )}
+              </div>
+              <div className="app-modal__warning">
+                Skipping this will continue with the next incremental invoice number automatically.
+              </div>
+            </div>
+            <div className="app-modal__footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => handleReuseDialogChoice(false)}
+              >
+                Use Next Number
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => handleReuseDialogChoice(true)}
+              >
+                Reuse Number
               </button>
             </div>
           </div>

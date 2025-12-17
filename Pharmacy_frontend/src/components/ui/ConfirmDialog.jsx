@@ -1,15 +1,28 @@
 import React from "react";
 import "./ConfirmDialog.css";
 
-const ConfirmDialog = ({ open, onOpenChange, title, description, onConfirm, confirmText = "Confirm", cancelText = "Cancel", variant = "default" }) => {
+const ConfirmDialog = ({ open, onOpenChange, title, description, onConfirm, confirmText = "Confirm", cancelText = "Cancel", variant = "default", cancelAction }) => {
   if (!open) return null;
 
-  const handleConfirm = () => {
-    onConfirm();
+  const handleConfirm = async () => {
+    const result = onConfirm();
+    // If it's a promise, wait for it
+    if (result && typeof result.then === 'function') {
+      await result;
+    }
     onOpenChange(false);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (cancelAction) {
+      // Call cancelAction first (it may be async), then close dialog
+      const result = cancelAction();
+      // If it's a promise, wait for it
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    }
+    // Always close the dialog
     onOpenChange(false);
   };
 

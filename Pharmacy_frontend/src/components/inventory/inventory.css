@@ -340,6 +340,32 @@ input[type="date"].inv-select::-webkit-calendar-picker-indicator:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
 }
+.inv-btn.muted {
+  background: #f3f4f6;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
+  box-shadow: none;
+}
+.inv-btn.muted:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #cbd5f5;
+}
+.inv-btn.danger {
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+.inv-btn.danger:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(185, 28, 28, 0.35);
+}
+.inv-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 .inv-tabs {
   display: flex;

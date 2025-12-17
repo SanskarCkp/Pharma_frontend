@@ -34,6 +34,8 @@ export default function BillList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("invoice_date");
   const [sortDir, setSortDir] = useState("desc");
+  const [deleteDialog, setDeleteDialog] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -147,46 +149,43 @@ export default function BillList() {
     }
   };
 
-  // Handle invoice deletion
-  const handleDelete = async (bill) => {
-    console.log("handleDelete called for bill:", bill); // Debug log
-    
-    // Check if invoice is POSTED (stock was deducted)
-    // Status might be in different fields, check all possibilities
-    const status = bill.status || bill.invoice_status || "";
-    const isPosted = status === "POSTED" || status === "posted";
-    
-    // First confirmation
-    const confirmMsg = `Are you sure you want to delete invoice ${bill.invoice_no || bill.id}?`;
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-    
-    // If POSTED, ask about stock restoration
-    let restoreStock = false;
-    if (isPosted) {
-      restoreStock = window.confirm(
-        `Invoice ${bill.invoice_no || bill.id} is POSTED (stock was deducted).\n\nDo you want to restore the stock for the items in this invoice?`
-      );
-    }
-    
+  const openDeleteDialog = (bill) => {
+    if (!bill) return;
+    const status = (bill.status || bill.invoice_status || "").toLowerCase();
+    const isPosted = status === "posted";
+    setDeleteDialog({
+      bill,
+      requiresRestoreChoice: isPosted,
+      restoreStock: isPosted,
+    });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog?.bill) return;
+    const { bill, requiresRestoreChoice, restoreStock } = deleteDialog;
+
     try {
+      setDeleteLoading(true);
       const invoiceId = bill.id;
-      const url = `${INVOICES_URL}${invoiceId}/${restoreStock ? '?restore_stock=true' : ''}`;
-      
-      console.log("Deleting invoice:", url); // Debug log
-      
-      const res = await authFetch(url, {
-        method: "DELETE",
-      });
-      
-      console.log("Delete response:", res.status, res.ok); // Debug log
-      
+      const shouldRestore = requiresRestoreChoice ? !!restoreStock : false;
+      const url = `${INVOICES_URL}${invoiceId}/${shouldRestore ? "?restore_stock=true" : ""}`;
+
+      const res = await authFetch(url, { method: "DELETE" });
+
       if (res.ok || res.status === 204) {
-        showAlert(`Invoice ${bill.invoice_no || invoiceId} deleted successfully${restoreStock ? ' and stock restored' : ''}`, "Success");
-        // Remove from list
-        setBills(prev => prev.filter(b => b.id !== invoiceId));
-        // Reload to refresh stats
+        showAlert(
+          `Invoice ${bill.invoice_no || invoiceId} deleted successfully${
+            shouldRestore ? " and stock restored" : ""
+          }`,
+          "Success"
+        );
+        setBills((prev) => prev.filter((b) => b.id !== invoiceId));
+        setDeleteLoading(false);
+        closeDeleteDialog();
         window.location.reload();
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -195,6 +194,8 @@ export default function BillList() {
     } catch (err) {
       console.error("Delete failed:", err);
       showAlert("Failed to delete invoice: " + (err.message || "Unknown error"), "Error");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -617,8 +618,7 @@ export default function BillList() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log("Delete button clicked for bill:", bill.id); // Debug
-                            handleDelete(bill);
+                            openDeleteDialog(bill);
                           }}
                           type="button"
                         >
@@ -654,7 +654,88 @@ export default function BillList() {
           </div>
         </div>
       </div>
+      {deleteDialog && (
+        <div className="app-modal-overlay" role="dialog" aria-modal="true">
+          <div className="app-modal">
+            <div className="app-modal__header">
+              <div>
+                <p className="app-modal__eyebrow">Invoice action</p>
+                <h3>Delete invoice?</h3>
+              </div>
+              <button
+                type="button"
+                className="app-modal__close"
+                onClick={closeDeleteDialog}
+                disabled={deleteLoading}
+                aria-label="Close dialog"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="app-modal__body">
+              <p>
+                Removing invoice{" "}
+                <strong>{deleteDialog.bill?.invoice_no || deleteDialog.bill?.id}</strong> permanently will also
+                clear its payment history.
+              </p>
+              <div className="app-modal__summary">
+                <div>
+                  <span className="app-modal__summary-label">Customer</span>
+                  <strong>
+                    {deleteDialog.bill?.customer_name_display ||
+                      deleteDialog.bill?.customer_name ||
+                      deleteDialog.bill?.customer?.name ||
+                      deleteDialog.bill?.customer_detail?.name ||
+                      "-"}
+                  </strong>
+                </div>
+                <div>
+                  <span className="app-modal__summary-label">Bill total</span>
+                  <strong>{formatMoney(deleteDialog.bill?.net_total)}</strong>
+                </div>
+                <div>
+                  <span className="app-modal__summary-label">Date</span>
+                  <strong>{formatDate(deleteDialog.bill?.invoice_date)}</strong>
+                </div>
+              </div>
+              {deleteDialog.requiresRestoreChoice && (
+                <label className="app-modal__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!!deleteDialog.restoreStock}
+                    disabled={deleteLoading}
+                    onChange={(e) =>
+                      setDeleteDialog((prev) => ({ ...prev, restoreStock: e.target.checked }))
+                    }
+                  />
+                  <span>Restore stock quantities for every item in this invoice</span>
+                </label>
+              )}
+              <div className="app-modal__warning">
+                This action cannot be undone. Deleted invoice numbers become available for reuse.
+              </div>
+            </div>
+            <div className="app-modal__footer">
+              <button
+                type="button"
+                className="inv-btn muted"
+                onClick={closeDeleteDialog}
+                disabled={deleteLoading}
+              >
+                Keep Invoice
+              </button>
+              <button
+                type="button"
+                className="inv-btn danger"
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Deleting..." : "Delete Invoice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -97,6 +97,24 @@
   color: #334155;
 }
 
+/* Supplier Section */
+.supplier-section {
+  margin-bottom: 2.5rem;
+}
+
+.section-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
 /* Grid of cards */
 .cards-grid {
   display: grid;
@@ -206,53 +224,90 @@
   margin-top: 6px;
 }
 
-/* footer (status + action icons) */
+/* footer (status toggle) */
 .card-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-top: 12px;
 }
 
-.status-badge {
-  font-size: 12px;
-  padding: 6px 10px;
+/* Status Toggle Button */
+.status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: none;
   border-radius: 999px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-width: 90px;
+  justify-content: space-between;
 }
 
-.status-badge.active {
+.status-toggle.active {
   background: #ecfdf5;
   color: #027a48;
 }
 
-.status-badge.inactive {
+.status-toggle.active:hover {
+  background: #d1fae5;
+}
+
+.status-toggle.inactive {
   background: #fff1f2;
   color: #b91c1c;
 }
 
-/* action icons */
-.action-icons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.status-toggle.inactive:hover {
+  background: #ffe4e6;
 }
 
-.action-icons .icon {
-  background: transparent;
-  border-radius: 6px;
-  padding: 6px;
-  cursor: pointer;
-  color: #334155;
-  transition: background 120ms ease, color 120ms ease;
+.toggle-slider {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 }
-.action-icons .icon:hover {
-  background: rgba(15,23,42,0.04);
-  color: #0d9488;
+
+.status-toggle.active .toggle-slider {
+  background: #10b981;
 }
-.action-icons .icon.delete:hover {
-  background: rgba(239,68,68,0.08);
-  color: #dc2626;
+
+.status-toggle.inactive .toggle-slider {
+  background: #e5e7eb;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-toggle.active .toggle-slider::before {
+  transform: translateX(16px);
+}
+
+.status-toggle.inactive .toggle-slider::before {
+  transform: translateX(0);
+}
+
+.toggle-label {
+  font-weight: 600;
+  user-select: none;
 }
 
 .clickable-card {
