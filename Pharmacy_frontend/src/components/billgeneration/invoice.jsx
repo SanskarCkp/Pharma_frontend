@@ -166,10 +166,10 @@ export default function Invoice() {
               <p className={styles.companySubtitle}>(a unit of Keshav Medicals)</p>
               <p className={styles.companyAddress}>
                 Keshava Medicals T C H Complex, Opposite to National Public School,<br />
-                Singanayakanahalli Bypass/RTO Office Road yelahanka, banglore 560064
+                Singanayakanahalli Bypass/RTO Office Road Yelahanka, Bengaluru 560064.
               </p>
               <p className={styles.companyDetails}>
-                GST NO: 29BHOPS2215K1ZU | DL No: KA-B52-287463
+              DL No: KA-B52-287463
               </p>
               <p className={styles.companyDetails}>Mob: +91 74113 12445</p>
             </div>
