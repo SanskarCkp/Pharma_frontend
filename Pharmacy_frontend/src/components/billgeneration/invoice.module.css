@@ -279,20 +279,28 @@
 /* Totals Summary Section */
 .totalsSummarySection {
   display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: stretch;
   border-bottom: 1px solid #000;
   border-top: none;
   padding: 8px 12px;
   margin: 0;
+  min-height: 100px;
+}
+
+.leftSummarySection {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
 }
 
 .totalItemsInfo {
   font-size: 9px;
   font-weight: 600;
   color: #111;
-  text-align: right;
-  margin: 0 0 4px 0;
+  text-align: left;
+  margin: 0;
   padding: 0;
   line-height: 1.3;
 }
@@ -302,6 +310,10 @@
   text-align: right;
   border-left: 1px solid #000;
   padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
 }
 
 .summaryRow {

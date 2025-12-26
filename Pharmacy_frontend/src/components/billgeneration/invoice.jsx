@@ -260,10 +260,12 @@ export default function Invoice() {
 
         {/* TOTALS SUMMARY */}
         <div className={styles.totalsSummarySection}>
-          <div className={styles.amountSummary}>
+          <div className={styles.leftSummarySection}>
             <div className={styles.totalItemsInfo}>
               Total Item : {invoice.lines?.length || 0} | Total Qty : {totalQty.toFixed(3)}
             </div>
+          </div>
+          <div className={styles.amountSummary}>
             <div className={styles.summaryRow}>
               <span className={styles.summaryLabel}>Sub Total:</span>
               <span className={styles.summaryValue}>{subtotal.toFixed(2)}</span>
@@ -281,7 +283,7 @@ export default function Invoice() {
               <span className={styles.summaryValue}>{(gstAmount / 2).toFixed(2)}</span>
             </div>
             <div className={`${styles.summaryRow} ${styles.totalRow}`}>
-              <span className={styles.summaryLabel}>Inv Total:</span>
+              <span className={styles.summaryLabel}>Total:</span>
               <span className={styles.summaryValue}>{total.toFixed(2)}</span>
             </div>
           </div>
