@@ -171,7 +171,7 @@ export default function Invoice() {
               <p className={styles.companyDetails}>
                 GST NO: 29BHOPS2215K1ZU | DL No: KA-B52-287463
               </p>
-              <p className={styles.companyDetails}>Mob: 7411312445</p>
+              <p className={styles.companyDetails}>Mob: +91 74113 12445</p>
             </div>
           </div>
 
@@ -297,7 +297,7 @@ export default function Invoice() {
               <li>Goods Sold Cannot Be Taken Back.</li>
               <li>Cold storage insulins will not be taken back strictly once sold.</li>
               <li>Pharmacy Timings: 8:00am to 10:00pm.</li>
-              <li>Free delivery available on orders above ₹500.</li>
+              <li>Free delivery available, for orders call +91 74113 12445</li>
             </ol>
           </div>
 
