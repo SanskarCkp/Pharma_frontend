@@ -290,9 +290,7 @@
 
 .leftSummarySection {
   flex: 1;
-  display: flex;
-  align-items: flex-end;
-  height: 100%;
+  position: relative;
 }
 
 .totalItemsInfo {
@@ -302,6 +300,9 @@
   text-align: left;
   margin: 0;
   padding: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
   line-height: 1.3;
 }
 
