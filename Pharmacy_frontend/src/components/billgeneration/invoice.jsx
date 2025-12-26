@@ -165,13 +165,13 @@ export default function Invoice() {
               <h2 className={styles.companyName}>Keshav Medicals</h2>
               <p className={styles.companySubtitle}>(a unit of Keshav Medicals)</p>
               <p className={styles.companyAddress}>
-                Shop No 2, Stilt Floor, Tower 9, Prestige Royale Garden Apartment,<br />
-                Avalahalli, DB Pura Main Road, Bengaluru-560064
+                Keshava Medicals T C H Complex, Opposite to National Public School,<br />
+                Singanayakanahalli Bypass/RTO Office Road yelahanka, banglore 560064
               </p>
               <p className={styles.companyDetails}>
-                GST NO: 29BHOPS2215K1ZU | DL No: 20-KA-B52-257125
+                GST NO: 29BHOPS2215K1ZU | DL No: KA-B52-287463
               </p>
-              <p className={styles.companyDetails}>Mob: 9740050075</p>
+              <p className={styles.companyDetails}>Mob: 7411312445</p>
             </div>
           </div>
 
@@ -260,11 +260,10 @@ export default function Invoice() {
 
         {/* TOTALS SUMMARY */}
         <div className={styles.totalsSummarySection}>
-          <div className={styles.totalItemsInfo}>
-            Total Item : {invoice.lines?.length || 0} | Total Qty : {totalQty.toFixed(3)}
-          </div>
-
           <div className={styles.amountSummary}>
+            <div className={styles.totalItemsInfo}>
+              Total Item : {invoice.lines?.length || 0} | Total Qty : {totalQty.toFixed(3)}
+            </div>
             <div className={styles.summaryRow}>
               <span className={styles.summaryLabel}>Sub Total:</span>
               <span className={styles.summaryValue}>{subtotal.toFixed(2)}</span>
@@ -296,6 +295,7 @@ export default function Invoice() {
               <li>Goods Sold Cannot Be Taken Back.</li>
               <li>Cold storage insulins will not be taken back strictly once sold.</li>
               <li>Pharmacy Timings: 8:00am to 10:00pm.</li>
+              <li>Free delivery available on orders above ₹500.</li>
             </ol>
           </div>
 

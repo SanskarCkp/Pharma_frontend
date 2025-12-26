@@ -279,7 +279,7 @@
 /* Totals Summary Section */
 .totalsSummarySection {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: flex-start;
   border-bottom: 1px solid #000;
   border-top: none;
@@ -291,8 +291,8 @@
   font-size: 9px;
   font-weight: 600;
   color: #111;
-  align-self: flex-end;
-  margin: 0;
+  text-align: right;
+  margin: 0 0 4px 0;
   padding: 0;
   line-height: 1.3;
 }
