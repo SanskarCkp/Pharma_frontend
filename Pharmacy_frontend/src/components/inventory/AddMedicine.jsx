@@ -14,6 +14,7 @@ const API_BASE = normalizeBase(rawBase);
 const RACKS_API = `${API_BASE}/api/v1/inventory/rack-locations/`;
 const ADD_MEDICINE_API = `${API_BASE}/api/v1/inventory/add-medicine/`;
 const MEDICINE_DETAIL_API = (id) => `${API_BASE}/api/v1/inventory/medicines/${id}/`;
+const RACKS_API_NO_SLASH = `${API_BASE}/api/v1/inventory/rack-locations`;
 
 const DEFAULT_LOCATION_ID = getDefaultLocationId();
 
@@ -21,6 +22,14 @@ const dispatchInventoryRefresh = () => {
   try {
     window.dispatchEvent(new CustomEvent("inventory:refresh"));
   } catch {}
+};
+
+const extractRackList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.results)) return payload.data.results;
+  return [];
 };
 
 const createInitialMedicine = () => ({
@@ -327,16 +336,19 @@ export default function AddMedicine({
     async function loadMasters() {
       setLoadingMasters(true);
       try {
-        const rackRes = await authFetch(RACKS_API);
-        if (!rackRes.ok) {
-          throw new Error(`Rack locations request failed (${rackRes.status})`);
+        const tryLoad = async (url) => {
+          const rackRes = await authFetch(url, { cache: "no-store" });
+          if (!rackRes.ok) {
+            throw new Error(`Rack locations request failed (${rackRes.status})`);
+          }
+          const rackJson = await rackRes.json().catch(() => null);
+          return extractRackList(rackJson);
+        };
+
+        let racks = await tryLoad(RACKS_API);
+        if (!racks.length) {
+          racks = await tryLoad(RACKS_API_NO_SLASH);
         }
-        const rackJson = await rackRes.json().catch(() => null);
-        const racks = Array.isArray(rackJson)
-          ? rackJson
-          : Array.isArray(rackJson?.results)
-          ? rackJson.results
-          : [];
         setRackLocations(racks);
       } catch (err) {
         console.error("Failed to load master data", err);
