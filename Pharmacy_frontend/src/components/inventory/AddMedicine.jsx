@@ -328,8 +328,16 @@ export default function AddMedicine({
       setLoadingMasters(true);
       try {
         const rackRes = await authFetch(RACKS_API);
+        if (!rackRes.ok) {
+          throw new Error(`Rack locations request failed (${rackRes.status})`);
+        }
         const rackJson = await rackRes.json().catch(() => null);
-        setRackLocations(rackJson?.results || []);
+        const racks = Array.isArray(rackJson)
+          ? rackJson
+          : Array.isArray(rackJson?.results)
+          ? rackJson.results
+          : [];
+        setRackLocations(racks);
       } catch (err) {
         console.error("Failed to load master data", err);
         setServerError("Unable to load master data. Please refresh.");
