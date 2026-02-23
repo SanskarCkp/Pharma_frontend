@@ -1,0 +1,52 @@
+name: Deploy to Azure Storage Static Website
+on:
+  push:
+    branches: [ "main" ]   # change if you deploy from a different branch
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: "npm"
+
+    - name: Install & Build
+      run: |
+        npm ci
+        npm run build
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # IMPORTANT: set BUILD_DIR correctly (dist/build/etc.)
+    - name: Deploy to $web
+      env:
+        STORAGE: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+      run: |
+        BUILD_DIR="dist"   # change to build or dist/<app-name> as needed
+
+        # Clean old files to avoid stale assets
+        az storage blob delete-batch \
+          --account-name "$STORAGE" \
+          --auth-mode login \
+          -s "\$web"
+
+        # Upload new build
+        az storage blob upload-batch \
+          --account-name "$STORAGE" \
+          --auth-mode login \
+          -d "\$web" \
+          -s "$BUILD_DIR" \
+          --overwrite
