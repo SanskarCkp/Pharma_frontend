@@ -1,72 +1,58 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import "./billgeneration.css";
+import { authFetch } from "../../api/http";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function Invoice() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [bill, setBill] = useState(null);
-  const printRef = useRef();
+  const location = useLocation();
+  const [invoice, setInvoice] = useState(null);
+  const [error, setError] = useState("");
+  const [autoPrintDone, setAutoPrintDone] = useState(false);
+  const printRef = useRef(null);
 
   useEffect(() => {
-    // fetch your bill dynamically here using id
-    // example placeholder, replace with real API
-    const fetchBill = async () => {
-      // const response = await fetch(`/api/bills/${id}`);
-      // const data = await response.json();
-      // setBill(data);
-
-      // For now using dummy data for demo
-      setBill({
-        id: 1,
-        billNumber: "INV-1001",
-        date: "2025-11-11",
-        gst: 12,
-        customer: { name: "John Doe", phone: "9876543210" },
-        paymentMethod: "Cash",
-        paymentStatus: "Paid",
-        cart: [
-          { id: 1, name: "Paracetamol 500mg", qty: 2, price: 25 },
-          { id: 2, name: "Vitamin C Tablets", qty: 1, price: 150 },
-          { id: 3, name: "Cough Syrup", qty: 1, price: 200 },
-        ],
-        store: {
-          name: "Sai Medical Store",
-          address: "Junnar Road, Narayangaon, Pune",
-          phone: "1234567890",
-          gstin: "27AAAAA0000A1Z5",
-        },
-      });
-    };
-
-    fetchBill();
+    async function load() {
+      try {
+        setError("");
+        const res = await authFetch(`${API_BASE}/sales/invoices/${id}/`);
+        if (!res.ok) {
+          const txt = await res.text();
+          setError(
+            `Failed to load invoice (${res.status})${
+              txt ? `: ${txt}` : ""
+            }`
+          );
+          setInvoice(null);
+          return;
+        }
+        const data = await res.json();
+        setInvoice(data);
+      } catch (e) {
+        console.error(e);
+        setError("Network error while loading invoice");
+        setInvoice(null);
+      }
+    }
+    load();
   }, [id]);
 
-  if (!bill) {
-    return (
-      <div className="billgeneration-page" style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}>
-        <p>Loading invoice...</p>
-      </div>
-    );
-  }
-
-  const subtotal = bill.cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const gstAmount = (subtotal * bill.gst) / 100;
-  const total = subtotal + gstAmount;
+  const subtotal = Number(invoice?.gross_total || 0);
+  const gstAmount = Number(invoice?.tax_total || 0);
+  const total = Number(invoice?.net_total || 0);
 
   const handlePrint = () => {
-    const printContents = printRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-
-    document.body.innerHTML = printContents;
+    if (!printRef.current) return;
     window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
   };
 
   const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
     const element = printRef.current;
     const canvas = await html2canvas(element, { scale: 3, useCORS: true });
     const imgData = canvas.toDataURL("image/png");
@@ -77,12 +63,71 @@ export default function Invoice() {
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-    pdf.save(`${bill.billNumber}.pdf`);
+    pdf.save(`${invoice?.invoice_no || "invoice"}.pdf`);
   };
 
+  const customer =
+    invoice && typeof invoice.customer === "object" && invoice.customer !== null
+      ? invoice.customer
+      : {};
+
+  const search = new URLSearchParams(location.search);
+  const shouldAutoPrint = search.get("print") === "1";
+
+  useEffect(() => {
+    if (shouldAutoPrint && invoice && !autoPrintDone && printRef.current) {
+      handlePrint();
+      setAutoPrintDone(true);
+    }
+  }, [shouldAutoPrint, invoice, autoPrintDone]);
+
+  if (!invoice && !error) {
+    return (
+      <div
+        className="billgeneration-page"
+        style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}
+      >
+        <p>Loading invoice...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="billgeneration-page"
+        style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}
+      >
+        <p style={{ color: "#dc2626" }}>{error}</p>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            marginTop: "1rem",
+            backgroundColor: "#e5e7eb",
+            borderRadius: "6px",
+            border: "none",
+            padding: "0.5rem 1rem",
+            cursor: "pointer",
+          }}
+        >
+          ← Back
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="billgeneration-page" style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+    <div
+      className="billgeneration-page"
+      style={{ maxWidth: "800px", margin: "auto", padding: "1rem" }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "1rem",
+        }}
+      >
         <button
           onClick={() => navigate(-1)}
           style={{
@@ -98,7 +143,7 @@ export default function Invoice() {
 
         <div>
           <button
-            onClick={handlePrint}
+            onClick={handleDownloadPDF}
             style={{
               backgroundColor: "#3b82f6",
               color: "white",
@@ -109,10 +154,10 @@ export default function Invoice() {
               cursor: "pointer",
             }}
           >
-            🖨️ Print
+            Download
           </button>
           <button
-            onClick={handleDownloadPDF}
+            onClick={handlePrint}
             style={{
               backgroundColor: "#14b8a6",
               color: "white",
@@ -122,7 +167,7 @@ export default function Invoice() {
               cursor: "pointer",
             }}
           >
-            ⬇️ Download PDF
+            Print
           </button>
         </div>
       </div>
@@ -137,10 +182,19 @@ export default function Invoice() {
         }}
       >
         {/* Header */}
-        <div className="header" style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <h2 style={{ color: "#14b8a6", marginBottom: "0.25rem" }}>{bill.store.name}</h2>
-          <p style={{ margin: "0" }}>{bill.store.address}</p>
-          <p style={{ margin: "0" }}>Phone: {bill.store.phone} | GSTIN: {bill.store.gstin}</p>
+        <div
+          className="header"
+          style={{ textAlign: "center", marginBottom: "1rem" }}
+        >
+          <h2 style={{ color: "#14b8a6", marginBottom: "0.25rem" }}>
+            Keshav Medical Centre
+          </h2>
+          <p style={{ margin: "0" }}>
+            123 Medical Plaza, MG Road, Mumbai, Maharashtra - 400001
+          </p>
+          <p style={{ margin: "0" }}>
+            Phone: +91 98765 43210 | GSTIN: 27AABCU9603R1Z5
+          </p>
         </div>
 
         {/* Customer + Invoice Info */}
@@ -154,21 +208,38 @@ export default function Invoice() {
           }}
         >
           <div>
-            <h4 style={{ marginBottom: "0.3rem", color: "#111827" }}>Customer Details</h4>
+            <h4 style={{ marginBottom: "0.3rem", color: "#111827" }}>
+              Bill To
+            </h4>
             <p style={{ margin: "0.2rem 0" }}>
-              <strong>Name:</strong> {bill.customer.name}
+              <strong>Name:</strong> {customer.name || "-"}
             </p>
             <p style={{ margin: "0.2rem 0" }}>
-              <strong>Phone:</strong> {bill.customer.phone}
+              <strong>Phone:</strong> {customer.phone || "-"}
             </p>
+            {customer.email && (
+              <p style={{ margin: "0.2rem 0" }}>
+                <strong>Email:</strong> {customer.email}
+              </p>
+            )}
+            {customer.city && (
+              <p style={{ margin: "0.2rem 0" }}>
+                <strong>City:</strong> {customer.city}
+              </p>
+            )}
           </div>
           <div style={{ textAlign: "right" }}>
-            <h4 style={{ marginBottom: "0.3rem", color: "#111827" }}>Invoice Info</h4>
+            <h4 style={{ marginBottom: "0.3rem", color: "#111827" }}>
+              Invoice Info
+            </h4>
             <p style={{ margin: "0.2rem 0" }}>
-              <strong>Invoice #:</strong> {bill.billNumber}
+              <strong>Invoice #:</strong> {invoice.invoice_no || invoice.id}
             </p>
             <p style={{ margin: "0.2rem 0" }}>
-              <strong>Date:</strong> {new Date(bill.date).toLocaleDateString()}
+              <strong>Date:</strong>{" "}
+              {invoice.invoice_date
+                ? new Date(invoice.invoice_date).toLocaleString()
+                : ""}
             </p>
           </div>
         </div>
@@ -177,20 +248,37 @@ export default function Invoice() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead style={{ backgroundColor: "#f3f4f6" }}>
             <tr>
-              <th style={{ textAlign: "left", padding: "0.5rem" }}>Product</th>
+              <th style={{ textAlign: "left", padding: "0.5rem" }}>#</th>
+              <th style={{ textAlign: "left", padding: "0.5rem" }}>
+                Medicine Name
+              </th>
+              <th style={{ textAlign: "left", padding: "0.5rem" }}>Batch</th>
               <th style={{ textAlign: "right", padding: "0.5rem" }}>Qty</th>
               <th style={{ textAlign: "right", padding: "0.5rem" }}>Price</th>
               <th style={{ textAlign: "right", padding: "0.5rem" }}>Total</th>
             </tr>
           </thead>
           <tbody>
-            {bill.cart.map((item) => (
-              <tr key={item.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <td style={{ padding: "0.5rem" }}>{item.name}</td>
-                <td style={{ textAlign: "right", padding: "0.5rem" }}>{item.qty}</td>
-                <td style={{ textAlign: "right", padding: "0.5rem" }}>₹{item.price}</td>
+            {(invoice.lines || []).map((item, index) => (
+              <tr
+                key={item.id || index}
+                style={{ borderBottom: "1px solid #e5e7eb" }}
+              >
+                <td style={{ padding: "0.5rem" }}>{index + 1}</td>
+                <td style={{ padding: "0.5rem" }}>
+                  {item.product_name || ""}
+                </td>
+                <td style={{ padding: "0.5rem" }}>
+                  {item.batch_no || item.batch_lot}
+                </td>
                 <td style={{ textAlign: "right", padding: "0.5rem" }}>
-                  ₹{(item.qty * item.price).toFixed(2)}
+                  {item.qty_base}
+                </td>
+                <td style={{ textAlign: "right", padding: "0.5rem" }}>
+                  ₹{Number(item.rate_per_base || 0).toFixed(2)}
+                </td>
+                <td style={{ textAlign: "right", padding: "0.5rem" }}>
+                  ₹{Number(item.line_total || 0).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -203,9 +291,15 @@ export default function Invoice() {
             <strong>Subtotal:</strong> ₹{subtotal.toFixed(2)}
           </p>
           <p>
-            <strong>GST ({bill.gst}%):</strong> ₹{gstAmount.toFixed(2)}
+            <strong>GST:</strong> ₹{gstAmount.toFixed(2)}
           </p>
-          <h3 style={{ borderTop: "1px solid #ddd", marginTop: "0.5rem", paddingTop: "0.5rem" }}>
+          <h3
+            style={{
+              borderTop: "1px solid #ddd",
+              marginTop: "0.5rem",
+              paddingTop: "0.5rem",
+            }}
+          >
             Total: ₹{total.toFixed(2)}
           </h3>
         </div>
@@ -220,10 +314,10 @@ export default function Invoice() {
           }}
         >
           <p>
-            <strong>Payment Method:</strong> {bill.paymentMethod}
+            <strong>Payment Method:</strong> Cash
           </p>
           <p>
-            <strong>Payment Status:</strong> {bill.paymentStatus}
+            <strong>Payment Status:</strong> {invoice.payment_status}
           </p>
         </div>
 
@@ -238,10 +332,13 @@ export default function Invoice() {
             color: "#6b7280",
           }}
         >
-          <p style={{ marginBottom: "0.25rem" }}>Thank you for choosing {bill.store.name}!</p>
+          <p style={{ marginBottom: "0.25rem" }}>
+            Thank you for choosing Keshav Medical Centre!
+          </p>
           <p style={{ margin: 0 }}>This is a computer-generated invoice.</p>
         </div>
       </div>
     </div>
   );
 }
+

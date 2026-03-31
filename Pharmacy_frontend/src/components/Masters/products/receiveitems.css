@@ -4,14 +4,12 @@
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f5f6fa;
-  color: #000; /* 🔥 Ensures all default text is black */
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 28px; /* same as purchaseorders.css */
   font-weight: 600;
-  margin-bottom: 5px;
-  color: #000; /* explicit black */
+  margin-bottom: 5px; /* adjusted to match purchaseorders spacing */
 }
 
 /* KPI Cards Grid */
@@ -27,27 +25,26 @@
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   padding: 20px;
-  color: #000; /* black text inside card */
 }
 
 .kpi-card h3 {
-  font-size: 16px;
+  font-size: 16px; /* slightly smaller than page title, similar to table heading */
   font-weight: 600;
   margin-bottom: 10px;
-  color: #111; /* darker heading */
+  color: #333;
 }
 
 .kpi-item {
-  font-size: 14px;
+  font-size: 14px; /* same as vendor-name and table text */
   margin-bottom: 8px;
-  color: #222; /* consistent readable black */
+  color: #555;
 }
 
 .kpi-item strong {
-  color: #000; /* strong text fully black */
+  color: #222;
 }
 
-/* Table wrapper */
+/* Table wrapper to keep it inside card */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -55,24 +52,21 @@
 
 .items-received-table {
   width: 100%;
-  min-width: 600px;
+  min-width: 600px; /* ensures columns don't shrink too much */
   border-collapse: collapse;
-  color: #000;
 }
 
 .items-received-table th,
 .items-received-table td {
   border: 1px solid #ddd;
   padding: 10px;
-  text-align: left;
-  font-size: 14px;
-  color: #000 !important; /* 🔥 fixes white text inside table */
+  text-align: left; /* same as orders table */
+  font-size: 14px; /* match table text size in purchaseorders.css */
 }
 
 .items-received-table th {
-  background-color: #f5f5f5;
+  background-color: #f5f5f5; /* same as orders table heading */
   font-weight: 600;
-  color: #000; /* table headers black */
 }
 
 /* Summary Card */
@@ -80,15 +74,14 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  color: #000;
 }
 
 .summary-row {
   display: flex;
   align-items: center;
-  font-size: 14px;
+  font-size: 14px; /* same as table and vendor text */
   margin-bottom: 12px;
-  color: #000; /* readable */
+  color: #444;
 }
 
 .summary-icon {
@@ -102,9 +95,9 @@
   background-color: #2ecc71;
   color: #fff;
   border: none;
-  padding: 6px 12px;
+  padding: 6px 12px; /* smaller like buttons in purchaseorders */
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 14px; /* same as receive items button font */
   font-weight: 600;
   cursor: pointer;
   transition: background 0.3s ease;
@@ -114,7 +107,7 @@
   background-color: #27ae60;
 }
 
-/* Responsive */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .kpi-cards-grid {
     grid-template-columns: 1fr;
@@ -126,34 +119,3 @@
     padding: 6px;
   }
 }
-
-.receiveitems-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f3f3f3;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
-  transition: 0.2s;
-}
-
-.back-btn:hover {
-  background: #e4e4e4;
-}
-
-.page-title {
-  margin-left: 15px;
-  font-size: 22px;
-  font-weight: 600;
-}
-

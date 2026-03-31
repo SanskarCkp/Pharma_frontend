@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -7,6 +8,8 @@ import Footer from "./components/Footer";
 
 // Public
 import Login from "./components/user/login";
+import Users from "./components/users/users.jsx";
+import ResetPassword from "./components/user/ResetPassword"; // ensure file: src/components/user/ResetPassword.jsx
 
 // Guard
 import PrivateRoute from "./components/user/privateroute";
@@ -19,10 +22,9 @@ import MastersDashboard from "./components/Masters/masters.jsx";
 
 // Inventory
 import MedicineInventory from "./components/inventory/MedicineInventory.jsx";
-import AddMedicine from "./components/inventory/AddMedicine.jsx"; 
+import AddMedicine from "./components/inventory/AddMedicine.jsx";
 
 // Masters
-
 import Vendorsdashboard from "./components/Masters/Vendors/vendorsdashboard.jsx";
 import VendorDetails from "./components/Masters/Vendors/VendorDetails.jsx";
 import AddVendors from "./components/Masters/Vendors/addvendors.jsx";
@@ -41,8 +43,6 @@ import ProductsDashboard from "./components/Masters/products/createorder.jsx";
 import PurchaseOrders from "./components/Masters/products/PurchaseOrders.jsx";
 import ReceiveItems from "./components/Masters/products/ReceiveItems.jsx";
 import ProductCatalog from "./components/Masters/products/ProductCatalog.jsx";
-
-
 
 import AddProduct from "./components/Masters/products/addproducts.jsx";
 import ViewProduct from "./components/Masters/products/ViewProduct.jsx";
@@ -73,13 +73,9 @@ import ExpiryAlerts from "./components/expiryalerts/expiryalerts.jsx";
 
 // Settings / retention
 import SettingsDashboard from "./components/settings/settingsdashboard.jsx";
-import Notifications from "./components/settings/Notifications.jsx"; 
+import Notifications from "./components/settings/Notifications.jsx";
 import BackupRestore from "./components/settings/BackupRestore.jsx";
-
-
-
 import TaxBillingConfiguration from "./components/settings/TaxBillingConfiguration";
-
 import AddSetting from "./components/settings/addsettings.jsx";
 import EditSetting from "./components/settings/EditSettings.jsx";
 import ViewSetting from "./components/settings/ViewSetting.jsx";
@@ -137,11 +133,8 @@ function AppLayout() {
             <Route path="/masters/products/view/:id" element={<ViewProduct />} />
             <Route path="/masters/products/edit/:id" element={<EditProduct />} />
             <Route path="/masters/products/purchase-orders" element={<PurchaseOrders />} />
-            <Route path="/masters/products/receive-items/:id"element={<ReceiveItems />}/>
-
+            <Route path="/masters/products/receive-items" element={<ReceiveItems />} />
             <Route path="/masters/products/vendor-catalog/:id" element={<ProductCatalog />} />
-
-
 
             <Route path="/masters/payment-methods" element={<PaymentMethods />} />
             <Route path="/masters/payment-terms" element={<PaymentTerms />} />
@@ -173,8 +166,6 @@ function AppLayout() {
             <Route path="/settings" element={<SettingsDashboard />} />
             <Route path="/settings/notifications" element={<Notifications />} />
             <Route path="/settings/backup-restore" element={<BackupRestore />} />
-            
-
             <Route path="/settings/tax-billing" element={<TaxBillingConfiguration />} />
             <Route path="/settings/add" element={<AddSetting />} />
             <Route path="/settings/edit/:key" element={<EditSetting />} />
@@ -195,8 +186,6 @@ function AppLayout() {
             <Route path="/saleslines" element={<Saleslines />} />
             <Route path="/h1registerentries" element={<H1registerentries />} />
             <Route path="/ndpsdailyentries" element={<Ndpsdailyentries />} />
-             <Route path="/dashboard" element={<Dashboard />} />
-            {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
           </Routes>
         </main>
         <Footer />
@@ -208,15 +197,17 @@ function AppLayout() {
 export default function App() {
   return (
     <Routes>
-      {/* Public */}
+      {/* 🔓 Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/users" element={<Users />} />
 
-      {/* Protected */}
+      {/* 🔐 Protected routes (everything else) */}
       <Route element={<PrivateRoute />}>
         <Route path="/*" element={<AppLayout />} />
       </Route>
 
-      {/* Default */}
+      {/* Default / unknown paths */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

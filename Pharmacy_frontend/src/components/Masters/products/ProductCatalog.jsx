@@ -31,7 +31,7 @@ const ProductCatalog = () => {
       try {
         // Fetch all products with a query param filtering by vendor
         const res = await authFetch(
-          `${API_BASE_URL}/catalog/products/?vendor=${vendor.id}`
+          `${API_BASE_URL}/procurement/vendors/${vendor.id}/products/`
         );
         const data = await res.json();
         const list = data.results || data;

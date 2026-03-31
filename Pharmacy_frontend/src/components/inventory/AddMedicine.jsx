@@ -1,8 +1,20 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inventory.css";
+import { authFetch } from "../../api/http";
 
 const LS_KEY = "medicines";
+
+const rawBase = import.meta.env.VITE_API_URL || "";
+const normalizeBase = (u) =>
+  u
+    .trim()
+    .replace(/\/+$/g, "")
+    .replace(/\/api\/v1$/i, "");
+const API_BASE = normalizeBase(rawBase);
+const ADD_API = API_BASE
+  ? `${API_BASE}/api/v1/inventory/add-medicine/`
+  : "/api/v1/inventory/add-medicine/";
 
 const empty = {
   id: "",
@@ -23,6 +35,8 @@ export default function AddMedicine() {
   const nav = useNavigate();
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,27 +54,77 @@ export default function AddMedicine() {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const eObj = validate();
     setErrors(eObj);
+    setServerError("");
     if (Object.keys(eObj).length) return;
 
     const item = {
       ...form,
       id: crypto.randomUUID(),
-      // sensible defaults for list fields:
-      medicine_id: form.medicine_id || form.medicine_name.slice(0,2).toUpperCase() + Math.floor(Math.random()*9999),
+      medicine_id:
+        form.medicine_id ||
+        (form.medicine_name || "MD")
+          .slice(0, 2)
+          .toUpperCase() + Math.floor(Math.random() * 9999),
     };
 
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.unshift(item);
-      localStorage.setItem(LS_KEY, JSON.stringify(arr));
-    } catch {}
+    const payload = {
+      location_id: 1,
+      product: {
+        code: item.medicine_id,
+        name: item.medicine_name,
+        generic_name: item.generic_name || "",
+        manufacturer: item.manufacturer || "",
+        mrp: String(item.mrp),
+        base_unit: "TAB",
+        pack_unit: "STRIP",
+        units_per_pack: "10.000",
+        gst_percent: "0",
+        reorder_level: "0",
+      },
+      batch: {
+        batch_no: item.batch_number || item.medicine_id,
+        expiry_date: item.expiry_date,
+      },
+      opening_qty_packs: String(item.quantity),
+      purchase_price: String(item.purchase_price),
+    };
 
-    nav("/inventory/medicines");
+    setSubmitting(true);
+    try {
+      const res = await authFetch(ADD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let msg = `Backend add failed (${res.status})`;
+        try {
+          const data = await res.json();
+          msg += `: ${JSON.stringify(data)}`;
+        } catch {
+          const txt = await res.text();
+          if (txt) msg += `: ${txt}`;
+        }
+        setServerError(msg);
+      } else {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          arr.unshift(item);
+          localStorage.setItem(LS_KEY, JSON.stringify(arr));
+        } catch {}
+        nav("/inventory/medicines");
+      }
+    } catch (err) {
+      console.error(err);
+      setServerError("Network error while saving medicine");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -73,6 +137,9 @@ export default function AddMedicine() {
       </div>
 
       <div className="inv-form-card">
+        {serverError && (
+          <div className="inv-error-banner">{serverError}</div>
+        )}
         <form className="grid2" onSubmit={handleSubmit}>
           {/* left */}
           <div className="field">
@@ -175,12 +242,18 @@ export default function AddMedicine() {
           </div>
 
           <div className="form-actions col-span-2">
-<button type="button" className="btn ghost" onClick={() => nav(-1)}>
-  X  Cancel
-</button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => nav(-1)}
+              disabled={submitting}
+            >
+              X  Cancel
+            </button>
 
-
-            <button type="submit" className="btn primary">Add Medicine</button>
+            <button type="submit" className="btn primary" disabled={submitting}>
+              {submitting ? "Saving..." : "Add Medicine"}
+            </button>
           </div>
         </form>
       </div>

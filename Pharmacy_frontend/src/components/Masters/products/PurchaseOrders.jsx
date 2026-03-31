@@ -25,7 +25,7 @@ const PurchaseOrders = () => {
       try {
         // Fetch all purchase orders for the vendor
         const res = await authFetch(
-          `${API_BASE_URL}/procurement/purchase-orders/?vendor=${vendor.id}`
+          `${API_BASE_URL}/purchaseorders/?vendor=${vendor.id}`
         );
         const data = await res.json();
         const ordersList = data.results || [];
@@ -71,28 +71,13 @@ const PurchaseOrders = () => {
     fetchOrders();
   }, [vendor]);
 
-  const handleView = (id) =>
-    navigate(`/masters/products/receive-items/${id}`, {
-      state: { vendor },
-    });
-
-  const handleDelete = async (id) => {
-  if (!window.confirm("Are you sure you want to delete this order?")) return;
-
-  try {
-    const res = await authFetch(
-      `${API_BASE_URL}/procurement/purchase-orders/${id}/`,
-      { method: "DELETE" }
-    );
-
-    if (res.ok) {
-      // Remove the deleted order from the state
-      setOrders((prev) => prev.filter((order) => order.id !== id));
-      alert("Purchase order deleted successfully!");
-    } else {
-      const errData = await res.json();
-      console.error("Delete failed:", errData);
-      alert("Failed to delete purchase order.");
+  const handleView = (id) => navigate(`/masters/purchaseorders/${id}`);
+  const handleReceiveItems = () =>
+    navigate("/masters/products/receive-items/", { state: { vendor } });
+  const handleDelete = (id) => {
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      console.log("Delete order id:", id);
+      // TODO: Call delete API
     }
   } catch (err) {
     console.error("Delete error:", err);
@@ -118,6 +103,14 @@ const PurchaseOrders = () => {
           Vendor not selected. Please select a vendor to view orders.
         </p>
       )}
+
+      <div className="header-row">
+        {vendor && (
+          <button className="receive-items-btn" onClick={handleReceiveItems}>
+            Receive Items
+          </button>
+        )}
+      </div>
 
       <div className="orders-table-card">
         <table className="orders-table">
