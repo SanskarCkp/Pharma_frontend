@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import styles from "./invoice.module.css";
-import { authFetch } from "../../api/http";
+import { authFetch, getUserFacingErrorMessage } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { MedicalCrossLogo } from "../common/logo";
 
@@ -25,8 +25,12 @@ export default function Invoice() {
         setError("");
         const res = await authFetch(`${INVOICE_URL}${id}/`);
         if (!res.ok) {
-          const txt = await res.text();
-          setError(`Failed to load invoice (${res.status})${txt ? `: ${txt}` : ""}`);
+          setError(
+            await getUserFacingErrorMessage(
+              res,
+              "Unable to load this invoice right now."
+            )
+          );
           setInvoice(null);
           return;
         }
@@ -34,7 +38,7 @@ export default function Invoice() {
         setInvoice(data);
       } catch (e) {
         console.error(e);
-        setError("Network error while loading invoice");
+        setError("Unable to load this invoice right now.");
         setInvoice(null);
       }
     }
