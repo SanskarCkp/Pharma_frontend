@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./billgeneration.css";
-import { authFetch } from "../../api/http";
+import { authFetch, getUserFacingErrorMessage } from "../../api/http";
 import { apiUrl } from "../../api/base";
 import { getDefaultLocationId } from "../../config/location";
 import { useAlert } from "../ui/alert-provider";
@@ -474,8 +474,6 @@ export default function GenerateBill() {
       showAlert("Discount percentage cannot exceed 100%.", "Validation Error");
       return;
     }
-    const amountPaid = totals.finalTotal;
-
     const missingBatch = cart.find((item) => !item.batch_id);
     if (missingBatch) {
       showAlert("One or more items are missing batch information. Remove them and try again.", "Validation Error");
@@ -517,8 +515,6 @@ export default function GenerateBill() {
       customer_city: customer.city || "",
       doctor_name: customer.doctor || "",
       lines,
-      payment_method: paymentMethodType,
-      amount_paid: amountPaid,
       reuse_deleted_invoice_number: reuseDeletedInvoice, // Use the state value set when page loaded
     };
 
@@ -531,14 +527,17 @@ export default function GenerateBill() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Invoice failed (${res.status})`);
+        throw new Error(
+          await getUserFacingErrorMessage(
+            res,
+            "Unable to create the bill right now. Please try again."
+          )
+        );
       }
 
       const data = await res.json();
 
-      // 🔥 MAKE PAYMENT RIGHT HERE
-      await authFetch(`${INVOICES_URL}${data.id}/complete-payment/`, {
+      const paymentRes = await authFetch(`${INVOICES_URL}${data.id}/complete-payment/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -546,6 +545,15 @@ export default function GenerateBill() {
           amount: totals.finalTotal
         })
       });
+
+      if (!paymentRes.ok) {
+        throw new Error(
+          await getUserFacingErrorMessage(
+            paymentRes,
+            "The bill was created, but payment could not be completed. Please open the invoice and try the payment again."
+          )
+        );
+      }
 
       // continue the remaining code
       dispatchInventoryRefresh();
